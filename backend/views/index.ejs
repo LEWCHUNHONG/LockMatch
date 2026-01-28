@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LockMATCH - 你的個性化社交平台</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PWA 設定 -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#7C3AED">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+</head>
+<body>
+    <!-- 背景裝飾 -->
+    <div class="bg-pattern">
+        <div class="bg-circle"></div>
+        <div class="bg-circle"></div>
+    </div>
+
+    <!-- 主要內容 -->
+    <main class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <!-- 標語 -->
+                <p class="hero-tagline animate-fade-in">Your weekly dose of</p>
+                
+                <!-- 主標題 -->
+                <h1 class="hero-title animate-fade-in delay-100">
+                    <span class="hero-title-gradient">togetherness.</span>
+                </h1>
+                
+                <!-- 副標題 -->
+                <p class="hero-subtitle animate-fade-in delay-200">
+                    基於 MBTI 的遊戲化社交平台，幫助你找到最匹配的學習夥伴、運動搭檔和遊戲戰友。
+                    通過有趣的互動遊戲了解彼此，建立真正有意義的連結。
+                </p>
+                
+                <!-- 行動按鈕 -->
+                <div class="action-buttons animate-fade-in delay-300">
+                    <a href="/register" class="btn-primary-lg animate-float">
+                        🚀 立即開始
+                    </a>
+                </div>
+                
+                <!-- 已有帳號連結 -->
+                <div class="existing-account animate-fade-in delay-300">
+                    <a href="/login" class="existing-account-link">
+                        <span>👤</span>
+                        <span>我已經有帳號</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 特色功能 -->
+    <section class="features">
+        <div class="container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        🎮
+                    </div>
+                    <h3 class="feature-title">遊戲化 MBTI 測試</h3>
+                    <p class="feature-description">
+                        通過有趣的互動遊戲了解你的真實個性，告脫傳統的問卷測試。
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        💑
+                    </div>
+                    <h3 class="feature-title">智能個性匹配</h3>
+                    <p class="feature-description">
+                        基於 MBTI 和科學算法，找到與你最匹配的學習夥伴、運動搭檔。
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        🗺️
+                    </div>
+                    <h3 class="feature-title">AR 互動地圖</h3>
+                    <p class="feature-description">
+                        探索附近的社交活動和 AR 互動點，讓線下見面更有趣。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 條款說明 -->
+    <footer class="terms-notice">
+        <div class="terms-text">
+            註冊即表示您同意我們的
+            <span class="terms-links">
+                <a href="/terms">服務條款</a>、
+                <a href="/privacy">隱私政策</a> 和
+                <a href="/guidelines">社群準則</a>。
+            </span>
+        </div>
+    </footer>
+
+    <!-- 簡化的導航欄（只在有使用者時顯示） -->
+    <% if (user) { %>
+        <nav class="top-nav">
+            <div class="container safe-area">
+                <a href="/" class="brand">
+                    <span class="brand-logo">🔐</span>
+                    <span>LockMATCH</span>
+                </a>
+                
+                <div class="nav-buttons">
+                    <span class="user-avatar-sm">
+                        <%= user.username.charAt(0).toUpperCase() %>
+                    </span>
+                    <a href="/dashboard" class="nav-btn primary">儀表板</a>
+                    <a href="/logout" class="nav-btn secondary">登出</a>
+                </div>
+            </div>
+        </nav>
+    <% } %>
+</body>
+</html>

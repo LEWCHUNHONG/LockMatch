@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>儀表板 - LockMATCH</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 頂部導航欄 -->
+    <nav class="top-nav">
+        <div class="container safe-area">
+            <a href="/" class="brand">
+                <span class="brand-logo">🔐</span>
+                <span>LockMATCH</span>
+            </a>
+            
+            <div class="nav-buttons">
+                <span class="user-avatar-sm">
+                    <%= user.username.charAt(0).toUpperCase() %>
+                </span>
+                <a href="/match" class="nav-btn primary">匹配</a>
+                <a href="/chats" class="nav-btn accent">聊天</a>
+                <a href="/settings" class="nav-btn">設定</a>
+                <a href="/logout" class="nav-btn secondary">登出</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <main class="main-content">
+        <div class="container">
+            <div class="dashboard-header fade-in">
+                <div class="user-info">
+                    <div class="user-avatar-lg">
+                        <%= user.username.charAt(0).toUpperCase() %>
+                    </div>
+                    <div class="user-details">
+                        <h2>歡迎，<%= user.username %>！</h2>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                            <span class="user-mbti">待測試 MBTI</span>
+                            <span style="background: rgba(255, 214, 102, 0.1); color: var(--warning); padding: 0.25rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;">
+                                ★ 1500 積分
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-actions">
+                    <button class="nav-btn primary">開始測試</button>
+                    <button class="nav-btn accent">尋找匹配</button>
+                    <button class="nav-btn">探索附近</button>
+                    <button class="nav-btn">查看成就</button>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid slide-up">
+                <div class="dashboard-card card">
+                    <div class="card-icon">🎮</div>
+                    <h3>MBTI 遊戲測試</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        通過有趣的互動遊戲了解你的真實個性
+                    </p>
+                    <button class="nav-btn primary" style="width: 100%;">開始測試</button>
+                </div>
+                
+                <div class="dashboard-card card">
+                    <div class="card-icon">💑</div>
+                    <h3>智能匹配</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        基於 MBTI 找到最適合的學習夥伴、運動搭檔
+                    </p>
+                    <button class="nav-btn accent" style="width: 100%;">尋找匹配</button>
+                </div>
+                
+                <div class="dashboard-card card">
+                    <div class="card-icon">🗺️</div>
+                    <h3>探索附近</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        發現附近的社交活動和 AR 互動點
+                    </p>
+                    <button class="nav-btn" style="width: 100%;">開始探索</button>
+                </div>
+                
+                <div class="dashboard-card card">
+                    <div class="card-icon">💬</div>
+                    <h3>我的聊天</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        與匹配的朋友保持聯繫和互動
+                    </p>
+                    <button class="nav-btn primary" style="width: 100%;">查看對話</button>
+                </div>
+                
+                <div class="dashboard-card card">
+                    <div class="card-icon">🏆</div>
+                    <h3>成就系統</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        解鎖成就，提升你的社交等級
+                    </p>
+                    <div style="margin-top: 0.5rem;">
+                        <span style="color: var(--gray-500); font-size: 0.75rem;">已解鎖：3/15 成就</span>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card card">
+                    <div class="card-icon">⚙️</div>
+                    <h3>個人設定</h3>
+                    <p style="color: var(--gray-400); margin-bottom: 1rem; font-size: 0.875rem;">
+                        管理你的個人資料和隱私設定
+                    </p>
+                    <button class="nav-btn" style="width: 100%;">設定</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 行動裝置底部導航 -->
+    <nav class="mobile-bottom-nav">
+        <a href="/dashboard" class="bottom-nav-item active">
+            <span class="bottom-nav-icon">🏠</span>
+            <span>首頁</span>
+        </a>
+        <a href="/match" class="bottom-nav-item">
+            <span class="bottom-nav-icon">💑</span>
+            <span>匹配</span>
+        </a>
+        <a href="/chats" class="bottom-nav-item">
+            <span class="bottom-nav-icon">💬</span>
+            <span>聊天</span>
+        </a>
+        <a href="/profile" class="bottom-nav-item">
+            <span class="bottom-nav-icon">👤</span>
+            <span>我的</span>
+        </a>
+    </nav>
+</body>
+</html>

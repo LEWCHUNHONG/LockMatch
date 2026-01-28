@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊 LockMATCH</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card card slide-in">
+            <div class="auth-header">
+                <div class="auth-logo">🔐</div>
+                <h2>加入 LockMATCH</h2>
+                <p class="auth-subtitle">開始你的個性化社交旅程</p>
+            </div>
+
+            <% if (error) { %>
+                <div class="error-message">
+                    <span>⚠️</span>
+                    <span><%= error %></span>
+                </div>
+            <% } %>
+
+            <form action="/register" method="POST">
+                <div class="form-group">
+                    <label for="username">使用者名稱</label>
+                    <input type="text" id="username" name="username" required placeholder="輸入你的獨特暱稱">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">電子郵件</label>
+                    <input type="email" id="email" name="email" required placeholder="name@example.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密碼</label>
+                    <input type="password" id="password" name="password" required placeholder="至少 8 個字元">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">確認密碼</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="再次輸入密碼">
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    開始探索
+                </button>
+            </form>
+            
+            <div class="social-buttons" style="margin-top: 2rem;">
+                <button class="social-btn google">
+                    <span>G</span>
+                    <span>使用 Google 註冊</span>
+                </button>
+                <button class="social-btn facebook">
+                    <span>f</span>
+                    <span>使用 Facebook 註冊</span>
+                </button>
+            </div>
+            
+            <div class="form-options">
+                <div>
+                    <input type="checkbox" id="terms" style="margin-right: 0.5rem;">
+                    <label for="terms" style="display: inline; text-transform: none;">我同意服務條款</label>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem; color: var(--gray-500);">
+                已經有帳號？ <a href="/login">立即登入</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

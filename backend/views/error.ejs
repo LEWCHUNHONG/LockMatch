@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>錯誤 - LockMATCH</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card card slide-in">
+            <div class="auth-header">
+                <div class="auth-logo">⚠️</div>
+                <h2>發生錯誤</h2>
+                <p class="auth-subtitle"><%= error %></p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <a href="/" class="btn btn-primary">返回首頁</a>
+                <% if (user) { %>
+                    <a href="/dashboard" class="btn btn-secondary" style="margin-left: 1rem;">前往儀表板</a>
+                <% } else { %>
+                    <a href="/login" class="btn btn-accent" style="margin-left: 1rem;">重新登入</a>
+                <% } %>
+            </div>
+            
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <p style="color: var(--gray-500); text-align: center; font-size: 0.875rem;">
+                    如果問題持續發生，請聯繫客服支援<br>
+                    support@lockmatch.com
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

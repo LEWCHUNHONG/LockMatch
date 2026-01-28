@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入 LockMATCH</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card card slide-in">
+            <div class="auth-header">
+                <div class="auth-logo">🎮</div>
+                <h2>歡迎回來</h2>
+                <p class="auth-subtitle">繼續你的 MBTI 社交冒險</p>
+            </div>
+
+            <% if (error) { %>
+                <div class="error-message">
+                    <span>⚠️</span>
+                    <span><%= error %></span>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label for="username">使用者名稱</label>
+                    <input type="text" id="username" name="username" required placeholder="輸入你的使用者名稱">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密碼</label>
+                    <input type="password" id="password" name="password" required placeholder="輸入你的密碼">
+                </div>
+                
+                <div class="form-options">
+                    <div>
+                        <input type="checkbox" id="remember" style="margin-right: 0.5rem;">
+                        <label for="remember" style="display: inline; text-transform: none;">記住我</label>
+                    </div>
+                    <a href="/forgot-password" style="color: var(--gray-500); font-size: 0.875rem;">忘記密碼？</a>
+                </div>
+                
+                <button type="submit" class="btn btn-accent" style="width: 100%; margin-top: 1.5rem;">
+                    開始匹配
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 2rem; color: var(--gray-500);">
+                還沒有帳號？ <a href="/register">立即註冊</a>
+            </div>
+            
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <p style="color: var(--gray-500); text-align: center; font-size: 0.875rem;">
+                    🎯 完成 MBTI 測試解鎖更多功能<br>
+                    💬 與匹配的朋友開始聊天<br>
+                    🗺️ 探索附近的社交活動
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

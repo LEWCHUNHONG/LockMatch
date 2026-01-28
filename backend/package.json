@@ -1,0 +1,35 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/netinfo": "^11.4.1",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.1",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
+    "expo-document-picker": "^14.0.8",
+    "expo-image-picker": "^17.0.10",
+    "expo-linear-gradient": "^15.0.8",
+    "express": "^5.2.1",
+    "express-session": "^1.18.2",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
+    "mysql2": "^3.16.0",
+    "path": "^0.12.7",
+    "react-native-emoji-selector": "^0.2.0",
+    "react-native-gesture-handler": "^2.30.0",
+    "react-native-reanimated": "^4.2.1",
+    "socket.io": "^4.8.3"
+  }
+}
