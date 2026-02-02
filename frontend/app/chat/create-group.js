@@ -31,6 +31,9 @@ export default function CreateGroup() {
   const [creating, setCreating] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdRoomId, setCreatedRoomId] = useState(null);
 
   useEffect(() => {
     loadFriends();
@@ -41,10 +44,33 @@ export default function CreateGroup() {
       setLoading(true);
       const response = await chatAPI.getFriends();
       if (response.data.success) {
-        setFriends(response.data.friends.map(friend => ({
-          ...friend,
-          isSelected: false
-        })));
+        const formattedFriends = response.data.friends.map(friend => {
+          let avatarUrl = null;
+          if (friend.avatar) {
+            if (friend.avatar.startsWith('http://') || friend.avatar.startsWith('https://')) {
+              avatarUrl = friend.avatar;
+            } else {
+              const path = friend.avatar.startsWith('/') ? friend.avatar : `/${friend.avatar}`;
+              avatarUrl = `${API_URL}${path}`;
+            }
+          }
+
+          return {
+            ...friend,
+            avatar: avatarUrl,   // now a full URL or null
+            isSelected: false,
+          };
+        });
+
+        // Optional: debug log (remove in production)
+        // console.log('Formatted friends avatars (first 3):', 
+        //   formattedFriends.slice(0, 3).map(f => ({ 
+        //     username: f.username, 
+        //     avatar: f.avatar 
+        //   }))
+        // );
+
+        setFriends(formattedFriends);
       }
     } catch (error) {
       console.error('載入好友失敗:', error);
@@ -97,19 +123,8 @@ export default function CreateGroup() {
       );
 
       if (response.data.success) {
-        Alert.alert(
-          '成功',
-          '群組創建成功！',
-          [
-            {
-              text: '進入群組',
-              onPress: () => {
-                router.replace(`/chat/${response.data.roomId}`);
-              }
-            }
-          ],
-          { cancelable: false }
-        );
+      setCreatedRoomId(response.data.roomId);
+      setShowSuccessModal(true);
       } else {
         showAlertMessage(response.data.error || '創建群組失敗');
       }
@@ -132,13 +147,15 @@ export default function CreateGroup() {
       <View style={styles.friendAvatar}>
         {item.avatar ? (
           <Image 
-            source={{ uri: `${API_URL}${item.avatar}` }} 
+            source={{ uri: item.avatar }}
             style={styles.avatarImage}
+            resizeMode="cover"
+            onError={(e) => console.log(`頭像載入失敗 - ${item.username}:`, e.nativeEvent.error)}
           />
         ) : (
           <View style={styles.defaultAvatar}>
             <Text style={styles.avatarText}>
-              {item.username?.charAt(0) || '?'}
+              {item.username?.charAt(0)?.toUpperCase() || '?'}
             </Text>
           </View>
         )}
@@ -290,6 +307,57 @@ export default function CreateGroup() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      {/* 成功彈窗 */}
+<Modal
+  isVisible={showSuccessModal}
+  onBackdropPress={() => {}}
+  animationIn="zoomIn"
+  animationOut="zoomOut"
+  backdropOpacity={0.5}
+>
+  <View style={[modalStyles.container, { padding: 32 }]}>
+    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+      <MaterialCommunityIcons 
+        name="check-decagram" 
+        size={64} 
+        color="#2ecc71" 
+      />
+    </View>
+    
+    <Text style={[modalStyles.title, { color: '#2ecc71' }]}>創建成功！</Text>
+    
+    <Text style={modalStyles.message}>
+      群組「{groupName}」已成功創建
+    </Text>
+
+    <View style={{ flexDirection: 'row', gap: 16, marginTop: 28, width: '100%' }}>
+
+<TouchableOpacity
+        style={[modalStyles.button, { flex: 1, backgroundColor: '#ecf0f1' }]}
+        onPress={() => {
+          setShowSuccessModal(false);
+          router.replace('/chat');
+        }}
+      >
+        <Text style={[modalStyles.buttonText, { color: '#7f8c8d' }]}>返回列表</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[modalStyles.button, { flex: 1 }]}
+        onPress={() => {
+          setShowSuccessModal(false);
+          if (createdRoomId) {
+            router.replace(`/chat/${createdRoomId}`);
+          }
+        }}
+      >
+        <Text style={modalStyles.buttonText}>進入群組</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
     </>
   );
 }

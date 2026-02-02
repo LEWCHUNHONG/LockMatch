@@ -3,7 +3,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 
-const API_URL = 'http://192.168.1.11:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 // 創建 axios 實例
 const api = axios.create({
@@ -285,6 +285,7 @@ const chatAPI = {
   getGroupMembers: (roomId) => api.get(`/api/group-members/${roomId}`),
   addGroupMember: (roomId, userId) => api.post('/api/add-group-member', { roomId, userId }),
   removeGroupMember: (roomId, userId) => api.post('/api/remove-group-member', { roomId, userId }),
+  leaveGroup: (roomId) => api.post('/api/leave-group', { roomId }),
   
   // 多媒體消息相關 API
   getChatMedia: (roomId) => api.get(`/api/chat-media/${roomId}`),

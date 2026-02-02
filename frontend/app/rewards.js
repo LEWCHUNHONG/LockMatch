@@ -9,30 +9,29 @@ import {
   Image,
   RefreshControl,
   Dimensions,
-  Animated,
-  Modal,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../utils/api';
+import Modal from 'react-native-modal';
 
 const { width } = Dimensions.get('window');
 
 export default function RewardsScreen() {
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [activeTab, setActiveTab] = useState('daily');
   const [userPoints, setUserPoints] = useState({ 
-    total_points: 0, 
+    points: 0, 
     level: '新手會員', 
     completed_tasks_count: 0 
   });
   const [tasks, setTasks] = useState({ 
-    daily: [], 
     achievement: [], 
-    special: [] 
+    daily: []
   });
   const [shopItems, setShopItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +40,9 @@ export default function RewardsScreen() {
     checked_in_today: false, 
     consecutive_week_days: 0 
   });
+  const [processingTask, setProcessingTask] = useState(null);
+  const [showCheckinSuccessModal, setShowCheckinSuccessModal] = useState(false);
+  const [checkinMessage, setCheckinMessage] = useState('');
 
   const router = useRouter();
 
@@ -62,9 +64,8 @@ export default function RewardsScreen() {
       if (tasksRes.data.success) {
         const tasksData = tasksRes.data.tasks || {};
         setTasks({
-          daily: Array.isArray(tasksData.daily) ? tasksData.daily : [],
           achievement: Array.isArray(tasksData.achievement) ? tasksData.achievement : [],
-          special: Array.isArray(tasksData.special) ? tasksData.special : []
+          daily: Array.isArray(tasksData.daily) ? tasksData.daily : []
         });
       }
 
@@ -99,59 +100,172 @@ export default function RewardsScreen() {
   }, [loadAllData]);
 
   const handleDailyCheckin = async () => {
+    if (checkinStatus.checked_in_today) {
+      Alert.alert('提示', '今日已簽到,明天再來吧!');
+      return;
+    }
+    
     try {
       const response = await api.post('/api/daily-checkin');
       if (response.data.success) {
-        alert(`簽到成功！獲得 ${response.data.points_earned} 積分`);
+        // 更新簽到狀態
+        setCheckinStatus(prev => ({
+          ...prev,
+          checked_in_today: true,
+          consecutive_week_days: response.data.streak || (prev.consecutive_week_days || 0) + 1
+        }));
+
+        // 設置彈窗訊息
+        const successMessage = `獲得 ${response.data.points_earned} 積分`;
+        setCheckinMessage(successMessage);
+        setShowCheckinSuccessModal(true);
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // 重新載入資料
         loadAllData();
       }
     } catch (error) {
-      alert(error.response?.data?.error || '簽到失敗');
+      Alert.alert('簽到失敗', error.response?.data?.error || '請稍後再試');
     }
   };
 
-  const handleStartTask = async (taskId) => {
+  const handleTaskAction = async (task) => {
+    if (processingTask === task.id) return;
+    
+    setProcessingTask(task.id);
+    
     try {
-      const response = await api.post('/api/start-task', { taskId });
-      if (response.data.success) {
-        alert('任務已開始！');
-        loadAllData();
+      if (task.user_status === 'completed') {
+        Alert.alert('提示', '此任務已完成');
+        return;
+      }
+      
+      if (!task.user_status || task.user_status === 'not_started') {
+        // 開始任務
+        const response = await api.post('/api/start-task', { taskId: task.id });
+        if (response.data.success) {
+          if (response.data.completed) {
+            Alert.alert(
+              '恭喜!',
+              `任務完成!\n獲得 ${response.data.points_earned} 積分`,
+              [{ text: '太好了!', onPress: () => loadAllData() }]
+            );
+          } else {
+            Alert.alert('任務已開始', '請完成任務要求後再來檢查進度');
+            loadAllData();
+          }
+        }
+      } else if (task.user_status === 'in_progress') {
+        // 檢查進度
+        const response = await api.post('/api/check-task-progress', { taskId: task.id });
+        if (response.data.success) {
+          if (response.data.completed) {
+            Alert.alert(
+              '恭喜完成!',
+              `獲得 ${response.data.points_earned} 積分`,
+              [{ text: '太好了!', onPress: () => loadAllData() }]
+            );
+          } else {
+            const progress = response.data.current_progress || 0;
+            const required = response.data.required_progress || 1;
+            Alert.alert(
+              '任務進度',
+              `當前進度: ${progress}/${required}\n${response.data.message || '繼續加油!'}`,
+              [{ text: '知道了', onPress: () => loadAllData() }]
+            );
+          }
+        }
       }
     } catch (error) {
-      alert(error.response?.data?.error || '開始任務失敗');
+      console.error('任務操作失敗:', error);
+      Alert.alert('操作失敗', error.response?.data?.error || '請稍後再試');
+    } finally {
+      setProcessingTask(null);
     }
   };
 
-  const renderTaskItem = (task, index) => (
-    <View key={task.id || index} style={styles.taskCard}>
-      <View style={styles.taskHeader}>
-        <View style={[styles.taskIcon, { backgroundColor: getTaskColor(task.task_type) }]}>
-          <MaterialCommunityIcons 
-            name={getTaskIcon(task.task_type)} 
-            size={24} 
-            color="#fff" 
-          />
-        </View>
-        <View style={styles.taskInfo}>
-          <Text style={styles.taskTitle}>{task.title}</Text>
-          <Text style={styles.taskDesc}>{task.description}</Text>
-          <View style={styles.taskReward}>
-            <MaterialCommunityIcons name="star-circle" size={16} color="#f4c7ab" />
-            <Text style={styles.taskPoints}>+{task.points_reward} 積分</Text>
+  const getTaskButtonConfig = (task) => {
+    if (task.user_status === 'completed') {
+      return {
+        text: '已完成',
+        icon: 'check-circle',
+        style: styles.taskButtonCompleted,
+        disabled: true
+      };
+    } else if (task.user_status === 'in_progress') {
+      return {
+        text: '檢查進度',
+        icon: 'progress-clock',
+        style: styles.taskButtonInProgress,
+        disabled: false
+      };
+    } else {
+      return {
+        text: '開始任務',
+        icon: 'play-circle',
+        style: styles.taskButton,
+        disabled: false
+      };
+    }
+  };
+
+  const renderTaskItem = (task, index) => {
+    const buttonConfig = getTaskButtonConfig(task);
+    const isProcessing = processingTask === task.id;
+
+    return (
+      <View key={task.id || index} style={styles.taskCard}>
+        <View style={styles.taskHeader}>
+          <View style={[styles.taskIcon, { backgroundColor: getTaskColor(task.task_type) }]}>
+            <MaterialCommunityIcons 
+              name={getTaskIcon(task.task_type)} 
+              size={24} 
+              color="#fff" 
+            />
+          </View>
+          <View style={styles.taskInfo}>
+            <Text style={styles.taskTitle}>{task.title}</Text>
+            <Text style={styles.taskDesc}>{task.description}</Text>
+            <View style={styles.taskReward}>
+              <MaterialCommunityIcons name="star-circle" size={16} color="#f4c7ab" />
+              <Text style={styles.taskPoints}>+{task.points_reward} 積分</Text>
+            </View>
           </View>
         </View>
-      </View>
-      
-      {(!task.user_status || task.user_status === 'not_started') && (
+        
         <TouchableOpacity 
-          style={styles.taskButton}
-          onPress={() => handleStartTask(task.id)}
+          style={[buttonConfig.style, isProcessing && styles.taskButtonDisabled]}
+          onPress={() => handleTaskAction(task)}
+          disabled={buttonConfig.disabled || isProcessing}
         >
-          <Text style={styles.taskButtonText}>開始任務</Text>
+          {isProcessing ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name={buttonConfig.icon} size={16} color="#fff" />
+              <Text style={styles.taskButtonText}>{buttonConfig.text}</Text>
+            </>
+          )}
         </TouchableOpacity>
-      )}
-    </View>
-  );
+        
+        {task.user_status === 'in_progress' && task.progress !== undefined && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${Math.min(100, task.progress)}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {task.current_progress || 0}/{task.points_required || 1} ({task.progress || 0}%)
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const renderShopItem = (item, index) => (
     <View key={item.id || index} style={styles.shopCard}>
@@ -187,18 +301,16 @@ export default function RewardsScreen() {
 
   const getTaskColor = (type) => {
     switch(type) {
-      case 'daily': return '#3498db';
+      case 'daily': return '#9b59b6';
       case 'achievement': return '#2ecc71';
-      case 'special': return '#9b59b6';
       default: return '#f4c7ab';
     }
   };
 
   const getTaskIcon = (type) => {
     switch(type) {
-      case 'daily': return 'calendar-check';
+      case 'daily': return 'calendar-today';
       case 'achievement': return 'trophy';
-      case 'special': return 'star-circle';
       default: return 'checkbox-marked-circle';
     }
   };
@@ -235,19 +347,32 @@ export default function RewardsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'tasks' && (
+        {activeTab === 'daily' && (
           <>
             {/* 每日任務 */}
             {tasks.daily.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="calendar-check" size={24} color="#3498db" />
+                  <MaterialCommunityIcons name="calendar-today" size={24} color="#9b59b6" />
                   <Text style={styles.sectionTitle}>每日任務 ({tasks.daily.length})</Text>
                 </View>
                 {tasks.daily.map((task, index) => renderTaskItem(task, index))}
               </View>
             )}
-            
+
+            {/* 空狀態 */}
+            {tasks.daily.length === 0 && (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons name="calendar-blank" size={48} color="#f4c7ab" />
+                <Text style={styles.emptyStateText}>暫無每日任務</Text>
+                <Text style={styles.emptyStateSubText}>請稍後再來查看新的每日任務</Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {activeTab === 'achievement' && (
+          <>
             {/* 成就任務 */}
             {tasks.achievement.length > 0 && (
               <View style={styles.section}>
@@ -258,23 +383,13 @@ export default function RewardsScreen() {
                 {tasks.achievement.map((task, index) => renderTaskItem(task, index))}
               </View>
             )}
-            
-            {/* 特殊任務 */}
-            {tasks.special.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="star-circle" size={24} color="#9b59b6" />
-                  <Text style={styles.sectionTitle}>特殊任務 ({tasks.special.length})</Text>
-                </View>
-                {tasks.special.map((task, index) => renderTaskItem(task, index))}
-              </View>
-            )}
 
             {/* 空狀態 */}
-            {tasks.daily.length === 0 && tasks.achievement.length === 0 && tasks.special.length === 0 && (
+            {tasks.achievement.length === 0 && (
               <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="checkbox-multiple-blank-circle" size={48} color="#f4c7ab" />
-                <Text style={styles.emptyStateText}>暫無可用任務</Text>
+                <MaterialCommunityIcons name="trophy-outline" size={48} color="#f4c7ab" />
+                <Text style={styles.emptyStateText}>暫無成就任務</Text>
+                <Text style={styles.emptyStateSubText}>完成更多任務來解鎖成就</Text>
               </View>
             )}
           </>
@@ -294,6 +409,7 @@ export default function RewardsScreen() {
               <View style={styles.emptyState}>
                 <MaterialCommunityIcons name="store-off" size={48} color="#f4c7ab" />
                 <Text style={styles.emptyStateText}>暫無商品</Text>
+                <Text style={styles.emptyStateSubText}>更多商品即將上架，敬請期待</Text>
               </View>
             )}
           </>
@@ -327,7 +443,7 @@ export default function RewardsScreen() {
           <View style={styles.pointsHeader}>
             <View>
               <Text style={styles.totalPointsLabel}>當前積分</Text>
-              <Text style={styles.totalPoints}>{userPoints.total_points}</Text>
+              <Text style={styles.totalPoints}>{userPoints.points}</Text>
             </View>
             <View style={styles.levelBadge}>
               <MaterialCommunityIcons name="crown" size={20} color="#FFD700" />
@@ -370,16 +486,30 @@ export default function RewardsScreen() {
       {/* 標籤欄 */}
       <View style={styles.tabBar}>
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'tasks' && styles.activeTab]}
-          onPress={() => setActiveTab('tasks')}
+          style={[styles.tab, activeTab === 'daily' && styles.activeTab]}
+          onPress={() => setActiveTab('daily')}
         >
           <MaterialCommunityIcons 
-            name="checkbox-multiple-marked-circle" 
-            size={22} 
-            color={activeTab === 'tasks' ? '#5c4033' : '#8b5e3c'} 
+            name="calendar-today" 
+            size={20} 
+            color={activeTab === 'daily' ? '#5c4033' : '#8b5e3c'} 
           />
-          <Text style={[styles.tabText, activeTab === 'tasks' && styles.activeTabText]}>
-            任務中心
+          <Text style={[styles.tabText, activeTab === 'daily' && styles.activeTabText]}>
+            每日任務
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'achievement' && styles.activeTab]}
+          onPress={() => setActiveTab('achievement')}
+        >
+          <MaterialCommunityIcons 
+            name="trophy" 
+            size={20} 
+            color={activeTab === 'achievement' ? '#5c4033' : '#8b5e3c'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'achievement' && styles.activeTabText]}>
+            成就
           </Text>
         </TouchableOpacity>
         
@@ -389,25 +519,11 @@ export default function RewardsScreen() {
         >
           <MaterialCommunityIcons 
             name="store" 
-            size={22} 
+            size={20} 
             color={activeTab === 'shop' ? '#5c4033' : '#8b5e3c'} 
           />
           <Text style={[styles.tabText, activeTab === 'shop' && styles.activeTabText]}>
             積分商店
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'history' && styles.activeTab]}
-          onPress={() => setActiveTab('history')}
-        >
-          <MaterialCommunityIcons 
-            name="history" 
-            size={22} 
-            color={activeTab === 'history' ? '#5c4033' : '#8b5e3c'} 
-          />
-          <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>
-            積分歷史
           </Text>
         </TouchableOpacity>
       </View>
@@ -416,6 +532,46 @@ export default function RewardsScreen() {
       <View style={styles.contentContainer}>
         {renderContent()}
       </View>
+
+      {/* 簽到成功 Modal */}
+      <Modal
+        isVisible={showCheckinSuccessModal}
+        onBackdropPress={() => setShowCheckinSuccessModal(false)}
+        onBackButtonPress={() => setShowCheckinSuccessModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.4}
+      >
+        <View style={styles.modalContainer}>
+          <MaterialCommunityIcons 
+            name="check-circle" 
+            size={64} 
+            color="#2ecc71" 
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Text style={styles.modalTitle}>簽到成功！</Text>
+          
+          <Text style={[styles.modalMessage, { fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
+            {checkinMessage}
+          </Text>
+          
+          {checkinStatus.consecutive_week_days >= 2 && (
+            <Text style={[styles.modalMessage, { marginTop: 8, color: '#e67e22' }]}>
+              連續簽到 {checkinStatus.consecutive_week_days} 天 🎉
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={[styles.modalCheckinSuccessButton]}
+            onPress={() => setShowCheckinSuccessModal(false)}
+          >
+            <Text style={styles.modalCheckinSuccessButtonText}>
+              好的
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -562,7 +718,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#8b5e3c',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   activeTabText: {
     color: '#5c4033',
@@ -648,14 +804,57 @@ const styles = StyleSheet.create({
   },
   taskButton: {
     backgroundColor: '#f4c7ab',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 8,
+    gap: 8,
+  },
+  taskButtonInProgress: {
+    backgroundColor: '#3498db',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  taskButtonCompleted: {
+    backgroundColor: '#95a5a6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  taskButtonDisabled: {
+    opacity: 0.6,
   },
   taskButtonText: {
-    color: '#5c4033',
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  progressContainer: {
+    marginTop: 12,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#2ecc71',
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#8b5e3c',
+    marginTop: 4,
+    textAlign: 'center',
   },
   shopGrid: {
     flexDirection: 'row',
@@ -731,12 +930,61 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#5c4033',
     marginTop: 16,
   },
+  emptyStateSubText: {
+    fontSize: 14,
+    color: '#8b5e3c',
+    marginTop: 8,
+    textAlign: 'center',
+  },
   bottomSpacing: {
     height: 40,
+  },
+  // 從 dashboard.js 複製的 modal 樣式（調整為 styles 物件的一部分）
+  modalContainer: {
+    backgroundColor: '#fffaf5',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    marginHorizontal: 24,
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#5c4033',
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#8b5e3c',
+    textAlign: 'center',
+    marginBottom: 28,
+    lineHeight: 24,
+  },
+  modalCheckinSuccessButton: {
+    backgroundColor: '#f4c7ab',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    marginTop: 24,
+    minWidth: 120,
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCheckinSuccessButtonText: {
+    color: '#3d2a1f',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
 });

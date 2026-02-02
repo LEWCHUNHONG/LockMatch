@@ -70,11 +70,11 @@ export default function FriendsList() {
             } 
             // 如果是相對路徑，添加基礎URL
             else if (friend.avatar.startsWith('/')) {
-              fixedAvatar = `http://192.168.0.26:3000${friend.avatar}`;
+              fixedAvatar = `${BASE_URL}${friend.avatar}`;
             }
             // 如果是沒有斜杠的相對路徑，加上斜杠
             else if (friend.avatar.includes('uploads/')) {
-              fixedAvatar = `http://192.168.0.26:3000/${friend.avatar}`;
+              fixedAvatar = `${BASE_URL}/${friend.avatar}`;
             }
           }
           
@@ -130,11 +130,11 @@ export default function FriendsList() {
             } 
             // 如果是相對路徑，添加基礎URL
             else if (userData.avatar.startsWith('/')) {
-              fixedAvatar = `http://192.168.0.26:3000${userData.avatar}`;
+              fixedAvatar = `${BASE_URL}${userData.avatar}`;
             }
             // 如果是沒有斜杠的相對路徑，加上斜杠
             else if (userData.avatar.includes('uploads/')) {
-              fixedAvatar = `http://192.168.0.26:3000/${userData.avatar}`;
+              fixedAvatar = `${BASE_URL}/${userData.avatar}`;
             }
           }
           
@@ -370,6 +370,7 @@ export default function FriendsList() {
             >
               <MaterialCommunityIcons name="account-plus" size={26} color="#5c4033" />
             </TouchableOpacity>
+
           </View>
 
           {/* Search Bar */}
@@ -468,13 +469,8 @@ export default function FriendsList() {
             />
           )}
 
-          {/* Floating Add Friend Button */}
-          <TouchableOpacity
-            style={styles.addFriendButton}
-            onPress={() => router.push('/chat/search')}
-          >
-            <MaterialCommunityIcons name="account-plus" size={28} color="#fffaf5" />
-          </TouchableOpacity>
+
+
         </SafeAreaView>
       </LinearGradient>
 

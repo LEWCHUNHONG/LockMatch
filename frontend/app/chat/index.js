@@ -1,5 +1,6 @@
 // app/chat/index.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,9 +13,12 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,11 +35,28 @@ export default function ChatRooms() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isFabExpanded, setIsFabExpanded] = useState(false);
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadUser();
     loadChatRooms();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const checkRefresh = async () => {
+        const refresh = await AsyncStorage.getItem('refresh_chat_list');
+        if (refresh === 'true') {
+          setRefreshing(true);
+          await loadChatRooms();
+          await AsyncStorage.removeItem('refresh_chat_list');
+          setRefreshing(false);
+        }
+      };
+      checkRefresh();
+    }, [])
+  );
 
   // 過濾聊天室
   useEffect(() => {
@@ -84,6 +105,7 @@ export default function ChatRooms() {
           if (room.last_message_time || room.last_activity) {
             const timestamp = room.last_message_time || room.last_activity;
             lastTime = formatTime(timestamp);
+            console.log('聊天室列表原始資料：', response.data.rooms);
           }
           
           // 確保有正確的顯示名稱
@@ -93,7 +115,7 @@ export default function ChatRooms() {
             id: room.id.toString(),
             name: displayName,
             type: room.type || (room.members_count > 2 ? 'group' : 'private'),
-            members_count: room.members_count || 1,
+            members_count: room.members_count|| 1,
             // 修復：確保最後消息不顯示 undefined
             last_message: room.last_message && room.last_message !== 'undefined' 
               ? (room.last_message === '還沒有訊息' ? room.last_message : 
@@ -150,11 +172,18 @@ export default function ChatRooms() {
     });
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadChatRooms();
-    setRefreshing(false);
-  };
+const onRefresh = async () => {
+  setRefreshing(true);
+  // 加這幾行：檢查 flag + 清空舊 state
+  const refresh = await AsyncStorage.getItem('refresh_chat_list');
+  if (refresh === 'true') {
+    await AsyncStorage.removeItem('refresh_chat_list');
+  }
+  setRooms([]);  // 先清空 UI，避免顯示舊資料
+  setFilteredRooms([]);  // 同步清空過濾結果
+  await loadChatRooms();
+  setRefreshing(false);
+};
 
   const handleRoomPress = async (room) => {
     // 確保 room.id 是有效的數字
@@ -244,8 +273,7 @@ export default function ChatRooms() {
         
         {item.type === 'group' && (
           <View style={styles.memberCount}>
-            <MaterialCommunityIcons name="account" size={12} color="#8b5e3c" />
-            <Text style={styles.memberText}>{item.members_count} 人</Text>
+            <MaterialCommunityIcons name="account-group" size={12} color="#8b5e3c" />
           </View>
         )}
       </View>
@@ -287,6 +315,36 @@ export default function ChatRooms() {
     );
   };
 
+  // 展開/收合動畫
+  const toggleFab = () => {
+    const toValue = isFabExpanded ? 0 : 1;
+    Animated.timing(animatedValue, {
+      toValue,
+      duration: 280,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+    setIsFabExpanded(!isFabExpanded);
+  };
+
+  // 子按鈕的位移與透明度
+  const translateY1 = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -30],   // 第一個子按鈕向上移動距離
+  });
+  const translateY2 = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -60],  // 第二個子按鈕更上面
+  });
+  const opacity = animatedValue.interpolate({
+    inputRange: [0, 0.3, 1],
+    outputRange: [0, 0.3, 1],
+  });
+  const rotate = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '135deg'],  // + 變成 ×
+  });
+
   return (
     <LinearGradient
       colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
@@ -295,7 +353,9 @@ export default function ChatRooms() {
       <SafeAreaView style={styles.safeArea}>
         {/* 頂部欄 */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity 
+          onPress={() => router.push('/dashboard')}
+           style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
           
@@ -309,12 +369,6 @@ export default function ChatRooms() {
               <MaterialCommunityIcons name="account-group" size={26} color="#5c4033" />
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={styles.iconButton}
-              onPress={() => router.push('/chat/create-group')}
-            >
-              <MaterialCommunityIcons name="account-multiple-plus" size={26} color="#5c4033" />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -387,13 +441,79 @@ export default function ChatRooms() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* 新建聊天按鈕 */}
-        <TouchableOpacity 
-          style={styles.newChatButton}
-          onPress={() => router.push('/chat/search')}
+        {/* 展開式 FAB 區域 */}
+        {isFabExpanded && (
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={toggleFab}  // 點擊背景收合
+          />
+        )}
+
+        {/* 子按鈕 1：找人聊天 */}
+        <Animated.View
+          style={[
+            styles.fabAction,
+            {
+              transform: [{ translateY: translateY1 }],
+              opacity,
+              right: 20,
+              bottom: 30 + 65,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.miniFab}
+            onPress={() => {
+              router.push('/chat/search');
+              toggleFab(); // 點完自動收合
+            }}
+          >
+            <MaterialCommunityIcons name="account-search" size={24} color="#fffaf5" />
+          </TouchableOpacity>
+          <Text style={styles.fabLabel}>搜尋新朋友</Text>
+        </Animated.View>
+
+        {/* 子按鈕 2：創建群組 */}
+        <Animated.View
+          style={[
+            styles.fabAction,
+            {
+              transform: [{ translateY: translateY2 }],
+              opacity,
+              right: 20,
+              bottom: 30 + 120,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.miniFab}
+            onPress={() => {
+              router.push('/chat/create-group');
+              toggleFab();
+            }}
+          >
+            <MaterialCommunityIcons name="account-multiple-plus" size={24} color="#fffaf5" />
+          </TouchableOpacity>
+          <Text style={styles.fabLabel}>創建群組</Text>
+        </Animated.View>
+
+        {/* 主按鈕 */}
+        <TouchableOpacity
+          style={[
+            styles.newChatButton,
+            isFabExpanded && { backgroundColor: '#e74c3c' }, // 展開時變紅色更像關閉
+          ]}
+          onPress={toggleFab}
           activeOpacity={0.8}
         >
-          <MaterialCommunityIcons name="message-plus" size={28} color="#fffaf5" />
+          <Animated.View style={{ transform: [{ rotate }] }}>
+            <MaterialCommunityIcons
+              name="plus"
+              size={28}
+              color="#fffaf5"
+            />
+          </Animated.View>
         </TouchableOpacity>
       </SafeAreaView>
     </LinearGradient>
@@ -687,5 +807,34 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderWidth: 2,
     borderColor: '#fffaf5',
+  },
+  miniFab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f4c7ab',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabAction: {
+    position: 'absolute',
+    alignItems: 'center',
+    flexDirection: 'row-reverse',
+    gap: 12,
+  },
+  fabLabel: {
+    color: '#5c4033',
+    fontSize: 14,
+    fontWeight: '600',
+    backgroundColor: 'rgba(255,250,245,0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
 });

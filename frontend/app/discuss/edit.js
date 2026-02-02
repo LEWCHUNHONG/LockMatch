@@ -280,21 +280,6 @@ export default function EditPost() {
               </ScrollView>
             )}
 
-            {images.length > 0 && (
-              <View style={styles.imageControlContainer}>
-                <TouchableOpacity style={styles.replaceButton} onPress={pickImages}>
-                  <MaterialCommunityIcons name="image-sync" size={20} color="#5c4033" />
-                  <Text style={styles.replaceButtonText}>新增/更換圖片</Text>
-                </TouchableOpacity>
-
-                {images.some((img) => img.isEditing) && (
-                  <TouchableOpacity style={styles.secondaryButton} onPress={() => { /* 批量恢復邏輯 */ }}>
-                    <Text style={styles.secondaryButtonText}>恢復所有原圖</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
             {images.length < MAX_IMAGES && (
               <TouchableOpacity style={styles.imageBtn} onPress={pickImages}>
                 <MaterialCommunityIcons name="image-plus" size={26} color="#f4c7ab" />

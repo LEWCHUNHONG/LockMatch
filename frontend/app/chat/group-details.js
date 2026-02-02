@@ -5,11 +5,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Image,
   FlatList,
   RefreshControl,
-  Alert,
   ActivityIndicator,
   Modal,
   TextInput,
@@ -19,21 +17,39 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { chatAPI, api } from '../../utils/api';
+import { chatAPI } from '../../utils/api';
 import { fixImageUrl } from '../../utils/api';
 
 export default function GroupDetails() {
   const router = useRouter();
   const { roomId } = useLocalSearchParams();
+
   const [groupInfo, setGroupInfo] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
+
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [addingMember, setAddingMember] = useState(false);
+
+  // 確認類 Modal
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  // 通知類 Modal
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationType, setNotificationType] = useState('success'); // success | error | info
+  const [notificationMessage, setNotificationMessage] = useState('');
+
+  const showNotificationModal = (type, message) => {
+    setNotificationType(type);
+    setNotificationMessage(message);
+    setShowNotification(true);
+  };
 
   useEffect(() => {
     loadUser();
@@ -45,7 +61,6 @@ export default function GroupDetails() {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        // 確保 ID 是字串型別
         parsedUser.id = String(parsedUser.id);
         setUser(parsedUser);
       }
@@ -57,21 +72,18 @@ export default function GroupDetails() {
   const loadGroupDetails = async () => {
     try {
       setLoading(true);
-      
-      // 載入群組基本信息
       const roomResponse = await chatAPI.getChatRoomInfo(roomId);
       if (roomResponse.data.success) {
         setGroupInfo(roomResponse.data.room);
       }
-      
-      // 載入群組成員
+
       const membersResponse = await chatAPI.getGroupMembers(roomId);
       if (membersResponse.data.success) {
         setMembers(membersResponse.data.members);
       }
     } catch (error) {
       console.error('載入群組詳情失敗:', error);
-      Alert.alert('錯誤', '無法載入群組資訊');
+      showNotificationModal('error', '無法載入群組資訊');
     } finally {
       setLoading(false);
     }
@@ -86,15 +98,16 @@ export default function GroupDetails() {
     try {
       const response = await chatAPI.searchUsers(searchQuery);
       if (response.data.success) {
-        // 過濾掉已經是群組成員的用戶
-        const filteredResults = response.data.users.filter(userResult => 
-          !members.some(member => member.id === userResult.id)
+        const filteredResults = response.data.users.filter(
+          userResult => !members.some(member => member.id === userResult.id)
         );
         setSearchResults(filteredResults);
+      } else {
+        showNotificationModal('error', response.data.message || '搜尋失敗');
       }
     } catch (error) {
       console.error('搜尋用戶失敗:', error);
-      Alert.alert('錯誤', '搜尋用戶失敗');
+      showNotificationModal('error', '搜尋用戶失敗，請稍後再試');
     }
   };
 
@@ -103,16 +116,17 @@ export default function GroupDetails() {
       setAddingMember(true);
       const response = await chatAPI.addGroupMember(roomId, userId);
       if (response.data.success) {
-        Alert.alert('成功', '已添加成員');
-        // 重新載入成員列表
+        showNotificationModal('success', '已成功添加成員');
         loadGroupDetails();
         setShowAddMemberModal(false);
         setSearchQuery('');
         setSearchResults([]);
+      } else {
+        showNotificationModal('error', response.data.message || '添加成員失敗');
       }
     } catch (error) {
       console.error('添加成員失敗:', error);
-      Alert.alert('錯誤', '添加成員失敗');
+      showNotificationModal('error', '添加成員失敗，請稍後再試');
     } finally {
       setAddingMember(false);
     }
@@ -120,59 +134,16 @@ export default function GroupDetails() {
 
   const handleRemoveMember = (memberId) => {
     if (memberId === user?.id) {
-      Alert.alert('提示', '您不能移除自己');
+      showNotificationModal('info', '您不能移除自己');
       return;
     }
 
-    Alert.alert(
-      '移除成員',
-      '確定要移除此成員嗎？',
-      [
-        { text: '取消', style: 'cancel' },
-        { 
-          text: '移除', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await chatAPI.removeGroupMember(roomId, memberId);
-              if (response.data.success) {
-                Alert.alert('成功', '已移除成員');
-                loadGroupDetails();
-              }
-            } catch (error) {
-              console.error('移除成員失敗:', error);
-              Alert.alert('錯誤', '移除成員失敗');
-            }
-          }
-        }
-      ]
-    );
+    setMemberToRemove(memberId);
+    setShowRemoveConfirm(true);
   };
 
   const handleLeaveGroup = () => {
-    Alert.alert(
-      '離開群組',
-      '確定要離開此群組嗎？',
-      [
-        { text: '取消', style: 'cancel' },
-        { 
-          text: '離開', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await chatAPI.removeGroupMember(roomId, user.id);
-              if (response.data.success) {
-                Alert.alert('成功', '已離開群組');
-                router.back();
-              }
-            } catch (error) {
-              console.error('離開群組失敗:', error);
-              Alert.alert('錯誤', '離開群組失敗');
-            }
-          }
-        }
-      ]
-    );
+    setShowLeaveConfirm(true);
   };
 
   const onRefresh = async () => {
@@ -183,10 +154,9 @@ export default function GroupDetails() {
 
   const renderMemberItem = ({ item }) => (
     <View style={styles.memberItem}>
-      <Image 
-        source={{ uri: fixImageUrl(item.avatar) }} 
+      <Image
+        source={{ uri: item.avatar || 'https://via.placeholder.com/50' }}
         style={styles.memberAvatar}
-        defaultSource={require('../../assets/placeholder.png')}
       />
       <View style={styles.memberInfo}>
         <Text style={styles.memberName}>{item.username}</Text>
@@ -197,44 +167,37 @@ export default function GroupDetails() {
               <Text style={styles.memberStatusText}>在線</Text>
             </>
           ) : (
-            <Text style={styles.memberStatusText}>{item.last_active || '離線'}</Text>
+            <Text style={styles.memberStatusText}>最後上線: {item.last_active}</Text>
           )}
         </View>
-        {item.mbti && (
-          <Text style={styles.memberMbti}>{item.mbti}</Text>
-        )}
+        {item.mbti && <Text style={styles.memberMbti}>{item.mbti}</Text>}
       </View>
-      
-      {item.id !== user?.id && (
-        <TouchableOpacity 
+      {item.id !== user?.id && item.role !== 'creator' && (
+        <TouchableOpacity
           style={styles.removeButton}
           onPress={() => handleRemoveMember(item.id)}
         >
-          <MaterialCommunityIcons name="close" size={20} color="#e74c3c" />
+          <Ionicons name="close" size={20} color="#e74c3c" />
         </TouchableOpacity>
       )}
     </View>
   );
 
   const renderSearchResultItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.searchResultItem}
       onPress={() => handleAddMember(item.id)}
       disabled={addingMember}
     >
-      <Image 
-        source={{ uri: fixImageUrl(item.avatar) }} 
+      <Image
+        source={{ uri: fixImageUrl(item.avatar) }}
         style={styles.searchResultAvatar}
         defaultSource={require('../../assets/placeholder.png')}
       />
       <View style={styles.searchResultInfo}>
         <Text style={styles.searchResultName}>{item.username}</Text>
-        {item.mbti && (
-          <Text style={styles.searchResultMbti}>{item.mbti}</Text>
-        )}
-        {item.is_friend ? (
-          <Text style={styles.friendBadge}>好友</Text>
-        ) : null}
+        {item.mbti && <Text style={styles.searchResultMbti}>{item.mbti}</Text>}
+        {item.is_friend && <Text style={styles.friendBadge}>好友</Text>}
       </View>
       {addingMember ? (
         <ActivityIndicator size="small" color="#f4c7ab" />
@@ -244,12 +207,91 @@ export default function GroupDetails() {
     </TouchableOpacity>
   );
 
+  // 確認對話框 Modal
+  const ConfirmModal = ({
+    visible,
+    title,
+    message,
+    onConfirm,
+    onCancel,
+    confirmText = '確定',
+    cancelText = '取消',
+    confirmColor = '#e74c3c',
+  }) => (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.confirmModalOverlay}>
+        <View style={styles.confirmModalContent}>
+          <Text style={styles.confirmModalTitle}>{title}</Text>
+          <Text style={styles.confirmModalMessage}>{message}</Text>
+
+          <View style={styles.confirmModalButtons}>
+            <TouchableOpacity
+              style={[styles.confirmModalButton, styles.cancelButton]}
+              onPress={onCancel}
+            >
+              <Text style={styles.cancelButtonText}>{cancelText}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.confirmModalButton, { backgroundColor: confirmColor }]}
+              onPress={onConfirm}
+            >
+              <Text style={styles.confirmButtonText}>{confirmText}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // 通知 Modal（成功/失敗/提示）
+  const NotificationModal = () => {
+    const getIconAndColor = () => {
+      switch (notificationType) {
+        case 'success':
+          return { icon: 'checkmark-circle', color: '#2ecc71' };
+        case 'error':
+          return { icon: 'close-circle', color: '#e74c3c' };
+        case 'info':
+        default:
+          return { icon: 'information-circle', color: '#3498db' };
+      }
+    };
+
+    const { icon, color } = getIconAndColor();
+
+    return (
+      <Modal
+        visible={showNotification}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNotification(false)}
+      >
+        <View style={styles.notificationOverlay}>
+          <View style={styles.notificationContent}>
+            <Ionicons name={icon} size={64} color={color} style={styles.notificationIcon} />
+
+            <Text style={styles.notificationTitle}>
+              {notificationType === 'success' ? '成功' : notificationType === 'error' ? '失敗' : '提示'}
+            </Text>
+
+            <Text style={styles.notificationMessage}>{notificationMessage}</Text>
+
+            <TouchableOpacity
+              style={[styles.notificationButton, { backgroundColor: color }]}
+              onPress={() => setShowNotification(false)}
+            >
+              <Text style={styles.notificationButtonText}>好的</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   if (loading) {
     return (
-      <LinearGradient
-        colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#f4c7ab" />
@@ -261,42 +303,27 @@ export default function GroupDetails() {
   }
 
   return (
-    <LinearGradient
-      colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
-        {/* 頂部欄 */}
+        {/* 頂部導航 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
-          
           <Text style={styles.headerTitle}>群組詳情</Text>
-          
           <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.headerActionButton}
-              onPress={() => setShowAddMemberModal(true)}
-            >
-              <MaterialCommunityIcons name="account-plus" size={24} color="#5c4033" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.headerActionButton}
-              onPress={handleLeaveGroup}
-            >
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleLeaveGroup}>
               <MaterialCommunityIcons name="exit-to-app" size={24} color="#e74c3c" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 群組基本信息 */}
+        {/* 群組資訊 */}
         <View style={styles.groupInfoSection}>
           <View style={styles.groupAvatarContainer}>
             {groupInfo?.avatar ? (
-              <Image 
-                source={{ uri: fixImageUrl(groupInfo.avatar) }} 
+              <Image
+                source={{ uri: fixImageUrl(groupInfo.avatar) }}
                 style={styles.groupAvatar}
                 defaultSource={require('../../assets/placeholder.png')}
               />
@@ -306,31 +333,23 @@ export default function GroupDetails() {
               </View>
             )}
           </View>
-          
           <Text style={styles.groupName}>{groupInfo?.name || '未命名群組'}</Text>
-          
           {groupInfo?.description ? (
             <Text style={styles.groupDescription}>{groupInfo.description}</Text>
           ) : null}
-          
-          <Text style={styles.memberCount}>
-            {members.length} 位成員
-          </Text>
+          <Text style={styles.memberCount}>{members.length} 位成員</Text>
         </View>
 
         {/* 成員列表 */}
         <View style={styles.membersSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>群組成員</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => setShowAddMemberModal(true)}
-            >
+            <TouchableOpacity style={styles.addButton} onPress={() => setShowAddMemberModal(true)}>
               <MaterialCommunityIcons name="plus" size={20} color="#fff" />
               <Text style={styles.addButtonText}>添加成員</Text>
             </TouchableOpacity>
           </View>
-          
+
           <FlatList
             data={members}
             renderItem={renderMemberItem}
@@ -338,11 +357,11 @@ export default function GroupDetails() {
             contentContainerStyle={styles.membersList}
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={onRefresh} 
-                colors={['#f4c7ab']} 
-                tintColor="#f4c7ab" 
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#f4c7ab']}
+                tintColor="#f4c7ab"
               />
             }
             ListEmptyComponent={() => (
@@ -354,7 +373,7 @@ export default function GroupDetails() {
           />
         </View>
 
-        {/* 添加成員模態框 */}
+        {/* 添加成員 Modal */}
         <Modal
           visible={showAddMemberModal}
           transparent
@@ -365,7 +384,7 @@ export default function GroupDetails() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>添加成員</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.modalCloseButton}
                   onPress={() => setShowAddMemberModal(false)}
                 >
@@ -373,7 +392,6 @@ export default function GroupDetails() {
                 </TouchableOpacity>
               </View>
 
-              {/* 搜尋欄 */}
               <View style={styles.searchContainerModal}>
                 <Ionicons name="search" size={20} color="#8b5e3c" style={styles.searchIcon} />
                 <TextInput
@@ -392,7 +410,6 @@ export default function GroupDetails() {
                 )}
               </View>
 
-              {/* 搜尋結果 */}
               <FlatList
                 data={searchResults}
                 renderItem={renderSearchResultItem}
@@ -410,6 +427,66 @@ export default function GroupDetails() {
             </View>
           </View>
         </Modal>
+
+        {/* 移除成員確認 */}
+        <ConfirmModal
+          visible={showRemoveConfirm}
+          title="移除成員"
+          message="確定要將此成員移出群組嗎？此操作無法復原。"
+          confirmText="移除"
+          confirmColor="#e74c3c"
+          onConfirm={async () => {
+            try {
+              const response = await chatAPI.removeGroupMember(roomId, memberToRemove);
+              if (response.data.success) {
+                showNotificationModal('success', '已成功移除成員');
+                loadGroupDetails();
+              } else {
+                showNotificationModal('error', response.data.message || '移除失敗');
+              }
+            } catch (error) {
+              console.error('移除成員失敗:', error);
+              showNotificationModal('error', '移除成員失敗，請稍後再試');
+            } finally {
+              setShowRemoveConfirm(false);
+              setMemberToRemove(null);
+            }
+          }}
+          onCancel={() => {
+            setShowRemoveConfirm(false);
+            setMemberToRemove(null);
+          }}
+        />
+
+        {/* 離開群組確認 */}
+        <ConfirmModal
+          visible={showLeaveConfirm}
+          title="離開群組"
+          message="確定要離開此群組嗎？離開後將無法再接收此群組訊息。"
+          confirmText="離開"
+          confirmColor="#e74c3c"
+          onConfirm={async () => {
+            try {
+              const response = await chatAPI.leaveGroup(roomId);
+              await AsyncStorage.setItem('refresh_chat_list', 'true');
+              if (response.data.success) {
+                showNotificationModal('success', '已成功離開群組');
+                router.push('/chat');
+              } else {
+                showNotificationModal('error', response.data.message || '離開失敗');
+              }
+            } catch (error) {
+              console.error('離開群組失敗:', error);
+              showNotificationModal('error', '離開群組失敗，請稍後再試');
+            } finally {
+              setShowLeaveConfirm(false);
+            }
+          }}
+          onCancel={() => setShowLeaveConfirm(false)}
+        />
+
+        {/* 通知 Modal */}
+        <NotificationModal />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -472,9 +549,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  groupAvatarContainer: {
-    marginBottom: 16,
-  },
+  groupAvatarContainer: { marginBottom: 16 },
   groupAvatar: {
     width: 120,
     height: 120,
@@ -539,9 +614,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
-  membersList: {
-    paddingBottom: 20,
-  },
+  membersList: { paddingBottom: 20 },
   memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -558,9 +631,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 16,
   },
-  memberInfo: {
-    flex: 1,
-  },
+  memberInfo: { flex: 1 },
   memberName: {
     fontSize: 17,
     fontWeight: '600',
@@ -579,10 +650,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2ecc71',
     marginRight: 6,
   },
-  memberStatusText: {
-    fontSize: 14,
-    color: '#8b5e3c',
-  },
+  memberStatusText: { fontSize: 14, color: '#8b5e3c' },
   memberMbti: {
     fontSize: 13,
     color: '#a0785e',
@@ -634,9 +702,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#5c4033',
   },
-  modalCloseButton: {
-    padding: 4,
-  },
+  modalCloseButton: { padding: 4 },
   searchContainerModal: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -648,9 +714,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#f4c7ab',
   },
-  searchIcon: {
-    marginRight: 10,
-  },
+  searchIcon: { marginRight: 10 },
   searchInputModal: {
     flex: 1,
     paddingVertical: 12,
@@ -677,19 +741,14 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginRight: 12,
   },
-  searchResultInfo: {
-    flex: 1,
-  },
+  searchResultInfo: { flex: 1 },
   searchResultName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#5c4033',
     marginBottom: 4,
   },
-  searchResultMbti: {
-    fontSize: 13,
-    color: '#8b5e3c',
-  },
+  searchResultMbti: { fontSize: 13, color: '#8b5e3c' },
   friendBadge: {
     fontSize: 12,
     color: '#2ecc71',
@@ -705,8 +764,110 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 40,
   },
-  emptySearchText: {
+  emptySearchText: { fontSize: 16, color: '#8b5e3c' },
+
+  // Confirm Modal 樣式
+  confirmModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  confirmModalContent: {
+    backgroundColor: '#fffaf5',
+    borderRadius: 24,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  confirmModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#5c4033',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  confirmModalMessage: {
     fontSize: 16,
     color: '#8b5e3c',
+    textAlign: 'center',
+    marginBottom: 28,
+    lineHeight: 24,
+  },
+  confirmModalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  confirmModalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: { backgroundColor: '#f4c7ab' },
+  cancelButtonText: {
+    color: '#5c4033',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Notification Modal 樣式
+  notificationOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  notificationContent: {
+    backgroundColor: '#fffaf5',
+    borderRadius: 24,
+    padding: 32,
+    width: '80%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  notificationIcon: { marginBottom: 16 },
+  notificationTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#5c4033',
+    marginBottom: 12,
+  },
+  notificationMessage: {
+    fontSize: 16,
+    color: '#8b5e3c',
+    textAlign: 'center',
+    marginBottom: 28,
+    lineHeight: 24,
+  },
+  notificationButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 20,
+  },
+  notificationButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

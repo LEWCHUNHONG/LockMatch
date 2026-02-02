@@ -201,7 +201,7 @@ export default function ChatRoom() {
       
       // 監聽連接事件
       socket.on('connect', () => {
-        console.log('Socket 連接成功，ID:', socket.id);
+        //console.log('Socket 連接成功，ID:', socket.id);
         setIsConnected(true);
         reconnectAttemptRef.current = 0;
       });
@@ -227,13 +227,13 @@ export default function ChatRoom() {
       
       // 監聽新消息
       socket.on('new-message', (newMessage) => {
-        console.log('收到即時新消息:', newMessage);
+        //console.log('收到即時新消息:', newMessage);
         handleNewMessage(newMessage, false);
       });
       
       // 監聽自己發送的消息（確保同步）
       socket.on('message-sent', (message) => {
-        console.log('消息發送成功:', message);
+        //console.log('消息發送成功:', message);
         handleNewMessage(message, true);
       });
       
@@ -263,7 +263,7 @@ export default function ChatRoom() {
       
       // 監聽用戶加入房間
       socket.on('user-joined', (data) => {
-        console.log('用戶加入房間:', data);
+        //console.log('用戶加入房間:', data);
         // 可以顯示通知或更新UI
       });
       
@@ -279,11 +279,11 @@ export default function ChatRoom() {
 
   const loadRoomInfo = async () => {
     try {
-      console.log(`開始載入聊天室資訊: roomId=${roomId}`);
+      //console.log(`開始載入聊天室資訊: roomId=${roomId}`);
       setErrorInfo(null);
       
       const response = await chatAPI.getChatRoomInfo(roomId);
-      console.log('聊天室資訊響應:', response.data);
+      //console.log('聊天室資訊響應:', response.data);
       
       if (response.data.success) {
         const room = response.data.room;
@@ -346,10 +346,10 @@ export default function ChatRoom() {
     try {
       if (showLoading) setLoadingMessages(true);
       
-      console.log(`開始載入消息，roomId=${roomId}, user.id=${userRef.current.id}`);
+      //console.log(`開始載入消息，roomId=${roomId}, user.id=${userRef.current.id}`);
       
       const response = await chatAPI.getChatMessages(roomId);
-      console.log('載入消息響應:', response.data);
+      //console.log('載入消息響應:', response.data);
       
       if (response.data.success) {
         const formattedMessages = response.data.messages.map(msg => {
@@ -879,7 +879,7 @@ export default function ChatRoom() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7, // 降低質量以減少文件大小
@@ -901,7 +901,7 @@ export default function ChatRoom() {
   const handlePickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7, // 降低質量以減少文件大小
@@ -1208,7 +1208,9 @@ export default function ChatRoom() {
 
       <View style={styles.headerActions}>
         
-        {/* 網路狀態指示器 */}
+         {/* 
+             網路狀態指示器
+
         <View style={styles.connectionStatus}>
           <View style={[
             styles.connectionDot,
@@ -1217,8 +1219,10 @@ export default function ChatRoom() {
           <Text style={styles.connectionText}>
             {isConnected ? '連線' : '離線'}
           </Text>
-        </View>
+        </View> 
         
+        */}
+      
         {/* 多媒體查看按鈕 */}
         <TouchableOpacity 
           style={styles.headerActionButton}
@@ -1487,7 +1491,9 @@ export default function ChatRoom() {
                 onFocus={() => handleTyping(true)}
                 onBlur={() => handleTyping(false)}
               />
-              
+
+             {/* 
+
               <TouchableOpacity
                 style={styles.emojiButton}
                 onPress={() => {
@@ -1501,6 +1507,9 @@ export default function ChatRoom() {
                   color="#8b5e3c" 
                 />
               </TouchableOpacity>
+
+               */}
+
             </View>
 
             <TouchableOpacity

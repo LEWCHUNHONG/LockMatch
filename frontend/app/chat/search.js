@@ -83,38 +83,55 @@ export default function SearchFriends() {
     }
   };
 
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) return setSearchResults([]);
+const handleSearch = useCallback(async () => {
+  if (!searchQuery.trim()) return setSearchResults([]);
 
-    try {
-      setLoading(true);
-      Keyboard.dismiss();
-      const response = await chatAPI.searchUsers(searchQuery);
-      if (response.data.success) {
-        const formattedResults = response.data.users.map(user => ({
+  try {
+    setLoading(true);
+    Keyboard.dismiss();
+    const response = await chatAPI.searchUsers(searchQuery);
+    if (response.data.success) {
+      const formattedResults = response.data.users.map(user => {
+        let avatarUrl = null;
+
+        if (user.avatar) {
+          // 情況1：後端已經給完整 URL（http 或 https 開頭）
+          if (user.avatar.startsWith('http://') || user.avatar.startsWith('https://')) {
+            avatarUrl = user.avatar;
+          } 
+          // 情況2：後端給相對路徑（例如 /uploads/... 或 uploads/...）
+          else {
+            const path = user.avatar.startsWith('/') ? user.avatar : '/' + user.avatar;
+            avatarUrl = `${API_URL}${path}`;
+          }
+
+        }
+
+        return {
           id: user.id.toString(),
           name: user.name || user.username,
           username: user.username,
           mbti: user.mbti || '待測',
           distance: user.distance ? `${user.distance}km` : '未知',
-          avatar: user.avatar,
+          avatar: avatarUrl,  // 存最終可直接使用的完整 URL
           status: user.status || '尋找朋友中',
           isFriend: user.is_friend || false,
           isRequestPending: user.is_request_pending || false,
-        }));
-        setSearchResults(formattedResults);
-      } else {
-        openAlert('錯誤', response.data.error || '搜尋失敗');
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('搜尋失敗:', error);
-      openAlert('錯誤', '搜尋失敗，請檢查網路連線');
+        };
+      });
+      setSearchResults(formattedResults);
+    } else {
+      openAlert('錯誤', response.data.error || '搜尋失敗');
       setSearchResults([]);
-    } finally {
-      setLoading(false);
     }
-  }, [searchQuery]);
+  } catch (error) {
+    console.error('搜尋失敗:', error);
+    openAlert('錯誤', '搜尋失敗，請檢查網路連線');
+    setSearchResults([]);
+  } finally {
+    setLoading(false);
+  }
+}, [searchQuery]);
 
   const handleAddFriend = async (userId) => {
     try {
@@ -149,7 +166,7 @@ export default function SearchFriends() {
     <View style={styles.resultItem}>
       <View style={styles.resultAvatar}>
         {item.avatar ? (
-          <Image source={{ uri: `${API_URL}${item.avatar}` }} style={styles.avatarImage} />
+          <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
         ) : (
           <View style={styles.defaultAvatar}>
             <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -247,7 +264,7 @@ export default function SearchFriends() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>搜尋好友</Text>
+          <Text style={styles.headerTitle}>搜尋新朋友</Text>
           <View style={{ width: 40 }} />
         </View>
 

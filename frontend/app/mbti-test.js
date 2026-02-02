@@ -67,7 +67,7 @@ export default function MbtiTestGame() {
           
           // 確保頭像有完整的URL
           if (parsed.avatar && !parsed.avatar.startsWith('http')) {
-            parsed.avatar = `http://192.168.0.26:3000${parsed.avatar.startsWith('/') ? parsed.avatar : '/' + parsed.avatar}`;
+            parsed.avatar = `${BASE_URL}${parsed.avatar.startsWith('/') ? parsed.avatar : '/' + parsed.avatar}`;
           }
           
           // 檢查是否有已完成的測試
@@ -223,7 +223,7 @@ export default function MbtiTestGame() {
           const latestUser = response.data.user;
           // 確保頭像有完整的URL
           if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
-            latestUser.avatar = `http://192.168.0.26:3000${latestUser.avatar.startsWith('/') ? latestUser.avatar : '/' + latestUser.avatar}`;
+            latestUser.avatar = `${BASE_URL}${latestUser.avatar.startsWith('/') ? latestUser.avatar : '/' + latestUser.avatar}`;
           }
           latestUser.avatar = `${latestUser.avatar.split('?cb=')[0]}?cb=${Date.now()}`;
           await AsyncStorage.setItem('user', JSON.stringify(latestUser));
@@ -274,7 +274,7 @@ export default function MbtiTestGame() {
       try {
         const token = await AsyncStorage.getItem('token');
         
-        const response = await fetch('http://192.168.0.26:3000/api/update-profile', {
+        const response = await fetch('${BASE_URL}/api/update-profile', {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -288,7 +288,7 @@ export default function MbtiTestGame() {
         
         if (response.ok) {
           // 獲取更新後的用戶信息
-          const userResponse = await fetch('http://192.168.0.26:3000/api/me', {
+          const userResponse = await fetch('${BASE_URL}/api/me', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -300,7 +300,7 @@ export default function MbtiTestGame() {
               const updatedUser = userData.user;
               // 確保頭像有完整的URL
               if (updatedUser.avatar && !updatedUser.avatar.startsWith('http')) {
-                updatedUser.avatar = `http://192.168.0.26:3000${updatedUser.avatar.startsWith('/') ? updatedUser.avatar : '/' + updatedUser.avatar}`;
+                updatedUser.avatar = `${BASE_URL}${updatedUser.avatar.startsWith('/') ? updatedUser.avatar : '/' + updatedUser.avatar}`;
               }
               updatedUser.avatar = `${updatedUser.avatar.split('?cb=')[0]}?cb=${Date.now()}`;
               await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
