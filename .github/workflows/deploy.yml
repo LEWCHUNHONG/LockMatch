@@ -1,0 +1,43 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+  AZURE_VM_USERNAME: ${{ secrets.AZURE_VM_USERNAME }}
+  AZURE_VM_SSH_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+  MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.AZURE_VM_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to Azure VM
+      run: |
+        # Copy application files
+        scp -r backend frontend package*.json ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_HOST }}:/home/azureuser/app/
+        
+        # Copy environment file with MySQL connection
+        echo "MYSQL_HOST=mysql_container" > .env
+        echo "MYSQL_USER=appuser" >> .env
+        echo "MYSQL_PASSWORD=apppassword" >> .env
+        echo "MYSQL_DATABASE=appdb" >> .env
+        scp .env ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_HOST }}:/home/azureuser/app/backend/.env
+        
+        # Execute deployment script
+        ssh ${{ secrets.AZURE_VM_USERNAME }}@${{ secrets.AZURE_VM_HOST }} "cd /home/azureuser && ./deploy-app.sh"
