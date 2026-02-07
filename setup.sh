@@ -51,7 +51,7 @@ DB_USER=root
 DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
-BASE_URL=http://localhost:3000
+BASE_URL=http://192.168.0.243:3000
 ENVEOF
     
     echo ""
@@ -89,7 +89,7 @@ DB_USER=root
 DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
-BASE_URL=http://localhost:3000
+BASE_URL=http://192.168.0.243:3000
 ENVEOF
             
             echo "✅ 已更新密碼為 honghong"
