@@ -24,7 +24,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'lockmatch2026_super_strong_key';
-const BASE_URL = process.env.BASE_URL || 'http://192.168.0.243:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 // 獲取所有網路接口信息
 const networkInterfaces = os.networkInterfaces();
