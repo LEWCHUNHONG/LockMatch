@@ -340,21 +340,6 @@ CREATE TABLE `shop_items` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- 傾印資料表的資料 `shop_items`
---
-
-INSERT INTO `shop_items` (`id`, `name`, `description`, `category`, `points_required`, `stock`, `limit_per_user`, `image_url`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, '電影優惠券', '可用於指定影院的電影票優惠', 'coupon', 500, 100, 1, '/uploads/shop/movie_ticket.jpg', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08'),
-(2, '咖啡券', '星巴克或類似咖啡店優惠券', 'coupon', 300, 200, 1, '/uploads/shop/coffee_coupon.jpg', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08'),
-(3, '個性化頭像框', '特殊頭像框裝飾', 'virtual', 200, 1000, 1, '/uploads/shop/avatar_frame.png', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08'),
-(4, '聊天氣泡皮膚', '個性化聊天氣泡樣式', 'virtual', 150, 500, 1, '/uploads/shop/chat_bubble.png', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08'),
-(5, '7天VIP體驗', 'VIP特權體驗（無廣告、優先匹配）', 'virtual', 1000, 50, 1, '/uploads/shop/vip_badge.png', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08'),
-(6, '實體禮品卡', '100元購物禮品卡（需填寫郵寄地址）', 'physical', 5000, 10, 1, '/uploads/shop/gift_card.jpg', 1, '2026-01-15 09:47:08', '2026-01-15 09:47:08');
-
--- --------------------------------------------------------
-
---
 -- 資料表結構 `tasks`
 --
 
@@ -371,10 +356,10 @@ CREATE TABLE `tasks` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
 --
 -- 傾印資料表的資料 `tasks`
 --
-
 INSERT INTO `tasks` (`id`, `title`, `description`, `task_type`, `points_required`, `points_reward`, `priority`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, '完成MBTI測驗', '完成一次完整的MBTI性格測試', 'achievement', 1, 500, 1, 1, '2026-01-26 17:36:45', '2026-01-26 17:36:45'),
 (2, '發送第一條消息', '在好友或群組聊天中發送第一條消息', 'achievement', 1, 100, 2, 1, '2026-01-26 17:36:45', '2026-01-26 17:36:45'),
@@ -783,6 +768,128 @@ ALTER TABLE `mbti_history`
   ADD CONSTRAINT `fk_mbti_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+CREATE TABLE ai_chat_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    role ENUM('user', 'assistant') NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_created (user_id, created_at)
+);
+
+
+CREATE TABLE IF NOT EXISTS group_invites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  group_id INT NOT NULL,
+  from_user_id INT NOT NULL,
+  to_user_id INT NOT NULL,
+  status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES chat_rooms(id) ON DELETE CASCADE,
+  FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_invite (group_id, to_user_id)
+);
+
+CREATE TABLE daily_journals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,                -- 日記內容
+    mood VARCHAR(20),                      -- 用戶自選心情（可選）
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_date (user_id, created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE ai_chat_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    role ENUM('user', 'assistant') NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_created (user_id, created_at)
+);
+
+CREATE TABLE user_insights_cache (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    report_type ENUM('personality_trend','social_report') NOT NULL,
+    report_data JSON,                      -- 分析結果（可包含文字同圖表數據）
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_type (user_id, report_type),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_coupons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_id INT NOT NULL,
+    coupon_code VARCHAR(50) UNIQUE NOT NULL,
+    qr_code_data TEXT,
+    status ENUM('unused', 'used', 'expired') DEFAULT 'unused',
+    expires_at TIMESTAMP NULL,
+    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    used_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+);
+
+CREATE TABLE user_coupons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    item_id INT NOT NULL,                -- 對應 shop_items.id
+    coupon_code VARCHAR(50) UNIQUE NOT NULL,  -- 唯一兌換碼
+    qr_code_data TEXT,                    -- 二維碼內容（可選，可用 coupon_code 生成）
+    status ENUM('unused', 'used', 'expired') DEFAULT 'unused',
+    expires_at TIMESTAMP NULL,            -- 有效期（可選）
+    redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    used_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES shop_items(id) ON DELETE CASCADE
+);
+INSERT INTO shop_items (name, description, category, points_required, stock, limit_per_user, image_url, is_active) VALUES
+('連鎖咖啡/飲品買一送一券', '適用於大家樂、Starbucks、走杯等指定品牌，買一送一優惠', 'coupon', 300, 100, 1, '/uploads/shop/coffee_coupon.jpg', 1),
+('電影現金券', '$30 電影票折扣，適用於各大影院', 'coupon', 400, 50, 1, '/uploads/shop/movie_coupon.jpg', 1),
+('的士/共享單車優惠碼', 'HKTaxi 或 Lalamove 即減 $10 優惠碼', 'coupon', 200, 200, 1, '/uploads/shop/taxi_coupon.jpg', 1);
+
+CREATE TABLE user_scenarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,                -- 發起人
+    target_user_id INT NOT NULL,          -- 對象
+    scenario_data JSON,                    -- 完整劇本（含任務、暗號等）
+    status ENUM('active','completed','expired') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_users (user_id, target_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS task_verifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    scenario_id INT NOT NULL,
+    task_index INT NOT NULL,
+    user_id INT NOT NULL,
+    type ENUM('gps','code_exchange','photo') NOT NULL,
+    data JSON,
+    verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (scenario_id) REFERENCES user_scenarios(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_task (scenario_id, task_index, user_id, type)
+);
+
+CREATE TABLE scenario_invites (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    from_user_id INT NOT NULL,
+    to_user_id INT NOT NULL,
+    scenario_data JSON,          -- 預生成的劇本
+    status ENUM('pending','accepted','rejected','expired') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NULL,
+    FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (to_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_from (from_user_id),
+    INDEX idx_to (to_user_id)
+);
+
+ALTER TABLE users ADD COLUMN expo_push_token VARCHAR(255) NULL;
