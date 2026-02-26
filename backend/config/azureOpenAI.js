@@ -20,8 +20,8 @@ class SimpleAzureOpenAI {
             console.log('📦 請求 messages:', messages);
 
             const response = await axios.post(url, {
-                messages: messages,  // 直接傳入 messages array
-                max_tokens: 1000,
+                messages: messages,
+                max_tokens: 2000,
                 temperature: 0.7
             }, {
                 headers: {
@@ -52,7 +52,6 @@ const initAzureOpenAI = () => {
     console.log(`  Endpoint: ${process.env.AZURE_OPENAI_ENDPOINT}`);
     console.log(`  Deployment: ${process.env.AZURE_OPENAI_DEPLOYMENT}`);
     console.log(`  API Version: ${process.env.AZURE_OPENAI_API_VERSION}`);
-    // 唔好印 API Key 出嚟
     return new SimpleAzureOpenAI();
 };
 

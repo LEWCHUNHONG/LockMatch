@@ -41,6 +41,7 @@ export default function InsightsScreen() {
                 setAnalysis(response.data.analysis || '日記已儲存，稍後可查看分析。');
                 setDiaryContent('');
                 setDiaryMood('');
+                setReport(''); // 🔥 清空報告，下次查看時會重新生成
             } else {
                 Alert.alert('錯誤', response.data.error || '提交失敗');
             }
@@ -99,6 +100,9 @@ export default function InsightsScreen() {
                         onPress={() => setActiveTab('report')}
                     >
                         <Text style={[styles.tabText, activeTab === 'report' && styles.activeTabText]}>交友報告</Text>
+                        <TouchableOpacity onPress={generateReport} disabled={reportLoading}>
+                            <MaterialCommunityIcons name="refresh" size={24} color="#8b5e3c" />
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 </View>
 
@@ -222,6 +226,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         borderWidth: 1,
         borderColor: 'rgba(244,199,171,0.5)',
+    },
+    reportHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    reportTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#5c4033',
     },
     diaryInput: {
         backgroundColor: '#fff',

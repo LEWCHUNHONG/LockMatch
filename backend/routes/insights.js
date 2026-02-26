@@ -1,14 +1,21 @@
-// routes/insights.js (可以新建一個檔案)
+// routes/insights.js (修正版)
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-const OpenAI = require('openai');
+const { initAzureOpenAI } = require('../config/azureOpenAI'); // 引入你嘅客戶端
 
-const openai = new OpenAI({
-    baseURL: process.env.AZURE_OPENAI_ENDPOINT,
-    apiKey: process.env.AZURE_OPENAI_API_KEY
-});
+const azureAI = initAzureOpenAI(); // 初始化一次
+
+// 輔助函數：將 connection.query 包裝成 Promise
+function queryPromise(sql, params) {
+    return new Promise((resolve, reject) => {
+        connection.query(sql, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+        });
+    });
+}
 
 // GET /api/insights/report
 router.get('/report', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
@@ -16,55 +23,58 @@ router.get('/report', authMiddleware(process.env.JWT_SECRET), async (req, res) =
         const userId = req.user.id;
 
         // 1. 獲取用戶MBTI歷史
-        const mbtiHistory = await queryPromise('SELECT mbti_type, created_at FROM mbti_history WHERE user_id = ? ORDER BY created_at', [userId]);
+        const mbtiHistory = await queryPromise(
+            'SELECT mbti_type, created_at FROM mbti_history WHERE user_id = ? ORDER BY created_at',
+            [userId]
+        );
 
         // 2. 獲取聊天統計（與不同MBTI類型的好友聊天次數）
         const chatStats = await queryPromise(`
-      SELECT 
-        u.mbti AS friend_mbti,
-        COUNT(*) AS message_count
-      FROM messages m
-      JOIN chat_room_members crm1 ON m.room_id = crm1.room_id AND crm1.user_id = ?  -- 自己
-      JOIN chat_room_members crm2 ON m.room_id = crm2.room_id AND crm2.user_id != ? -- 對方
-      JOIN users u ON crm2.user_id = u.id
-      WHERE m.sender_id = ?  -- 自己發送嘅消息
-        AND u.mbti IS NOT NULL
-      GROUP BY u.mbti
-      ORDER BY message_count DESC
-    `, [userId, userId, userId]);
+            SELECT 
+                u.mbti AS friend_mbti,
+                COUNT(*) AS message_count
+            FROM messages m
+            JOIN chat_room_members crm1 ON m.room_id = crm1.room_id AND crm1.user_id = ?  -- 自己
+            JOIN chat_room_members crm2 ON m.room_id = crm2.room_id AND crm2.user_id != ? -- 對方
+            JOIN users u ON crm2.user_id = u.id
+            WHERE m.sender_id = ?  -- 自己發送嘅消息
+                AND u.mbti IS NOT NULL
+            GROUP BY u.mbti
+            ORDER BY message_count DESC
+        `, [userId, userId, userId]);
 
         // 3. 獲取活躍時段統計（按小時）
         const activeHours = await queryPromise(`
-      SELECT HOUR(created_at) AS hour, COUNT(*) AS count
-      FROM messages
-      WHERE sender_id = ?
-      GROUP BY HOUR(created_at)
-      ORDER BY count DESC
-    `, [userId]);
+            SELECT HOUR(created_at) AS hour, COUNT(*) AS count
+            FROM messages
+            WHERE sender_id = ?
+            GROUP BY HOUR(created_at)
+            ORDER BY count DESC
+        `, [userId]);
 
         // 4. 獲取話題成功率（簡單定義：自己發送消息後，對方在24小時內回覆）
         const topicSuccess = await queryPromise(`
-      SELECT 
-        COUNT(DISTINCT m1.id) AS total_messages,
-        COUNT(DISTINCT m2.id) AS replied_messages
-      FROM messages m1
-      LEFT JOIN messages m2 
-        ON m1.room_id = m2.room_id 
-        AND m2.sender_id != m1.sender_id 
-        AND m2.created_at > m1.created_at 
-        AND m2.created_at < DATE_ADD(m1.created_at, INTERVAL 1 DAY)
-      WHERE m1.sender_id = ?
-    `, [userId]);
+            SELECT 
+                COUNT(DISTINCT m1.id) AS total_messages,
+                COUNT(DISTINCT m2.id) AS replied_messages
+            FROM messages m1
+            LEFT JOIN messages m2 
+                ON m1.room_id = m2.room_id 
+                AND m2.sender_id != m1.sender_id 
+                AND m2.created_at > m1.created_at 
+                AND m2.created_at < DATE_ADD(m1.created_at, INTERVAL 1 DAY)
+            WHERE m1.sender_id = ?
+        `, [userId]);
 
         // 5. 獲取最近7篇日記
         const recentDiaries = await queryPromise(`
-      SELECT content, created_at FROM daily_journals WHERE user_id = ? ORDER BY created_at DESC LIMIT 7
-    `, [userId]);
+            SELECT content, created_at FROM daily_journals WHERE user_id = ? ORDER BY created_at DESC LIMIT 7
+        `, [userId]);
 
         // 6. 獲取用戶發帖/評論內容（可選）
         const posts = await queryPromise(`
-      SELECT content, created_at FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT 10
-    `, [userId]);
+            SELECT content, created_at FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT 10
+        `, [userId]);
 
         // 構建 prompt 內容
         const mbtiHistoryText = mbtiHistory.map(m => `${m.created_at}: ${m.mbti_type}`).join('\n');
@@ -113,21 +123,14 @@ ${activeHourText || '未有數據'}
 
 請生成一份完整報告。`;
 
-        // 調用AI
-        const completion = await openai.chat.completions.create({
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            model: process.env.AZURE_OPENAI_DEPLOYMENT,
-            max_tokens: 1500,
-            temperature: 0.7
-        });
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ];
 
-        const report = completion.choices[0].message.content;
-
-        // 可選擇將報告快取到數據庫
-        // ...
+        // 調用 Azure OpenAI（改用你嘅客戶端）
+        const result = await azureAI.invoke(messages);
+        const report = result.content;
 
         res.json({
             success: true,
@@ -145,16 +148,6 @@ ${activeHourText || '未有數據'}
         res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
 });
-
-// 輔助函數：將 connection.query 包裝成 Promise
-function queryPromise(sql, params) {
-    return new Promise((resolve, reject) => {
-        connection.query(sql, params, (err, results) => {
-            if (err) reject(err);
-            else resolve(results);
-        });
-    });
-}
 
 // 提交日記並獲取AI分析
 router.post('/diary', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
@@ -176,12 +169,12 @@ router.post('/diary', authMiddleware(process.env.JWT_SECRET), async (req, res) =
 
             // 獲取用戶最近7日的日記（用於趨勢分析）
             const diaryQuery = `
-        SELECT content, DATE(created_at) as date
-        FROM daily_journals
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-        LIMIT 7
-      `;
+                SELECT content, DATE(created_at) as date
+                FROM daily_journals
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT 7
+            `;
             connection.query(diaryQuery, [userId], async (err, diaries) => {
                 if (err) console.error('❌ 獲取日記歷史失敗:', err);
 
@@ -197,17 +190,13 @@ router.post('/diary', authMiddleware(process.env.JWT_SECRET), async (req, res) =
                     const userPrompt = `今日日記：${content}\n\n最近日記（最多7篇）：${diaryText}\n\nMBTI歷史記錄：${mbtiText}`;
 
                     try {
-                        const completion = await openai.chat.completions.create({
-                            messages: [
-                                { role: 'system', content: systemPrompt },
-                                { role: 'user', content: userPrompt }
-                            ],
-                            model: process.env.AZURE_OPENAI_DEPLOYMENT,
-                            max_tokens: 600,
-                            temperature: 0.7
-                        });
-
-                        const aiResponse = completion.choices[0].message.content;
+                        // 改用 azureAI.invoke
+                        const messages = [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ];
+                        const result = await azureAI.invoke(messages);
+                        const aiResponse = result.content;
 
                         res.json({
                             success: true,
