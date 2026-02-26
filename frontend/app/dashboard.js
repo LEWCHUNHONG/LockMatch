@@ -674,15 +674,7 @@ export default function Dashboard() {
       <SafeAreaView style={styles.safeArea}>
         {/* 頂部欄 */}
         <View style={styles.topBar}>
-          {/* 左邊：聊天按鈕 */}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => router.push('/chat')}
-          >
-            <MaterialCommunityIcons name="message-badge" size={28} color="#5c4033" />
-          </TouchableOpacity>
-
-          {/* 新增：優惠券按鈕 */}
+          {/* 左邊：優惠券按鈕 */}
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/coupons')}>
             <View style={{ position: 'relative' }}>
               <MaterialCommunityIcons name="ticket-percent" size={28} color="#5c4033" />
@@ -811,7 +803,14 @@ export default function Dashboard() {
                 <Text style={[styles.actionBtnText, { color: '#8b5e3c' }]}>匹配聊天</Text>
               </TouchableOpacity>
             </View>
-
+            <View style={styles.chatButtonsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#f4c7ab', flex: 1 }]}
+                onPress={() => router.push('/insights')}
+              >
+                <Text style={styles.actionBtnText}>性格分析</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.levelContainer}>
               <View style={styles.levelBadge}>
                 <MaterialCommunityIcons name="crown" size={16} color={getLevelColor(userPoints.level)} />
