@@ -5,14 +5,23 @@ const { createServer } = require('http');
 require('dotenv').config();
 const os = require('os');
 
-const connection = require('./db/connection');
+const connection = require('./db/connection');  // ✅ 1. 先定義 connection
+const authMiddleware = require('./middleware/auth');  // ✅ 2. 再定義 authMiddleware
 const { upload, avatarUpload, chatMediaUpload, postMediaUpload } = require('./config/upload');
-const authMiddleware = require('./middleware/auth');
 const { buildAvatarUrl } = require('./utils/helpers');
 const initSocket = require('./socket/socket');
 
+// 然後才引入 routes（要用到上面嘅變數）
+const aiChatRouter = require('./routes/aiChat');
+const aiMatchingRouter = require('./routes/aiMatching');
+const friendRoutes = require('./routes/friendRoutes');
+const groupInviteRoutes = require('./routes/groupInviteRoutes');
+const insightsRouter = require('./routes/insights');
+
+
+
+
 const healthRoutes = require('./routes/health');
-const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const friendsRoutes = require('./routes/friends');
 const chatRoutes = require('./routes/chat');
@@ -23,12 +32,17 @@ const discussRoutes = require('./routes/discuss');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'lockmatch2026_super_strong_key';
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const JWT_SECRET = process.env.JWT_SECRET;
+const BASE_URL = process.env.BASE_URL;
 
 // 獲取所有網路接口信息
 const networkInterfaces = os.networkInterfaces();
 const availableIPs = [];
+
+const httpServer = createServer(app);
+const { io, broadcastNewMessage } = initSocket(httpServer, connection, BASE_URL, JWT_SECRET);
+app.set('io', io);
+app.set('broadcastNewMessage', broadcastNewMessage);
 
 Object.keys(networkInterfaces).forEach((ifname) => {
   networkInterfaces[ifname].forEach((iface) => {
@@ -53,11 +67,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 靜態文件服務
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 
 // 請求日誌中間件
 app.use((req, res, next) => {
@@ -91,12 +108,32 @@ connection.on('error', (err) => {
   }
 });
 
-// Socket.io 初始化
-const httpServer = createServer(app);
-const { io, broadcastNewMessage } = initSocket(httpServer, connection, BASE_URL, JWT_SECRET);
+
 
 // auth 路由
-app.use('/api', authRoutes(connection, authMiddleware, buildAvatarUrl, JWT_SECRET));
+const authRoutes = require('./routes/auth')(
+  connection,
+  authMiddleware,
+  buildAvatarUrl,
+  JWT_SECRET
+);
+app.use('/api', authRoutes);
+
+app.use('/api/ai-chat', aiChatRouter);
+
+app.use('/api/ai', aiMatchingRouter);
+
+app.use('/api/friends', friendRoutes);
+
+app.use('/api', friendRoutes);
+
+app.use('/api', groupInviteRoutes);
+
+app.use('/api/insights', insightsRouter);
+
+
+const rewardsRouter = require('./routes/rewards')(connection, authMiddleware, JWT_SECRET);
+app.use('/api', rewardsRouter);
 
 // user 路由
 app.use('/api', userRoutes(connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_SECRET, BASE_URL));
@@ -114,6 +151,7 @@ app.use('/api', discussRoutes(connection, authMiddleware, JWT_SECRET, buildAvata
 
 // 健康檢查路由
 app.use('/api', healthRoutes(connection));
+
 
 // 404 處理
 app.use((req, res) => {
