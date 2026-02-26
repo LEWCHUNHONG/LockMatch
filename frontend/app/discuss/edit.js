@@ -1,4 +1,4 @@
-// app/discuss/edit.js - 整合版本
+// app/discuss/edit.js (Expo Go 兼容版)
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,7 +17,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import ImageCropPicker from 'react-native-image-crop-picker';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../utils/api';
@@ -31,7 +30,7 @@ export default function EditPost() {
   const id = params.id || params.postId || params.post_id;
 
   const [content, setContent] = useState('');
-  const [images, setImages] = useState([]); // { uri, originalUri, isEditing, isNew, serverUrl }
+  const [images, setImages] = useState([]); // { uri, originalUri, isNew, serverUrl }
   const [removedImages, setRemovedImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -76,7 +75,6 @@ export default function EditPost() {
             const loadedImages = mediaUrls.map(url => ({
               uri: url.startsWith('http') ? url : `${baseURL}${url}`,
               originalUri: url.startsWith('http') ? url : `${baseURL}${url}`,
-              isEditing: false,
               isNew: false,
               serverUrl: url,
             }));
@@ -118,7 +116,7 @@ export default function EditPost() {
     loadPost();
   }, [id]);
 
-  // 選擇新圖片
+  // 選擇新圖片（使用 expo-image-picker）
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -130,69 +128,24 @@ export default function EditPost() {
     }
 
     try {
-      const result = await ImageCropPicker.openPicker({
-        multiple: true,
-        maxFiles: MAX_IMAGES - images.length,
-        mediaType: 'photo',
-        compressImageQuality: 0.92,
-        includeBase64: false,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_IMAGES - images.length,
+        quality: 0.92,
+        base64: false,
       });
 
-      const newImages = result.map((img) => ({
-        uri: img.path,
-        originalUri: img.path,
-        isEditing: false,
-        isNew: true,
-      }));
-
-      setImages((prev) => [...prev, ...newImages]);
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map((asset) => ({
+          uri: asset.uri,
+          originalUri: asset.uri,
+          isNew: true,
+        }));
+        setImages((prev) => [...prev, ...newImages]);
+      }
     } catch (err) {
-      if (err.code !== 'E_PICKER_CANCELLED') {
-        console.error('選擇圖片錯誤:', err);
-      }
-    }
-  };
-
-  // 編輯/裁剪圖片
-  const editImage = async (index) => {
-    const img = images[index];
-    if (!img) return;
-
-    try {
-      const cropped = await ImageCropPicker.openCropper({
-        path: img.uri,
-        cropperCircleOverlay: false,
-        compressImageQuality: 0.88,
-        showCropGuidelines: true,
-        freeStyleCropEnabled: true,
-        includeBase64: false,
-      });
-
-      const newImages = [...images];
-      // 如果是舊圖片被編輯，標記舊版本要刪除
-      if (!img.isNew && img.serverUrl) {
-        setRemovedImages((prev) => [...new Set([...prev, img.serverUrl])]);
-      }
-      newImages[index] = { ...newImages[index], uri: cropped.path, isEditing: true };
-      setImages(newImages);
-    } catch (err) {
-      if (err.code !== 'E_PICKER_CANCELLED') {
-        console.error('裁剪錯誤:', err);
-      }
-    }
-  };
-
-  // 恢復原始圖片
-  const useOriginal = (index) => {
-    const img = images[index];
-    if (img.originalUri) {
-      const newImages = [...images];
-      // 如果是舊圖片並已編輯，移除從 removedImages 的標記
-      if (!img.isNew && img.isEditing) {
-        setRemovedImages((prev) => prev.filter((url) => url !== img.serverUrl));
-      }
-      newImages[index] = { ...newImages[index], uri: img.originalUri, isEditing: false };
-      setImages(newImages);
+      console.error('選擇圖片錯誤:', err);
     }
   };
 
@@ -230,11 +183,11 @@ export default function EditPost() {
         formData.append('removeMedia', JSON.stringify(removedImages));
       }
 
-      // 上傳新圖片或編輯過的圖片
+      // 上傳新圖片
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
-        // 只上傳新圖片或編輯過的圖片
-        if (img.isNew || img.isEditing) {
+        // 只上傳新圖片
+        if (img.isNew) {
           let mediaUri = img.uri;
 
           // 壓縮圖片
@@ -256,7 +209,7 @@ export default function EditPost() {
       console.log('提交更新，ID:', id);
       console.log('內容:', content.trim());
       console.log('刪除圖片:', removedImages.length);
-      console.log('上傳圖片:', images.filter(img => img.isNew || img.isEditing).length);
+      console.log('上傳圖片:', images.filter(img => img.isNew).length);
 
       const response = await fetch(`${baseURL}/api/posts/${id}`, {
         method: 'PUT',
@@ -280,32 +233,23 @@ export default function EditPost() {
       }
 
       if (response.ok && data.success) {
-        // ✅ 內容檢測通過，更新成功
+        // 更新成功
         Alert.alert('成功', data.message || '貼文已更新！', [
           {
             text: '確定',
             onPress: () => {
-              // 返回貼文詳情頁
               router.replace(`/discuss/${id}`);
             }
           }
         ]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        // ❌ 處理失敗情況
+        // 處理失敗情況
         let errorMessage = '更新失敗';
         let errorTitle = '更新失敗';
 
-        if (data.error) {
-          errorMessage = data.error;
-        }
-        if (data.message) {
-          errorMessage = data.message;
-        }
-
-        // 📌 移除這行：throw new Error(errorMessage); // 這行會拋出錯誤，導致進入 catch 區塊
-
-        console.log('更新失敗原因:', errorMessage);
+        if (data.error) errorMessage = data.error;
+        if (data.message) errorMessage = data.message;
 
         // 特別處理內容審核失敗的情況
         if (response.status === 403) {
@@ -329,7 +273,6 @@ export default function EditPost() {
           errorMessage = '伺服器暫時出現問題，請稍後再試';
         }
 
-        // 直接顯示錯誤訊息，不拋出錯誤
         Alert.alert(errorTitle, errorMessage);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
@@ -406,18 +349,6 @@ export default function EditPost() {
                     <View key={index} style={styles.imagePreviewContainer}>
                       <Image source={{ uri: img.uri }} style={styles.preview} />
 
-                      {/* Edit button */}
-                      <TouchableOpacity style={styles.editButton} onPress={() => editImage(index)}>
-                        <MaterialCommunityIcons name="image-edit-outline" size={22} color="#fff" />
-                      </TouchableOpacity>
-
-                      {/* Original button for edited images */}
-                      {img.isEditing && (
-                        <TouchableOpacity style={styles.originalButton} onPress={() => useOriginal(index)}>
-                          <MaterialCommunityIcons name="undo" size={18} color="#fff" />
-                        </TouchableOpacity>
-                      )}
-
                       {/* Delete button */}
                       <TouchableOpacity style={styles.deleteButton} onPress={() => deleteImage(index)}>
                         <Ionicons name="trash-outline" size={22} color="#fff" />
@@ -479,7 +410,7 @@ export default function EditPost() {
   );
 }
 
-// 樣式部分保持 edit.js 中的原有樣式，添加一些新樣式
+// 樣式部分保持 edit.js 中的原有樣式，僅刪除了 editButton 和 originalButton 相關樣式
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -562,42 +493,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#f8f1eb',
   },
-  editButton: {
-    position: 'absolute',
-    top: 8,
-    right: 56,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    borderRadius: 24,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  originalButton: {
-    position: 'absolute',
-    top: 8,
-    right: 104,
-    backgroundColor: 'rgba(76, 175, 80, 0.65)',
-    borderRadius: 24,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   deleteButton: {
     position: 'absolute',
     top: 8,
@@ -669,6 +564,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ff4444',
     marginBottom: 20,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#5c4033',
   },
 });
 
