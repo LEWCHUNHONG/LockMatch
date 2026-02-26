@@ -12,6 +12,7 @@ import {
   Animated,
   Pressable,
   Image,
+  Alert,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -30,6 +31,9 @@ const AnimatedCard = ({ icon, title, desc, buttonText, onPress, cardWidth }) => 
   const scale = useRef(new Animated.Value(1)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
 
+
+
+
   const handlePressIn = () => {
     Animated.parallel([
       Animated.spring(scale, {
@@ -45,6 +49,9 @@ const AnimatedCard = ({ icon, title, desc, buttonText, onPress, cardWidth }) => 
       }),
     ]).start();
   };
+
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testResult, setTestResult] = useState('');
 
   const handlePressOut = () => {
     Animated.parallel([
@@ -104,7 +111,10 @@ export default function Dashboard() {
   const [dailyTasks, setDailyTasks] = useState([]);
   const [achievementTasks, setAchievementTasks] = useState([]);
   const [processingTask, setProcessingTask] = useState(null);
-  
+
+  const [couponCount, setCouponCount] = useState(0);
+
+
   // 簽到狀態變量
   const [isCheckingIn, setIsCheckingIn] = useState(false);
 
@@ -136,7 +146,7 @@ export default function Dashboard() {
       const response = await api.get('/api/me');
       if (response.data && response.data.user) {
         let latestUser = response.data.user;
-        
+
         // 確保頭像有完整的URL
         if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
           if (latestUser.avatar.startsWith('/')) {
@@ -145,12 +155,12 @@ export default function Dashboard() {
             latestUser.avatar = `${api.defaults.baseURL}/${latestUser.avatar}`;
           }
         }
-        
+
         // 添加cache buster確保頭像刷新
         if (latestUser.avatar) {
           latestUser.avatar = `${latestUser.avatar.split('?')[0]}?cb=${Date.now()}`;
         }
-        
+
         await AsyncStorage.setItem('user', JSON.stringify(latestUser));
         return latestUser;
       }
@@ -193,6 +203,18 @@ export default function Dashboard() {
     }
   };
 
+
+  const fetchCouponCount = async () => {
+    try {
+      const res = await api.get('/api/user-coupons');
+      if (res.data.success) {
+        setCouponCount(res.data.coupons.length);
+      }
+    } catch (error) {
+      console.error('獲取優惠券數量失敗', error);
+    }
+  };
+
   // 獲取任務
   const fetchTasks = async () => {
     try {
@@ -215,11 +237,11 @@ export default function Dashboard() {
     }
 
     setIsCheckingIn(true);
-    
+
     try {
       //Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const response = await api.post('/api/daily-checkin');
-      
+
       if (response.data.success) {
         // 立即更新本地簽到狀態，防止重複點擊
         setCheckinStatus(prev => ({
@@ -227,38 +249,38 @@ export default function Dashboard() {
           checked_in_today: true,
           consecutive_week_days: response.data.streak || (prev.consecutive_week_days || 0) + 1
         }));
-        
+
         // 更新積分
         await fetchUserPoints();
-        
+
         // 準備顯示自訂 modal
         const successMessage = response.data.message || `簽到成功！獲得 ${response.data.points_earned} 積分`;
         setCheckinMessage(successMessage);
         setShowCheckinSuccessModal(true);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
+
         // 返回成功，不需要再做其他事情
         return;
       }
     } catch (error) {
       console.error('簽到失敗:', error);
-      
+
       // 詳細記錄錯誤信息（開發階段）
       if (error.response?.data) {
         console.log('錯誤細節:', error.response.data);
       }
-      
+
       // 處理各種錯誤情況
       if (error.response?.status === 400) {
         const errorMsg = error.response.data?.error || error.response.data?.message || '今日已簽到';
-        
+
         if (errorMsg.includes('今日已簽到') || errorMsg.includes('已经签到')) {
           // 更新本地狀態為已簽到
           setCheckinStatus(prev => ({
             ...prev,
             checked_in_today: true
           }));
-          
+
           // 顯示用戶友好的提示
           const friendlyMsg = error.response.data?.message || '您今天已經簽到過了！明天再來獲得更多積分～';
           alert(friendlyMsg);
@@ -287,18 +309,49 @@ export default function Dashboard() {
     }
   };
 
+  // 測試原生模組
+  const testNativeModules = async () => {
+    try {
+      setTestResult('正在測試位置功能...');
+
+      // 測試 Location
+      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locationStatus !== 'granted') {
+        setTestResult('❌ 位置權限被拒絕');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      setTestResult(`✅ 位置獲取成功\n緯度: ${location.coords.latitude.toFixed(4)}\n經度: ${location.coords.longitude.toFixed(4)}`);
+
+      // 測試 Notifications
+      setTestResult(prev => prev + '\n\n正在測試推播功能...');
+      const { status: notificationStatus } = await Notifications.requestPermissionsAsync();
+      if (notificationStatus !== 'granted') {
+        setTestResult(prev => prev + '\n❌ 推播權限被拒絕');
+        return;
+      }
+
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      setTestResult(prev => prev + `\n✅ 推播 Token 獲取成功\n${token.substring(0, 20)}...`);
+
+    } catch (error) {
+      setTestResult(`❌ 測試失敗：${error.message}`);
+    }
+  };
+
   // 處理任務操作
   const handleTaskAction = async (task) => {
     if (processingTask === task.id) return;
-    
+
     setProcessingTask(task.id);
-    
+
     try {
       if (task.user_status === 'completed') {
         alert('提示', '此任務已完成');
         return;
       }
-      
+
       if (!task.user_status || task.user_status === 'not_started') {
         // 開始任務
         const response = await api.post('/api/start-task', { taskId: task.id });
@@ -379,10 +432,10 @@ export default function Dashboard() {
       <View key={task.id || index} style={styles.taskItem}>
         <View style={styles.taskItemHeader}>
           <View style={[styles.taskItemIcon, { backgroundColor: isDaily ? '#9b59b6' : '#2ecc71' }]}>
-            <MaterialCommunityIcons 
-              name={isDaily ? 'calendar-today' : 'trophy'} 
-              size={16} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name={isDaily ? 'calendar-today' : 'trophy'}
+              size={16}
+              color="#fff"
             />
           </View>
           <View style={styles.taskItemInfo}>
@@ -393,8 +446,8 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.taskItemButton, buttonConfig.style, isProcessing && styles.taskButtonDisabled]}
           onPress={() => handleTaskAction(task)}
           disabled={buttonConfig.disabled || isProcessing}
@@ -408,15 +461,15 @@ export default function Dashboard() {
             </>
           )}
         </TouchableOpacity>
-        
+
         {task.user_status === 'in_progress' && task.progress !== undefined && (
           <View style={styles.taskItemProgress}>
             <View style={styles.taskItemProgressBar}>
-              <View 
+              <View
                 style={[
-                  styles.taskItemProgressFill, 
+                  styles.taskItemProgressFill,
                   { width: `${Math.min(100, task.progress)}%` }
-                ]} 
+                ]}
               />
             </View>
             <Text style={styles.taskItemProgressText}>
@@ -438,7 +491,7 @@ export default function Dashboard() {
   // 載入用戶（每次 focus 重新載入）
   const loadUser = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
-    
+
     try {
       // 1. 先從後端獲取最新數據
       const latestUser = await fetchLatestUser();
@@ -570,20 +623,20 @@ export default function Dashboard() {
   // MBTI 顏色映射
   const getMbtiColor = (mbti) => {
     if (!mbti) return '#f4c7ab';
-    
+
     const mbtiColors = {
       'ISTJ': '#3498db', 'ISFJ': '#2ecc71', 'INFJ': '#9b59b6', 'INTJ': '#1abc9c',
       'ISTP': '#e74c3c', 'ISFP': '#f39c12', 'INFP': '#d35400', 'INTP': '#34495e',
       'ESTP': '#e67e22', 'ESFP': '#f1c40f', 'ENFP': '#2ecc71', 'ENTP': '#9b59b6',
       'ESTJ': '#3498db', 'ESFJ': '#1abc9c', 'ENFJ': '#e74c3c', 'ENTJ': '#f39c12'
     };
-    
+
     return mbtiColors[mbti] || '#f4c7ab';
   };
 
   // 等級顏色映射
   const getLevelColor = (level) => {
-    switch(level) {
+    switch (level) {
       case '鉑金會員': return '#E5E4E2';
       case '黃金會員': return '#FFD700';
       case '白銀會員': return '#C0C0C0';
@@ -622,11 +675,30 @@ export default function Dashboard() {
         {/* 頂部欄 */}
         <View style={styles.topBar}>
           {/* 左邊：聊天按鈕 */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.iconButton}
             onPress={() => router.push('/chat')}
           >
             <MaterialCommunityIcons name="message-badge" size={28} color="#5c4033" />
+          </TouchableOpacity>
+
+          {/* 新增：優惠券按鈕 */}
+          <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/coupons')}>
+            <View style={{ position: 'relative' }}>
+              <MaterialCommunityIcons name="ticket-percent" size={28} color="#5c4033" />
+              {couponCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{couponCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push('/insights')}
+          >
+            <MaterialCommunityIcons name="heart-flash" size={28} color="#5c4033" />
           </TouchableOpacity>
 
           {/* 中間：Logo / 名稱 */}
@@ -646,7 +718,7 @@ export default function Dashboard() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
@@ -663,9 +735,9 @@ export default function Dashboard() {
               <View style={styles.avatarCircle}>
                 {user?.avatar ? (
                   <Image
-                    source={{ 
-                      uri: user.avatar.includes('http') 
-                        ? user.avatar 
+                    source={{
+                      uri: user.avatar.includes('http')
+                        ? user.avatar
                         : `${api.defaults.baseURL}${user.avatar}?cb=${Date.now()}`
                     }}
                     style={styles.avatarImage}
@@ -694,7 +766,7 @@ export default function Dashboard() {
                     </Text>
                   </View>
                 ) : (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.statusTag}
                     onPress={() => router.push('/mbti-test')}
                   >
@@ -708,7 +780,7 @@ export default function Dashboard() {
             </View>
 
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: '#f4c7ab' }]}
                 onPress={() => router.push('/mbti-test')}
               >
@@ -716,7 +788,7 @@ export default function Dashboard() {
                   {user?.mbti ? '重新測試 MBTI' : '開始 MBTI 測試'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f4c7ab' }]}
                 onPress={() => router.push('/chat/search')}
               >
@@ -724,18 +796,33 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
 
-            {/* 等級顯示 */}
+            {/* 新增：AI 聊天 + 匹配聊天 按鈕組 */}
+            <View style={styles.chatButtonsRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#f4c7ab', flex: 1 }]}
+                onPress={() => router.push('/chat/ai-chat')}
+              >
+                <Text style={styles.actionBtnText}>與 AI 聊天</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f4c7ab', flex: 1 }]}
+                onPress={() => router.push('/chat')}
+              >
+                <Text style={[styles.actionBtnText, { color: '#8b5e3c' }]}>匹配聊天</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.levelContainer}>
               <View style={styles.levelBadge}>
                 <MaterialCommunityIcons name="crown" size={16} color={getLevelColor(userPoints.level)} />
                 <Text style={styles.levelText}>{userPoints.level}</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.checkinButton,
-                  (checkinStatus.checked_in_today || isCheckingIn) && { 
-                    backgroundColor: '#d9b8a3', 
-                    opacity: 0.8 
+                  (checkinStatus.checked_in_today || isCheckingIn) && {
+                    backgroundColor: '#d9b8a3',
+                    opacity: 0.8
                   }
                 ]}
                 onPress={handleDailyCheckin}
@@ -746,10 +833,10 @@ export default function Dashboard() {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons 
-                      name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"} 
-                      size={16} 
-                      color="#fff" 
+                    <MaterialCommunityIcons
+                      name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"}
+                      size={16}
+                      color="#fff"
                     />
                     <Text style={styles.checkinButtonText}>
                       {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到'}
@@ -810,14 +897,14 @@ export default function Dashboard() {
                   <Text style={styles.seeAll}>查看全部</Text>
                 </TouchableOpacity>
               </View>
-              
+
               <View style={styles.recommendationCard}>
                 <MaterialCommunityIcons name="lightbulb-on" size={32} color="#f4c7ab" />
                 <Text style={styles.recommendationTitle}>找到同類型的夥伴</Text>
                 <Text style={styles.recommendationText}>
                   你屬於 {user.mbti} 類型，系統為你推薦相似性格的用戶，開始聊天認識新朋友吧！
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.recommendationButton}
                   onPress={() => router.push('/chat/search')}
                 >
@@ -830,30 +917,30 @@ export default function Dashboard() {
 
           {/* 每日任務 */}
           <View style={styles.tasksSection}>
-<View style={styles.sectionHeader}>
-  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-    <MaterialCommunityIcons name="calendar-today" size={24} color="#9b59b6" />
-    <Text style={styles.sectionTitle}>每日任務</Text>
-  </View>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialCommunityIcons name="calendar-today" size={24} color="#9b59b6" />
+                <Text style={styles.sectionTitle}>每日任務</Text>
+              </View>
 
-  <TouchableOpacity 
-    style={styles.viewAllButton}
-    onPress={() => router.push('/rewards')}
-  >
-    <Text style={styles.viewAllText}>查看全部</Text>
-    <MaterialCommunityIcons name="chevron-right" size={16} color="#8b5e3c" />
-  </TouchableOpacity>
-</View>
-            
+              <TouchableOpacity
+                style={styles.viewAllButton}
+                onPress={() => router.push('/rewards')}
+              >
+                <Text style={styles.viewAllText}>查看全部</Text>
+                <MaterialCommunityIcons name="chevron-right" size={16} color="#8b5e3c" />
+              </TouchableOpacity>
+            </View>
+
             {allUncompletedTasks.length > 0 ? (
               <View style={styles.tasksCard}>
                 {allUncompletedTasks.map((task, index) => renderTaskItem(task, index))}
-                
+
                 <View style={styles.tasksFooter}>
                   <Text style={styles.tasksFooterText}>
                     完成更多任務可以獲得更多積分！
                   </Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.tasksFooterButton}
                     onPress={() => router.push('/rewards')}
                   >
@@ -869,7 +956,7 @@ export default function Dashboard() {
                 <Text style={styles.emptyTasksText}>
                   太棒了！你已經完成了所有推薦任務。
                 </Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.emptyTasksButton}
                   onPress={() => router.push('/rewards')}
                 >
@@ -972,19 +1059,19 @@ export default function Dashboard() {
         backdropOpacity={0.4}
       >
         <View style={modalStyles.container}>
-          <MaterialCommunityIcons 
-            name="check-circle" 
-            size={64} 
-            color="#2ecc71" 
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={64}
+            color="#2ecc71"
             style={{ marginBottom: 16 }}
           />
-          
+
           <Text style={modalStyles.title}>簽到成功！</Text>
-          
+
           <Text style={[modalStyles.message, { fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
             {checkinMessage}
           </Text>
-          
+
           {checkinStatus.consecutive_week_days >= 2 && (
             <Text style={[modalStyles.message, { marginTop: 8, color: '#e67e22' }]}>
               連續簽到 {checkinStatus.consecutive_week_days} 天 🎉
@@ -1045,6 +1132,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(244, 199, 171, 0.25)',
+    position: 'relative',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -1137,6 +1225,14 @@ const styles = StyleSheet.create({
     color: '#5c4033',
     fontSize: 15,
     fontWeight: '600',
+  },
+  // 新增：聊天按鈕組水平佈局
+  chatButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    width: '100%',
+    marginBottom: 16,
   },
   levelContainer: {
     flexDirection: 'row',
@@ -1584,5 +1680,22 @@ const modalStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

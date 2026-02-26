@@ -111,22 +111,20 @@ export default function GroupDetails() {
     }
   };
 
-  const handleAddMember = async (userId) => {
+  const handleSendInvite = async (userId) => {
     try {
       setAddingMember(true);
-      const response = await chatAPI.addGroupMember(roomId, userId);
+      const response = await chatAPI.sendGroupInvite(roomId, userId);
       if (response.data.success) {
-        showNotificationModal('success', '已成功添加成員');
-        loadGroupDetails();
-        setShowAddMemberModal(false);
-        setSearchQuery('');
-        setSearchResults([]);
+        showNotificationModal('success', '邀請已發送');
+        // 從搜尋結果中移除該用戶（避免重複點擊）
+        setSearchResults(prev => prev.filter(u => u.id !== userId));
       } else {
-        showNotificationModal('error', response.data.message || '添加成員失敗');
+        showNotificationModal('error', response.data.message || '邀請發送失敗');
       }
     } catch (error) {
-      console.error('添加成員失敗:', error);
-      showNotificationModal('error', '添加成員失敗，請稍後再試');
+      console.error('發送邀請失敗:', error);
+      showNotificationModal('error', '發送邀請失敗，請稍後再試');
     } finally {
       setAddingMember(false);
     }
@@ -186,7 +184,7 @@ export default function GroupDetails() {
   const renderSearchResultItem = ({ item }) => (
     <TouchableOpacity
       style={styles.searchResultItem}
-      onPress={() => handleAddMember(item.id)}
+      onPress={() => handleSendInvite(item.id)}
       disabled={addingMember}
     >
       <Image

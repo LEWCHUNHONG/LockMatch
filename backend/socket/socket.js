@@ -7,103 +7,98 @@ module.exports = (httpServer, connection, BASE_URL, JWT_SECRET) => {
     cors: { origin: '*', methods: ['GET', 'POST'] }
   });
 
-  // ── 新增：Socket 連線驗證 middleware ──
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
-
-    if (!token) {
-      console.log('Socket 連線拒絕：缺少 token');
-      return next(new Error('Authentication error: token required'));
-    }
-
+    if (!token) return next(new Error('Authentication error: token required'));
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-
-      // 綁定到 socket 上（之後所有事件都可直接用）
-      socket.user = decoded;               // 完整 decoded payload
-      socket.userId = decoded.id || decoded.userId;     // 依你的 token payload 調整
-      socket.username = decoded.username || decoded.name || '未知用戶';
-
-      console.log(`Socket 驗證成功 - 用戶: ${socket.username} (${socket.userId})`);
+      socket.userId = decoded.id;
+      socket.username = decoded.username || '未知用戶';
+      socket.user = decoded;
       next();
     } catch (err) {
-      console.error('Socket JWT 驗證失敗:', err.message);
       next(new Error('Authentication error: invalid token'));
     }
   });
 
-  // ── connection 事件 ──
   io.on('connection', (socket) => {
-    console.log('新用戶連線:', socket.id, '| 用戶:', socket.username || '(未驗證)');
+    console.log(`🔌 用戶連接: ${socket.userId} (${socket.username})`);
+    socket.join(`user_${socket.userId}`);
 
-    // 加入聊天室
+    // 使用回調更新在線狀態
+    connection.query(
+      'UPDATE users SET last_active = NOW(), online_status = "online" WHERE id = ?',
+      [socket.userId],
+      (err) => {
+        if (err) console.error('更新在線狀態失敗:', err);
+      }
+    );
+
     socket.on('join-room', (roomId) => {
       socket.join(roomId);
-      console.log(`用戶 ${socket.username || '未知'} 加入房間 ${roomId}`);
-
+      console.log(`用戶 ${socket.username} 加入房間 ${roomId}`);
       socket.to(roomId).emit('user-joined', {
         userId: socket.userId,
-        username: socket.username || '未知用戶',
+        username: socket.username,
         timestamp: new Date()
       });
     });
 
-    // 離開聊天室
     socket.on('leave-room', (roomId) => {
       socket.leave(roomId);
-      console.log(`用戶 ${socket.username || '未知'} 離開房間 ${roomId}`);
+      console.log(`用戶 ${socket.username} 離開房間 ${roomId}`);
     });
 
-    // 打字指示器（已有的兜底可保留，但現在應該有真實 username）
-    socket.on('typing', (data) => {
-      const { roomId, isTyping } = data;
+    socket.on('typing', ({ roomId, isTyping }) => {
       socket.to(roomId).emit('user-typing', {
         userId: socket.userId,
-        username: socket.username || '未知用戶',
-        isTyping: isTyping
+        username: socket.username,
+        isTyping
       });
     });
 
-    // 消息已讀
-    socket.on('message-read', (data) => {
-      const { roomId, messageId } = data;
+    socket.on('message-read', ({ roomId, messageId }) => {
       socket.to(roomId).emit('message-read-receipt', {
         userId: socket.userId,
-        username: socket.username || '未知用戶',
-        messageId: messageId,
+        username: socket.username,
+        messageId,
         timestamp: new Date()
       });
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log(`用戶 ${socket.username || '未知'} 斷開連接，原因: ${reason}`);
-    });
-
-    socket.on('error', (error) => {
-      console.error(`Socket 錯誤 (用戶 ${socket.username || '未知'}):`, error);
+    socket.on('disconnect', () => {
+      console.log(`🔌 用戶斷開: ${socket.userId}`);
+      connection.query(
+        'UPDATE users SET last_active = NOW(), online_status = "offline" WHERE id = ?',
+        [socket.userId],
+        (err) => {
+          if (err) console.error('更新離線狀態失敗:', err);
+        }
+      );
+      socket.leave(`user_${socket.userId}`);
     });
   });
 
-  // broadcastNewMessage 保持不變
   const broadcastNewMessage = (roomId, message, senderId) => {
     let messageToBroadcast = { ...message };
-    
     if (messageToBroadcast.message_type === 'image' && messageToBroadcast.content) {
       let content = messageToBroadcast.content;
       if (!content.startsWith('/')) content = '/' + content;
       messageToBroadcast.content = `${BASE_URL}${content}`;
     }
-    
     io.to(roomId).emit('new-message', {
       ...messageToBroadcast,
       is_own: false
     });
-    
     io.to(`user_${senderId}`).emit('message-sent', {
       ...messageToBroadcast,
       is_own: true
     });
   };
 
-  return { io, broadcastNewMessage };
+  const broadcastMatchNotification = (userId, matchData) => {
+    io.to(`user_${userId}`).emit('match_notification', matchData);
+  };
+
+  return { io, broadcastNewMessage, broadcastMatchNotification };
 };

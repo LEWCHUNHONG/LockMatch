@@ -35,10 +35,10 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function ChatRoom() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   // 確保 roomId 是正確的
   let roomId = params.roomId;
-  
+
   const [message, setMessage] = useState('');
   const [roomInfo, setRoomInfo] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -53,7 +53,7 @@ export default function ChatRoom() {
   const [errorInfo, setErrorInfo] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [typingUsers, setTypingUsers] = useState([]);
-  
+
   const flatListRef = useRef(null);
   const messageInputRef = useRef(null);
   const userRef = useRef(null);
@@ -72,9 +72,9 @@ export default function ChatRoom() {
         '錯誤',
         '無法進入此聊天室',
         [
-          { 
-            text: '返回聊天列表', 
-            onPress: () => router.replace('/chat') 
+          {
+            text: '返回聊天列表',
+            onPress: () => router.replace('/chat')
           }
         ]
       );
@@ -98,18 +98,18 @@ export default function ChatRoom() {
       // 清除鍵盤監聽器 - 使用新的 API
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
-      
+
       // 清除打字指示器計時器
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      
+
       // 離開房間並斷開Socket連接
       if (socketRef.current && socketRef.current.connected) {
         socketAPI.leaveRoom(roomId);
         socketAPI.disconnectSocket();
       }
-      
+
       // 清空待處理消息
       pendingMessagesRef.current = {};
     };
@@ -129,19 +129,19 @@ export default function ChatRoom() {
       }
 
       console.log('初始化聊天室，roomId:', roomId);
-      
+
       // 1. 先載入用戶
       await loadUser();
-      
+
       // 2. 初始化Socket連接
       await initSocketConnection();
-      
+
       // 3. 載入聊天室資訊
       await loadRoomInfo();
-      
+
       // 4. 載入消息
       await loadMessages();
-      
+
       // 5. 加入Socket房間
       if (socketRef.current && socketRef.current.connected) {
         socketAPI.joinRoom(roomId);
@@ -183,33 +183,33 @@ export default function ChatRoom() {
   const initSocketConnection = async () => {
     try {
       console.log('初始化 Socket 連接...');
-      
+
       // 斷開現有連接
       if (socketRef.current) {
         socketAPI.disconnectSocket();
       }
-      
+
       // 初始化新連接
       const socket = await socketAPI.initSocket();
-      
+
       if (!socket) {
         console.error('Socket 初始化失敗');
         return;
       }
-      
+
       socketRef.current = socket;
-      
+
       // 監聽連接事件
       socket.on('connect', () => {
         //console.log('Socket 連接成功，ID:', socket.id);
         setIsConnected(true);
         reconnectAttemptRef.current = 0;
       });
-      
+
       socket.on('connect_error', (error) => {
         console.error('Socket 連接錯誤:', error.message);
         setIsConnected(false);
-        
+
         // 嘗試重新連接
         if (reconnectAttemptRef.current < maxReconnectAttempts) {
           reconnectAttemptRef.current++;
@@ -219,24 +219,24 @@ export default function ChatRoom() {
           }, 2000 * reconnectAttemptRef.current); // 指數退避
         }
       });
-      
+
       socket.on('disconnect', (reason) => {
         console.log('Socket 連接斷開:', reason);
         setIsConnected(false);
       });
-      
+
       // 監聽新消息
       socket.on('new-message', (newMessage) => {
         //console.log('收到即時新消息:', newMessage);
         handleNewMessage(newMessage, false);
       });
-      
+
       // 監聽自己發送的消息（確保同步）
       socket.on('message-sent', (message) => {
         //console.log('消息發送成功:', message);
         handleNewMessage(message, true);
       });
-      
+
       // 監聽打字指示器
       socket.on('user-typing', (data) => {
         if (data.userId !== userRef.current?.id) {
@@ -251,27 +251,27 @@ export default function ChatRoom() {
           });
         }
       });
-      
+
       // 監聽消息已讀回執
       socket.on('message-read', (data) => {
         console.log('消息已讀:', data);
         // 更新消息的已讀狀態
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === data.messageId ? { ...msg, read_count: (msg.read_count || 0) + 1 } : msg
         ));
       });
-      
+
       // 監聽用戶加入房間
       socket.on('user-joined', (data) => {
         //console.log('用戶加入房間:', data);
         // 可以顯示通知或更新UI
       });
-      
+
       // 監聽錯誤
       socket.on('error', (error) => {
         console.error('Socket 錯誤:', error);
       });
-      
+
     } catch (error) {
       console.error('初始化 Socket 連接失敗:', error);
     }
@@ -281,10 +281,10 @@ export default function ChatRoom() {
     try {
       //console.log(`開始載入聊天室資訊: roomId=${roomId}`);
       setErrorInfo(null);
-      
+
       const response = await chatAPI.getChatRoomInfo(roomId);
       //console.log('聊天室資訊響應:', response.data);
-      
+
       if (response.data.success) {
         const room = response.data.room;
         setRoomInfo({
@@ -307,7 +307,7 @@ export default function ChatRoom() {
       }
     } catch (error) {
       console.error('載入聊天室資訊失敗:', error);
-      
+
       const errorDetails = {
         message: error.message,
         status: error.response?.status,
@@ -315,13 +315,13 @@ export default function ChatRoom() {
         code: error.code
       };
       console.error('錯誤詳情:', errorDetails);
-      
+
       setErrorInfo({
         type: 'network_error',
         message: '無法載入聊天室資訊',
         details: errorDetails
       });
-      
+
       // 設置默認聊天室資訊
       setRoomInfo({
         id: String(roomId),
@@ -342,27 +342,27 @@ export default function ChatRoom() {
       await loadUser();
       return;
     }
-    
+
     try {
       if (showLoading) setLoadingMessages(true);
-      
+
       //console.log(`開始載入消息，roomId=${roomId}, user.id=${userRef.current.id}`);
-      
+
       const response = await chatAPI.getChatMessages(roomId);
       //console.log('載入消息響應:', response.data);
-      
+
       if (response.data.success) {
         const formattedMessages = response.data.messages.map(msg => {
           // 確保比較時都是字串
           const senderIdStr = String(msg.sender_id);
           const userIdStr = String(userRef.current.id);
           const isOwn = senderIdStr === userIdStr;
-          
+
           return formatMessageData(msg, isOwn);
         });
-        
+
         setMessages(formattedMessages);
-        
+
         // 滾動到最新消息
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
@@ -376,7 +376,7 @@ export default function ChatRoom() {
       }
     } catch (error) {
       console.error('載入訊息失敗:', error);
-      
+
       const errorDetails = {
         message: error.message,
         status: error.response?.status,
@@ -384,13 +384,13 @@ export default function ChatRoom() {
         code: error.code
       };
       console.error('錯誤詳情:', errorDetails);
-      
+
       setErrorInfo({
         type: 'messages_error',
         message: '無法載入訊息，請檢查網路連線',
         details: errorDetails
       });
-      
+
       if (showLoading) {
         if (error.response?.status === 403) {
           Alert.alert(
@@ -414,13 +414,13 @@ export default function ChatRoom() {
   const formatMessageData = (msg, isOwn) => {
     // 處理圖片URL
     let imageUrl = null;
-    
+
     if (msg.message_type === 'image' && msg.content) {
       if (typeof msg.content === 'string' && msg.content.trim() !== '') {
         imageUrl = fixImageUrl(msg.content);
       }
     }
-    
+
     // 計算消息狀態
     let status = 'sent';
     if (msg.isTemp || msg.isSending) {
@@ -428,7 +428,7 @@ export default function ChatRoom() {
     } else if (msg.isFailed) {
       status = 'failed';
     }
-    
+
     return {
       id: String(msg.id || msg.tempId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`),
       text: msg.content,
@@ -462,21 +462,21 @@ export default function ChatRoom() {
       return;
     }
     lastMessageTimeRef.current = now;
-    
+
     // 確保 ID 是字串
     const messageId = String(newMessage.id);
     const senderIdStr = String(newMessage.sender_id);
     const userIdStr = userRef.current?.id;
     const isOwn = isOwnMessage || senderIdStr === userIdStr;
-    
-    console.log('處理新消息:', { 
-      id: messageId, 
-      isOwn, 
+
+    console.log('處理新消息:', {
+      id: messageId,
+      isOwn,
       type: newMessage.message_type,
       senderId: senderIdStr,
       userId: userIdStr
     });
-    
+
     // 如果是自己的消息，檢查是否有對應的臨時消息
     if (isOwn) {
       // 查找對應的臨時消息
@@ -486,40 +486,40 @@ export default function ChatRoom() {
         // 對於圖片消息，我們無法直接比較內容，因為本地URI和伺服器URL不同
         // 我們使用時間戳和發送者來判斷
         if (tempMessage.type === newMessage.message_type &&
-            tempMessage.senderId === senderIdStr) {
-          
+          tempMessage.senderId === senderIdStr) {
+
           // 檢查時間是否接近（10秒內）
           const serverTime = new Date(newMessage.created_at || new Date()).getTime();
           const tempTime = new Date(tempMessage.created_at || new Date()).getTime();
           const timeDiff = Math.abs(serverTime - tempTime);
-          
+
           if (timeDiff < 10000) {
             tempIdToRemove = tempId;
             break;
           }
         }
       }
-      
+
       if (tempIdToRemove) {
         console.log('找到需要替換的臨時消息:', tempIdToRemove);
         delete pendingMessagesRef.current[tempIdToRemove];
-        
+
         // 用伺服器消息替換臨時消息
         setMessages(prev => {
           // 先移除臨時消息
           const filteredMessages = prev.filter(msg => msg.id !== tempIdToRemove);
-          
+
           // 檢查是否已存在相同的伺服器消息
-          const exists = filteredMessages.some(msg => 
-            msg.id === messageId || 
-            (msg.content === newMessage.content && 
-             String(msg.senderId) === senderIdStr)
+          const exists = filteredMessages.some(msg =>
+            msg.id === messageId ||
+            (msg.content === newMessage.content &&
+              String(msg.senderId) === senderIdStr)
           );
-          
+
           if (!exists) {
             const formattedMessage = formatMessageData(newMessage, isOwn);
             const updatedMessages = [...filteredMessages, formattedMessage];
-            
+
             // 確保消息按時間排序
             return updatedMessages.sort((a, b) => {
               const timeA = new Date(a.created_at || a.time).getTime();
@@ -527,38 +527,38 @@ export default function ChatRoom() {
               return timeA - timeB;
             });
           }
-          
+
           return filteredMessages;
         });
-        
+
         // 滾動到底部
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
         }, 100);
-        
+
         // 如果是自己的消息，標記為已讀
         if (newMessage.id) {
           chatAPI.markAsRead(roomId, newMessage.id).catch(console.error);
         }
-        
+
         return;
       }
     }
-    
+
     // 如果沒有匹配的臨時消息，直接添加新消息
     setMessages(prev => {
       // 檢查是否已存在相同的消息
-      const exists = prev.some(msg => 
-        msg.id === messageId || 
-        (msg.content === newMessage.content && 
-         String(msg.senderId) === senderIdStr &&
-         msg.type === newMessage.message_type)
+      const exists = prev.some(msg =>
+        msg.id === messageId ||
+        (msg.content === newMessage.content &&
+          String(msg.senderId) === senderIdStr &&
+          msg.type === newMessage.message_type)
       );
-      
+
       if (!exists) {
         const formattedMessage = formatMessageData(newMessage, isOwn);
         const updatedMessages = [...prev, formattedMessage];
-        
+
         // 確保消息按時間排序
         return updatedMessages.sort((a, b) => {
           const timeA = new Date(a.created_at || a.time).getTime();
@@ -566,15 +566,15 @@ export default function ChatRoom() {
           return timeA - timeB;
         });
       }
-      
+
       return prev;
     });
-    
+
     // 滾動到底部
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
-    
+
     // 如果是自己的消息，標記為已讀
     if (isOwn && newMessage.id) {
       chatAPI.markAsRead(roomId, newMessage.id).catch(console.error);
@@ -602,12 +602,12 @@ export default function ChatRoom() {
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
-    
+
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('zh-TW', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('zh-TW', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
@@ -616,7 +616,7 @@ export default function ChatRoom() {
 
     const messageText = message.trim();
     setMessage('');
-    
+
     // 隱藏鍵盤
     if (messageInputRef.current) {
       messageInputRef.current.blur();
@@ -624,10 +624,10 @@ export default function ChatRoom() {
 
     try {
       setSending(true);
-      
+
       // 創建臨時消息ID
       const tempId = `temp_text_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // 先本地顯示發送的消息（臨時消息）
       const tempMessage = {
         id: tempId,
@@ -647,7 +647,7 @@ export default function ChatRoom() {
 
       // 添加到待處理消息
       pendingMessagesRef.current[tempId] = tempMessage;
-      
+
       setMessages(prev => [...prev, tempMessage]);
 
       // 滾動到最新訊息
@@ -657,15 +657,15 @@ export default function ChatRoom() {
 
       // 發送到伺服器
       const response = await chatAPI.sendMessage(roomId, messageText);
-      
+
       if (response.data.success) {
         console.log('文本消息發送成功，響應:', response.data);
-        
+
         // 更新臨時消息狀態
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === tempId ? { ...msg, isSending: false, isSent: true } : msg
         ));
-        
+
         // 標記消息為已讀
         if (response.data.messageId) {
           chatAPI.markAsRead(roomId, response.data.messageId).catch(console.error);
@@ -673,14 +673,14 @@ export default function ChatRoom() {
       } else {
         // 發送失敗，更新臨時消息狀態
         console.error('文本消息發送失敗:', response.data.error);
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === tempId ? { ...msg, isSending: false, isFailed: true } : msg
         ));
         Alert.alert('錯誤', response.data.error || '訊息發送失敗');
       }
     } catch (error) {
       console.error('發送訊息失敗:', error);
-      setMessages(prev => prev.map(msg => 
+      setMessages(prev => prev.map(msg =>
         msg.id?.startsWith('temp_') && msg.isSending ? { ...msg, isSending: false, isFailed: true } : msg
       ));
       Alert.alert('錯誤', '無法發送訊息，請檢查網路連線');
@@ -710,20 +710,20 @@ export default function ChatRoom() {
       return;
     }
     lastMessageTimeRef.current = now;
-    
+
     if (!userRef.current || sending) return;
 
     try {
       setSending(true);
-      
+
       // 使用新的getFileInfo函數獲取文件信息
       const fileInfo = await getFileInfo(fileUri);
-      
+
       const fileSize = fileInfo?.size || 0;
-      
+
       // 創建臨時消息ID
       const tempId = `temp_${fileType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // 顯示臨時消息，包含圖片預覽
       const tempMessage = {
         id: tempId,
@@ -757,32 +757,32 @@ export default function ChatRoom() {
 
       // 發送到伺服器 - 使用更穩定的方法
       console.log('發送圖片消息，fileUri:', fileUri, 'fileType:', fileType, 'fileSize:', fileSize);
-      
+
       // 添加超時處理
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('上傳超時 (30秒)')), 30000); // 30秒超時
       });
-      
+
       try {
         // 使用Promise.race來處理超時
         const response = await Promise.race([
           chatAPI.sendMediaMessage(roomId, fileUri, fileType, fileName || 'file', fileSize),
           timeoutPromise
         ]);
-        
+
         console.log('圖片消息發送響應:', response.data);
-        
+
         if (response.data.success) {
           // 更新臨時消息狀態
-          setMessages(prev => prev.map(msg => 
+          setMessages(prev => prev.map(msg =>
             msg.id === tempId ? { ...msg, isSending: false, isSent: true } : msg
           ));
-          
+
           // 標記消息為已讀
           if (response.data.messageId) {
             chatAPI.markAsRead(roomId, response.data.messageId).catch(console.error);
           }
-          
+
           // 如果伺服器返回了完整消息，直接調用handleNewMessage
           if (response.data.message) {
             console.log('伺服器返回了完整消息，觸發handleNewMessage');
@@ -793,7 +793,7 @@ export default function ChatRoom() {
         } else {
           // 發送失敗，更新狀態
           console.error('圖片消息發送失敗:', response.data.error);
-          setMessages(prev => prev.map(msg => 
+          setMessages(prev => prev.map(msg =>
             msg.id === tempId ? { ...msg, isSending: false, isFailed: true } : msg
           ));
           Alert.alert('錯誤', response.data.error || '發送失敗');
@@ -806,11 +806,11 @@ export default function ChatRoom() {
           code: error.code,
           stack: error.stack
         });
-        
-        setMessages(prev => prev.map(msg => 
+
+        setMessages(prev => prev.map(msg =>
           msg.id === tempId ? { ...msg, isSending: false, isFailed: true } : msg
         ));
-        
+
         // 顯示具體的錯誤信息
         let errorMessage = '無法發送檔案';
         if (error.message === '上傳超時 (30秒)') {
@@ -822,12 +822,12 @@ export default function ChatRoom() {
         } else {
           errorMessage = `無法發送檔案: ${error.message || '未知錯誤'}`;
         }
-        
+
         Alert.alert('錯誤', errorMessage);
       }
     } catch (error) {
       console.error('發送多媒體整體失敗:', error);
-      setMessages(prev => prev.map(msg => 
+      setMessages(prev => prev.map(msg =>
         msg.id?.startsWith('temp_') && msg.isSending ? { ...msg, isSending: false, isFailed: true } : msg
       ));
       Alert.alert('錯誤', `無法發送檔案: ${error.message || '未知錯誤'}`);
@@ -850,16 +850,16 @@ export default function ChatRoom() {
   // 當用戶輸入時觸發打字指示器
   const handleInputChange = (text) => {
     setMessage(text);
-    
+
     // 清除之前的計時器
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     // 發送打字開始
     if (text.length > 0) {
       handleTyping(true);
-      
+
       // 設置計時器，2秒後停止打字指示
       typingTimeoutRef.current = setTimeout(() => {
         handleTyping(false);
@@ -872,7 +872,7 @@ export default function ChatRoom() {
   const handleTakePhoto = async () => {
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (permissionResult.granted === false) {
         Alert.alert('需要相機權限', '請允許相機權限以使用拍照功能');
         return;
@@ -969,16 +969,16 @@ export default function ChatRoom() {
     const userIdStr = userRef.current?.id;
     const senderIdStr = item.senderId?.toString();
     const isOwn = userIdStr === senderIdStr;
-    
+
     // 根據狀態決定如何渲染
     const isSending = item.status === 'sending' || item.isSending;
     const isFailed = item.status === 'failed' || item.isFailed;
     const isTemp = item.isTemp;
-    
+
     // 獲取圖片URI
     let imageUri = item.imageUrl || item.content;
     let isLocalImage = false;
-    
+
     if (item.type === 'image') {
       // 如果是臨時消息或上傳中，使用本地URI
       if (isTemp || isSending) {
@@ -989,7 +989,7 @@ export default function ChatRoom() {
         imageUri = fixImageUrl(item.content);
       }
     }
-    
+
     return (
       <View style={[
         styles.messageContainer,
@@ -998,8 +998,8 @@ export default function ChatRoom() {
         {!isOwn && roomInfo?.type !== 'private' && (
           <View style={styles.messageHeader}>
             {item.avatar ? (
-              <Image 
-                source={{ uri: fixImageUrl(item.avatar) }} 
+              <Image
+                source={{ uri: fixImageUrl(item.avatar) }}
                 style={styles.senderAvatar}
               />
             ) : null}
@@ -1007,7 +1007,7 @@ export default function ChatRoom() {
             <Text style={styles.messageTime}>{item.time}</Text>
           </View>
         )}
-        
+
         <View style={[
           styles.messageBubble,
           isOwn ? styles.ownMessageBubble : styles.otherMessageBubble,
@@ -1016,7 +1016,7 @@ export default function ChatRoom() {
         ]}>
           {/* 消息內容 */}
           {item.type === 'image' ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
                 if (isSending || isFailed || !imageUri) {
@@ -1027,7 +1027,7 @@ export default function ChatRoom() {
               }}
               disabled={isSending || isFailed || !imageUri}
             >
-              <Image 
+              <Image
                 source={{ uri: imageUri }}
                 style={styles.messageImage}
                 resizeMode="cover"
@@ -1040,7 +1040,7 @@ export default function ChatRoom() {
                   }
                 }}
               />
-              
+
               {/* 上傳指示器 */}
               {isSending && (
                 <View style={styles.uploadingOverlay}>
@@ -1048,7 +1048,7 @@ export default function ChatRoom() {
                   <Text style={styles.uploadingText}>上傳中...</Text>
                 </View>
               )}
-              
+
               {/* 發送失敗指示器 */}
               {isFailed && (
                 <View style={styles.failedOverlay}>
@@ -1090,34 +1090,34 @@ export default function ChatRoom() {
         {isOwn && (
           <View style={styles.ownMessageFooter}>
             <Text style={styles.ownMessageTime}>{item.time}</Text>
-            
+
             {/* 已讀狀態 */}
             {item.read_count > 0 && !isSending && !isFailed && (
-              <MaterialCommunityIcons 
-                name={item.read_count > 1 ? "check-all" : "check"} 
-                size={14} 
-                color={item.read_count > 1 ? "#2ecc71" : "#95a5a6"} 
-                style={styles.readIcon} 
+              <MaterialCommunityIcons
+                name={item.read_count > 1 ? "check-all" : "check"}
+                size={14}
+                color={item.read_count > 1 ? "#2ecc71" : "#95a5a6"}
+                style={styles.readIcon}
               />
             )}
-            
+
             {/* 發送中狀態 */}
             {isSending && (
-              <MaterialCommunityIcons 
-                name="clock-outline" 
-                size={12} 
-                color="#a0785e" 
-                style={styles.sendingIcon} 
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={12}
+                color="#a0785e"
+                style={styles.sendingIcon}
               />
             )}
-            
+
             {/* 發送失敗狀態 */}
             {isFailed && (
-              <MaterialCommunityIcons 
-                name="alert-circle-outline" 
-                size={12} 
-                color="#e74c3c" 
-                style={styles.failedIcon} 
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={12}
+                color="#e74c3c"
+                style={styles.failedIcon}
               />
             )}
           </View>
@@ -1128,12 +1128,12 @@ export default function ChatRoom() {
 
   const renderTypingIndicator = () => {
     if (typingUsers.length === 0) return null;
-    
+
     return (
       <View style={styles.typingIndicator}>
         <ActivityIndicator size="small" color="#8b5e3c" />
         <Text style={styles.typingText}>
-          {typingUsers.length === 1 
+          {typingUsers.length === 1
             ? `${typingUsers[0].username} 正在輸入...`
             : `${typingUsers.length} 人正在輸入...`
           }
@@ -1155,15 +1155,15 @@ export default function ChatRoom() {
         </View>
       ) : (
         <View style={styles.headerIcon}>
-          <MaterialCommunityIcons 
-            name={roomInfo?.type === 'group' ? "account-group" : "account"} 
-            size={24} 
-            color="#5c4033" 
+          <MaterialCommunityIcons
+            name={roomInfo?.type === 'group' ? "account-group" : "account"}
+            size={24}
+            color="#5c4033"
           />
         </View>
       )}
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.headerInfo}
         onPress={() => {
           // 如果是群組，跳轉到群組詳情頁面
@@ -1177,7 +1177,7 @@ export default function ChatRoom() {
             {roomInfo?.name || '載入中...'}
           </Text>
         </View>
-        
+
         <View style={styles.headerSubtitleRow}>
           {roomInfo?.type === 'private' ? (
             <>
@@ -1186,7 +1186,7 @@ export default function ChatRoom() {
                   <Text style={styles.mbtiText}>{roomInfo.mbti}</Text>
                 </View>
               ) : null}
-              
+
               <View style={styles.statusContainer}>
                 {/* 在線狀態指示器 */}
                 <View style={[
@@ -1207,8 +1207,8 @@ export default function ChatRoom() {
       </TouchableOpacity>
 
       <View style={styles.headerActions}>
-        
-         {/* 
+
+        {/* 
              網路狀態指示器
 
         <View style={styles.connectionStatus}>
@@ -1222,27 +1222,13 @@ export default function ChatRoom() {
         </View> 
         
         */}
-      
+
         {/* 多媒體查看按鈕 */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.headerActionButton}
           onPress={handleViewMediaGallery}
         >
           <MaterialCommunityIcons name="image-multiple" size={24} color="#5c4033" />
-        </TouchableOpacity>
-        
-        {/* 如果是群組，添加群組管理按鈕 */}
-        {roomInfo?.type === 'group' && (
-          <TouchableOpacity 
-            style={styles.headerActionButton}
-            onPress={() => router.push(`/chat/group-details?roomId=${roomId}`)}
-          >
-            <MaterialCommunityIcons name="account-group" size={24} color="#5c4033" />
-          </TouchableOpacity>
-        )}
-        
-        <TouchableOpacity style={styles.headerActionButton}>
-          <MaterialCommunityIcons name="dots-vertical" size={24} color="#5c4033" />
         </TouchableOpacity>
       </View>
     </View>
@@ -1252,14 +1238,14 @@ export default function ChatRoom() {
     <View style={styles.errorContainer}>
       <MaterialCommunityIcons name="alert-circle-outline" size={60} color="#e74c3c" />
       <Text style={styles.errorText}>
-        {errorInfo?.type === 'invalid_room' ? '無效的聊天室' : 
-         errorInfo?.type === 'room_error' ? '聊天室載入失敗' : 
-         '消息載入失敗'}
+        {errorInfo?.type === 'invalid_room' ? '無效的聊天室' :
+          errorInfo?.type === 'room_error' ? '聊天室載入失敗' :
+            '消息載入失敗'}
       </Text>
       <Text style={styles.errorSubtext}>{errorInfo?.message}</Text>
-      
+
       <View style={styles.errorButtons}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.errorButton}
           onPress={() => {
             setErrorInfo(null);
@@ -1268,15 +1254,15 @@ export default function ChatRoom() {
         >
           <Text style={styles.errorButtonText}>重新載入</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.errorButton, styles.debugButton]}
           onPress={debugRoomAccess}
         >
           <Text style={styles.errorButtonText}>調試</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.errorButton, styles.backButtonStyle]}
           onPress={() => router.replace('/chat')}
         >
@@ -1311,12 +1297,12 @@ export default function ChatRoom() {
             <MaterialCommunityIcons name="camera" size={24} color="#5c4033" />
             <Text style={styles.attachmentText}>拍照</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.attachmentItem} onPress={handlePickImage}>
             <MaterialCommunityIcons name="image" size={24} color="#5c4033" />
             <Text style={styles.attachmentText}>相冊</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.attachmentItem} onPress={handlePickFile}>
             <MaterialCommunityIcons name="file-document" size={24} color="#5c4033" />
             <Text style={styles.attachmentText}>檔案</Text>
@@ -1340,15 +1326,15 @@ export default function ChatRoom() {
           activeOpacity={1}
           onPress={() => setSelectedImage(null)}
         />
-        
+
         <View style={styles.imagePreviewWrapper}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.imagePreviewClose}
             onPress={() => setSelectedImage(null)}
           >
             <MaterialCommunityIcons name="close" size={30} color="#fff" />
           </TouchableOpacity>
-          
+
           <ScrollView
             style={styles.imageScrollView}
             contentContainerStyle={styles.imageScrollViewContent}
@@ -1357,15 +1343,15 @@ export default function ChatRoom() {
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
           >
-            <Image 
-              source={{ uri: selectedImage }} 
+            <Image
+              source={{ uri: selectedImage }}
               style={styles.imagePreview}
               resizeMode="contain"
             />
           </ScrollView>
-          
+
           <View style={styles.imagePreviewActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.imageActionButton}
               onPress={() => {
                 Alert.alert('提示', '保存圖片功能將在後續版本添加');
@@ -1374,8 +1360,8 @@ export default function ChatRoom() {
               <MaterialCommunityIcons name="download" size={24} color="#fff" />
               <Text style={styles.imageActionText}>保存</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.imageActionButton}
               onPress={() => {
                 Alert.alert('提示', '分享圖片功能將在後續版本添加');
@@ -1468,13 +1454,13 @@ export default function ChatRoom() {
           )}
 
           <View style={styles.inputContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.attachmentButton}
               onPress={() => setShowAttachmentMenu(true)}
             >
               <MaterialCommunityIcons name="plus" size={24} color="#5c4033" />
             </TouchableOpacity>
-            
+
             <View style={styles.inputWrapper}>
               <TextInput
                 ref={messageInputRef}
@@ -1492,7 +1478,7 @@ export default function ChatRoom() {
                 onBlur={() => handleTyping(false)}
               />
 
-             {/* 
+              {/* 
 
               <TouchableOpacity
                 style={styles.emojiButton}
@@ -1523,17 +1509,17 @@ export default function ChatRoom() {
               {sending ? (
                 <ActivityIndicator size="small" color="#a0785e" />
               ) : (
-                <MaterialCommunityIcons 
-                  name="send" 
-                  size={22} 
-                  color={message.trim() ? "#5c4033" : "#a0785e"} 
+                <MaterialCommunityIcons
+                  name="send"
+                  size={22}
+                  color={message.trim() ? "#5c4033" : "#a0785e"}
                 />
               )}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      
+
       {renderAttachmentMenu()}
       {renderImagePreview()}
     </LinearGradient>

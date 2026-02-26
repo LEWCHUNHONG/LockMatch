@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
 import { chatAPI } from '../../utils/api';
+import { useFocusEffect } from '@react-navigation/native';
+
 
 export default function FriendsList() {
   const router = useRouter();
@@ -25,6 +27,9 @@ export default function FriendsList() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPending, setLoadingPending] = useState(false);
+
+
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Alert modal states
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -49,6 +54,35 @@ export default function FriendsList() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const socket = socketAPI.getSocket();
+    if (socket) {
+      socket.on('new-friend-request', () => {
+        fetchPendingCount(); // 收到新請求時刷新數量
+      });
+      return () => {
+        socket.off('new-friend-request');
+      };
+    }
+  }, []);
+
+
+  const fetchPendingCount = async () => {
+    try {
+      const response = await chatAPI.getPendingRequests();
+      if (response.data.success) {
+        setPendingCount(response.data.requests.length);
+      }
+    } catch (error) {
+      console.error('獲取未讀請求數量失敗:', error);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchPendingCount();
+    }, [])
+  );
+
   const loadFriends = async () => {
     try {
       setLoading(true);
@@ -58,16 +92,16 @@ export default function FriendsList() {
           // 調試日誌
           console.log('好友原始數據:', friend);
           console.log('好友頭像路徑:', friend.avatar);
-          
+
           // 修復頭像URL
           let fixedAvatar = friend.avatar;
-          
+
           // 如果後端沒有正確構建完整URL，我們在前端處理
           if (friend.avatar) {
             // 如果已經是完整URL，直接使用
             if (friend.avatar.startsWith('http')) {
               fixedAvatar = friend.avatar;
-            } 
+            }
             // 如果是相對路徑，添加基礎URL
             else if (friend.avatar.startsWith('/')) {
               fixedAvatar = `${BASE_URL}${friend.avatar}`;
@@ -77,12 +111,12 @@ export default function FriendsList() {
               fixedAvatar = `${BASE_URL}/${friend.avatar}`;
             }
           }
-          
+
           // 添加時間戳防止緩存
           if (fixedAvatar) {
             fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
           }
-          
+
           return {
             id: friend.id.toString(),
             name: friend.name || friend.username,
@@ -95,7 +129,7 @@ export default function FriendsList() {
             isFriend: true,
           };
         });
-        
+
         console.log('格式化後的好友數據:', formattedFriends);
         setFriends(formattedFriends);
       } else {
@@ -115,19 +149,19 @@ export default function FriendsList() {
       const response = await chatAPI.getPendingRequests();
       if (response.data.success) {
         console.log('待處理請求 API 返回:', response.data);
-        
+
         const formattedRequests = response.data.requests.map(request => {
           // 使用通用方式處理用戶數據，適應兩種可能的數據結構
           const userData = request.from_user || request;
-          
+
           // 修復頭像URL
           let fixedAvatar = userData.avatar;
-          
+
           if (userData.avatar) {
             // 如果已經是完整URL，直接使用
             if (userData.avatar.startsWith('http')) {
               fixedAvatar = userData.avatar;
-            } 
+            }
             // 如果是相對路徑，添加基礎URL
             else if (userData.avatar.startsWith('/')) {
               fixedAvatar = `${BASE_URL}${userData.avatar}`;
@@ -137,12 +171,12 @@ export default function FriendsList() {
               fixedAvatar = `${BASE_URL}/${userData.avatar}`;
             }
           }
-          
+
           // 添加時間戳防止緩存
           if (fixedAvatar) {
             fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
           }
-          
+
           return {
             id: request.id.toString(),
             userId: request.from_user_id ? request.from_user_id.toString() : userData.id?.toString() || 'unknown',
@@ -154,7 +188,7 @@ export default function FriendsList() {
             time: formatTime(request.created_at),
           };
         });
-        
+
         console.log('格式化後的待處理請求:', formattedRequests);
         setPendingRequests(formattedRequests);
       } else {
@@ -267,12 +301,12 @@ export default function FriendsList() {
     <TouchableOpacity style={styles.friendItem} onPress={() => handleFriendPress(item)}>
       <View style={styles.friendAvatar}>
         {item.avatar ? (
-          <Image 
-            source={{ 
+          <Image
+            source={{
               uri: item.avatar,
               cache: 'reload'
-            }} 
-            style={styles.avatarImage} 
+            }}
+            style={styles.avatarImage}
             onError={() => console.log('頭像加載失敗:', item.avatar)}
           />
         ) : (
@@ -311,12 +345,12 @@ export default function FriendsList() {
     <View style={styles.pendingItem}>
       <View style={styles.pendingAvatar}>
         {item.avatar ? (
-          <Image 
-            source={{ 
+          <Image
+            source={{
               uri: item.avatar,
               cache: 'reload'
-            }} 
-            style={styles.avatarImage} 
+            }}
+            style={styles.avatarImage}
             onError={() => console.log('頭像加載失敗:', item.avatar)}
           />
         ) : (
@@ -364,14 +398,32 @@ export default function FriendsList() {
 
             <Text style={styles.headerTitle}>好友列表</Text>
 
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.push('/chat/search')}
-            >
-              <MaterialCommunityIcons name="account-plus" size={26} color="#5c4033" />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              {/* 未讀請求按鈕 */}
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => router.push('/chat/friend-requests')}
+              >
+                <View>
+                  <MaterialCommunityIcons name="bell" size={26} color="#5c4033" />
+                  {pendingCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pendingCount}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
 
+              {/* 原本的添加好友按鈕 */}
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => router.push('/chat/search')}
+              >
+                <MaterialCommunityIcons name="account-plus" size={26} color="#5c4033" />
+              </TouchableOpacity>
+            </View>
           </View>
+
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
@@ -714,6 +766,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8b5e3c',
     marginBottom: 6,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fffaf5',
+  },
+  badgeText: {
+    color: '#fffaf5',
+    fontSize: 10,
+    fontWeight: '700',
   },
   friendFooter: {
     flexDirection: 'row',

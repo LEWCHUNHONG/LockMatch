@@ -1,228 +1,150 @@
 // app/chat/index.js
-import { useState, useEffect, useRef } from 'react';
-import { useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   TextInput,
-  Image,
   FlatList,
+  Image,
   RefreshControl,
-  Alert,
   ActivityIndicator,
-  Animated,
-  Easing,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { chatAPI } from '../../utils/api';
-import { API_URL, fixImageUrl } from '../../utils/api';
+import { useFocusEffect } from '@react-navigation/native';
+import { chatAPI, socketAPI, fixImageUrl } from '../../utils/api';
 
 export default function ChatRooms() {
   const router = useRouter();
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [rooms, setRooms] = useState([]);
-  const [filteredRooms, setFilteredRooms] = useState([]);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [isFabExpanded, setIsFabExpanded] = useState(false);
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const [activeTab, setActiveTab] = useState('all'); // all, private, group, unread
+  const [pendingFriendCount, setPendingFriendCount] = useState(0);
+  const [pendingGroupInviteCount, setPendingGroupInviteCount] = useState(0);
 
-  useEffect(() => {
-    loadUser();
-    loadChatRooms();
-  }, []);
+  // 計算總未讀數
+  const totalPending = pendingFriendCount + pendingGroupInviteCount;
 
+  // 獲取聊天室列表
+  const fetchRooms = async () => {
+    try {
+      const response = await chatAPI.getChatRooms();
+      if (response.data.success) {
+        setRooms(response.data.rooms || []);
+      }
+    } catch (error) {
+      console.error('獲取聊天室失敗:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // 獲取未讀好友請求
+  const fetchPendingFriendCount = async () => {
+    try {
+      const res = await chatAPI.getPendingRequests();
+      setPendingFriendCount(res.data.requests?.length || 0);
+    } catch (error) {
+      console.error('獲取好友請求失敗:', error);
+    }
+  };
+
+  // 獲取未讀群組邀請
+  const fetchPendingGroupInviteCount = async () => {
+    try {
+      const res = await chatAPI.getPendingGroupInvites();
+      setPendingGroupInviteCount(res.data.invites?.length || 0);
+    } catch (error) {
+      console.error('獲取群組邀請失敗:', error);
+    }
+  };
+
+  // 每次頁面聚焦時刷新數據
   useFocusEffect(
     useCallback(() => {
-      const checkRefresh = async () => {
-        const refresh = await AsyncStorage.getItem('refresh_chat_list');
-        if (refresh === 'true') {
-          setRefreshing(true);
-          await loadChatRooms();
-          await AsyncStorage.removeItem('refresh_chat_list');
-          setRefreshing(false);
-        }
-      };
-      checkRefresh();
+      fetchRooms();
+      fetchPendingFriendCount();
+      fetchPendingGroupInviteCount();
     }, [])
   );
 
-  // 過濾聊天室
+  // Socket 監聽新邀請（實時更新未讀數）
   useEffect(() => {
-    if (!rooms.length) return;
-    
-    let filtered = rooms.filter(room => {
-      // 根據標籤過濾
-      if (activeTab === 'private') return room.type === 'private';
-      if (activeTab === 'group') return room.type === 'group';
-      if (activeTab === 'unread') return room.unread_count > 0;
-      return true; // 'all' 或默認
+    const socket = socketAPI.getSocket();
+    if (socket) {
+      socket.on('new-friend-request', fetchPendingFriendCount);
+      socket.on('new-group-invite', fetchPendingGroupInviteCount);
+    }
+    return () => {
+      if (socket) {
+        socket.off('new-friend-request');
+        socket.off('new-group-invite');
+      }
+    };
+  }, []);
+
+  // 下拉刷新
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    Promise.all([fetchRooms(), fetchPendingFriendCount(), fetchPendingGroupInviteCount()]).finally(() => {
+      setRefreshing(false);
     });
-    
-    // 根據搜索關鍵詞過濾
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(room => 
-        room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (room.last_message && room.last_message.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-    
-    setFilteredRooms(filtered);
-  }, [rooms, activeTab, searchQuery]);
+  }, []);
 
-  const loadUser = async () => {
-    try {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error('載入使用者失敗:', error);
-    }
-  };
+  // 根據搜尋詞和標籤過濾聊天室
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = room.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? true;
+    if (activeTab === 'all') return matchesSearch;
+    if (activeTab === 'private') return room.type === 'private' && matchesSearch;
+    if (activeTab === 'group') return room.type === 'group' && matchesSearch;
+    if (activeTab === 'unread') return (room.unread_count > 0) && matchesSearch;
+    return matchesSearch;
+  });
 
-  const loadChatRooms = async () => {
-    try {
-      setLoading(true);
-      const response = await chatAPI.getChatRooms();
-      
-      if (response.data.success) {
-        // 格式化聊天室數據
-        const formattedRooms = response.data.rooms.map(room => {
-          // 格式化最後消息時間
-          let lastTime = '還沒有訊息';
-          if (room.last_message_time || room.last_activity) {
-            const timestamp = room.last_message_time || room.last_activity;
-            lastTime = formatTime(timestamp);
-            console.log('聊天室列表原始資料：', response.data.rooms);
-          }
-          
-          // 確保有正確的顯示名稱
-          let displayName = room.name || '未知聊天室';
-          
-          return {
-            id: room.id.toString(),
-            name: displayName,
-            type: room.type || (room.members_count > 2 ? 'group' : 'private'),
-            members_count: room.members_count|| 1,
-            // 修復：確保最後消息不顯示 undefined
-            last_message: room.last_message && room.last_message !== 'undefined' 
-              ? (room.last_message === '還沒有訊息' ? room.last_message : 
-                 room.last_message_type === 'image' ? '[圖片]' :
-                 room.last_message_type === 'video' ? '[影片]' :
-                 room.last_message_type === 'audio' ? '[音頻]' :
-                 room.last_message_type === 'file' ? '[檔案]' :
-                 room.last_message)
-              : '還沒有訊息',
-            last_time: lastTime,
-            unread_count: room.unread_count || 0,
-            avatar: room.avatar,
-            is_online: room.is_online || false,
-            description: room.description,
-            last_message_type: room.last_message_type || 'text',
-            mbti: room.mbti || null, // 添加MBTI
-          };
-        });
-        
-        setRooms(formattedRooms);
-      } else {
-        Alert.alert('錯誤', response.data.error || '無法載入聊天室列表');
-      }
-    } catch (error) {
-      console.error('載入聊天室失敗:', error);
-      Alert.alert('錯誤', '無法載入聊天室列表，請檢查網路連線');
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  };
-
+  // 格式化時間
   const formatTime = (timestamp) => {
-    if (!timestamp) return '還沒有訊息';
-    
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-    
+
     if (diffMins < 1) return '剛剛';
     if (diffMins < 60) return `${diffMins}分鐘前`;
     if (diffHours < 24) return `${diffHours}小時前`;
     if (diffDays === 1) return '昨天';
     if (diffDays < 7) return `${diffDays}天前`;
-    
-    return date.toLocaleDateString('zh-TW', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' });
   };
 
-const onRefresh = async () => {
-  setRefreshing(true);
-  // 加這幾行：檢查 flag + 清空舊 state
-  const refresh = await AsyncStorage.getItem('refresh_chat_list');
-  if (refresh === 'true') {
-    await AsyncStorage.removeItem('refresh_chat_list');
-  }
-  setRooms([]);  // 先清空 UI，避免顯示舊資料
-  setFilteredRooms([]);  // 同步清空過濾結果
-  await loadChatRooms();
-  setRefreshing(false);
-};
-
-  const handleRoomPress = async (room) => {
-    // 確保 room.id 是有效的數字
-    if (!room.id || room.id === 'image-preview' || isNaN(parseInt(room.id))) {
-      console.error('無效的 roomId:', room.id);
-      Alert.alert('錯誤', '無法進入此聊天室');
-      return;
-    }
-    
-    // 使用正確的路徑格式
-    console.log('進入聊天室:', room.id);
-    router.push(`/chat/${room.id}`);
-  };
-
+  // 渲染聊天室項目
   const renderRoomItem = ({ item }) => (
     <TouchableOpacity
       style={styles.roomItem}
-      onPress={() => handleRoomPress(item)}
-      activeOpacity={0.7}
+      onPress={() => router.push(`/chat/${item.id}`)}
     >
       <View style={styles.roomAvatar}>
-        {item.type === 'private' && item.avatar ? (
-          <Image 
-            source={{ uri: fixImageUrl(item.avatar) }} 
-            style={styles.avatarImage}
-          />
+        {item.avatar ? (
+          <Image source={{ uri: fixImageUrl(item.avatar) }} style={styles.avatarImage} />
         ) : (
-          <View style={[
-            styles.roomIcon,
-            item.type === 'group' && styles.groupIcon,
-          ]}>
-            {item.type === 'group' ? (
-              <MaterialCommunityIcons name="account-group" size={28} color="#5c4033" />
-            ) : (
-              <MaterialCommunityIcons name="account" size={28} color="#5c4033" />
-            )}
+          <View style={styles.defaultAvatar}>
+            <MaterialCommunityIcons
+              name={item.type === 'group' ? 'account-group' : 'account'}
+              size={24}
+              color="#5c4033"
+            />
           </View>
         )}
-        {item.is_online && item.type === 'private' && (
+        {item.is_online && (
           <View style={styles.onlineIndicator} />
         )}
       </View>
@@ -230,145 +152,74 @@ const onRefresh = async () => {
       <View style={styles.roomInfo}>
         <View style={styles.roomHeader}>
           <Text style={styles.roomName} numberOfLines={1}>
-            {item.name}
+            {item.name || '未知聊天室'}
           </Text>
-          <Text style={styles.roomTime}>{item.last_time}</Text>
+          <Text style={styles.roomTime}>{formatTime(item.last_message_time)}</Text>
         </View>
-        
+
         <View style={styles.roomFooter}>
-          <Text style={styles.roomMessage} numberOfLines={1}>
-            {item.last_message}
+          <Text style={styles.lastMessage} numberOfLines={1}>
+            {item.last_message || '暫無訊息'}
           </Text>
-          
           {item.unread_count > 0 && (
             <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>
-                {item.unread_count > 99 ? '99+' : item.unread_count}
-              </Text>
+              <Text style={styles.unreadText}>{item.unread_count}</Text>
             </View>
           )}
         </View>
-
-        {/* 添加狀態行 */}
-        {item.type === 'private' && (
-          <View style={styles.statusRow}>
-            {item.mbti && (
-              <View style={styles.mbtiContainer}>
-                <Text style={styles.mbtiText}>{item.mbti}</Text>
-              </View>
-            )}
-            
-            <View style={styles.statusContainer}>
-              {item.is_online ? (
-                <>
-                  <View style={styles.onlineDotSmall} />
-                  <Text style={styles.statusText}>在線</Text>
-                </>
-              ) : (
-                <Text style={styles.offlineText}>離線</Text>
-              )}
-            </View>
-          </View>
-        )}
-        
-        {item.type === 'group' && (
-          <View style={styles.memberCount}>
-            <MaterialCommunityIcons name="account-group" size={12} color="#8b5e3c" />
-          </View>
-        )}
       </View>
     </TouchableOpacity>
   );
 
-  const renderEmptyState = () => {
-    if (initialLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#f4c7ab" />
-          <Text style={styles.loadingText}>載入聊天室中...</Text>
-        </View>
-      );
-    }
-    
-    if (searchQuery.trim() && filteredRooms.length === 0) {
-      return (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="magnify" size={80} color="#f4c7ab" />
-          <Text style={styles.emptyText}>找不到相關聊天室</Text>
-          <Text style={styles.emptySubtext}>試試其他關鍵字或創建新聊天室</Text>
-        </View>
-      );
-    }
-    
-    return (
-      <View style={styles.emptyContainer}>
-        <MaterialCommunityIcons name="message-outline" size={80} color="#f4c7ab" />
-        <Text style={styles.emptyText}>還沒有聊天室</Text>
-        <Text style={styles.emptySubtext}>開始新的對話吧！</Text>
-        <TouchableOpacity 
-          style={styles.emptyButton}
-          onPress={() => router.push('/chat/search')}
-        >
-          <Text style={styles.emptyButtonText}>尋找好友</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  // 展開/收合動畫
-  const toggleFab = () => {
-    const toValue = isFabExpanded ? 0 : 1;
-    Animated.timing(animatedValue, {
-      toValue,
-      duration: 280,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-    setIsFabExpanded(!isFabExpanded);
-  };
-
-  // 子按鈕的位移與透明度
-  const translateY1 = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -30],   // 第一個子按鈕向上移動距離
-  });
-  const translateY2 = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -60],  // 第二個子按鈕更上面
-  });
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 0.3, 1],
-    outputRange: [0, 0.3, 1],
-  });
-  const rotate = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '135deg'],  // + 變成 ×
-  });
+  // 渲染空狀態
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons name="chat-outline" size={80} color="#f4c7ab" />
+      <Text style={styles.emptyText}>還沒有聊天室</Text>
+      <Text style={styles.emptySubtext}>開始新的對話吧！</Text>
+      <TouchableOpacity
+        style={styles.emptyButton}
+        onPress={() => router.push('/chat/search')}
+      >
+        <Text style={styles.emptyButtonText}>尋找好友</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <LinearGradient
-      colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
         {/* 頂部欄 */}
         <View style={styles.header}>
-          <TouchableOpacity 
-          onPress={() => router.push('/dashboard')}
-           style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
-          
+
           <Text style={styles.headerTitle}>聊天室</Text>
-          
-          <View style={styles.headerIcons}>
-            <TouchableOpacity 
+
+          <View style={styles.headerRight}>
+            {/* 創建群組按鈕 */}
+            <TouchableOpacity
               style={styles.iconButton}
-              onPress={() => router.push('/chat/friends')}
+              onPress={() => router.push('/chat/create-group')}
             >
-              <MaterialCommunityIcons name="account-group" size={26} color="#5c4033" />
+              <MaterialCommunityIcons name="plus" size={26} color="#5c4033" />
             </TouchableOpacity>
-            
+
+            {/* 邀請鈴鐺（統一邀請頁面） */}
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => router.push('/chat/invites')}
+            >
+              <View>
+                <MaterialCommunityIcons name="bell" size={26} color="#5c4033" />
+                {totalPending > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{totalPending}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -381,39 +232,23 @@ const onRefresh = async () => {
             placeholderTextColor="#a0785e"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            returnKeyType="search"
-            onSubmitEditing={() => {}}
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#a0785e" />
-            </TouchableOpacity>
-          )}
         </View>
 
-        {/* 分類標籤 */}
+        {/* 標籤頁 */}
         <View style={styles.tabContainer}>
           {[
-            { id: 'all', label: '全部', icon: 'message-text' },
-            { id: 'private', label: '私人', icon: 'account' },
-            { id: 'group', label: '群組', icon: 'account-group' },
-            { id: 'unread', label: '未讀', icon: 'bell' },
+            { id: 'all', label: '全部' },
+            { id: 'private', label: '私人' },
+            { id: 'group', label: '群組' },
+            { id: 'unread', label: '未讀' },
           ].map(tab => (
             <TouchableOpacity
               key={tab.id}
               style={[styles.tab, activeTab === tab.id && styles.activeTab]}
               onPress={() => setActiveTab(tab.id)}
-              activeOpacity={0.7}
             >
-              <MaterialCommunityIcons 
-                name={tab.icon} 
-                size={20} 
-                color={activeTab === tab.id ? '#5c4033' : '#8b5e3c'} 
-              />
-              <Text style={[
-                styles.tabText,
-                activeTab === tab.id && styles.activeTabText
-              ]}>
+              <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -421,100 +256,28 @@ const onRefresh = async () => {
         </View>
 
         {/* 聊天室列表 */}
-        <FlatList
-          data={filteredRooms}
-          renderItem={renderRoomItem}
-          keyExtractor={item => item.id}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh} 
-              colors={['#f4c7ab']} 
-              tintColor="#f4c7ab" 
-            />
-          }
-          ListEmptyComponent={renderEmptyState}
-          contentContainerStyle={[
-            styles.listContainer,
-            (filteredRooms.length === 0 || initialLoading) && styles.emptyListContainer
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
-
-        {/* 展開式 FAB 區域 */}
-        {isFabExpanded && (
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={toggleFab}  // 點擊背景收合
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#f4c7ab" />
+            <Text style={styles.loadingText}>載入中...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredRooms}
+            renderItem={renderRoomItem}
+            keyExtractor={item => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#f4c7ab']}
+                tintColor="#f4c7ab"
+              />
+            }
+            ListEmptyComponent={renderEmpty}
           />
         )}
-
-        {/* 子按鈕 1：找人聊天 */}
-        <Animated.View
-          style={[
-            styles.fabAction,
-            {
-              transform: [{ translateY: translateY1 }],
-              opacity,
-              right: 20,
-              bottom: 30 + 65,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.miniFab}
-            onPress={() => {
-              router.push('/chat/search');
-              toggleFab(); // 點完自動收合
-            }}
-          >
-            <MaterialCommunityIcons name="account-search" size={24} color="#fffaf5" />
-          </TouchableOpacity>
-          <Text style={styles.fabLabel}>搜尋新朋友</Text>
-        </Animated.View>
-
-        {/* 子按鈕 2：創建群組 */}
-        <Animated.View
-          style={[
-            styles.fabAction,
-            {
-              transform: [{ translateY: translateY2 }],
-              opacity,
-              right: 20,
-              bottom: 30 + 120,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.miniFab}
-            onPress={() => {
-              router.push('/chat/create-group');
-              toggleFab();
-            }}
-          >
-            <MaterialCommunityIcons name="account-multiple-plus" size={24} color="#fffaf5" />
-          </TouchableOpacity>
-          <Text style={styles.fabLabel}>創建群組</Text>
-        </Animated.View>
-
-        {/* 主按鈕 */}
-        <TouchableOpacity
-          style={[
-            styles.newChatButton,
-            isFabExpanded && { backgroundColor: '#e74c3c' }, // 展開時變紅色更像關閉
-          ]}
-          onPress={toggleFab}
-          activeOpacity={0.8}
-        >
-          <Animated.View style={{ transform: [{ rotate }] }}>
-            <MaterialCommunityIcons
-              name="plus"
-              size={28}
-              color="#fffaf5"
-            />
-          </Animated.View>
-        </TouchableOpacity>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -544,14 +307,35 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#5c4033',
   },
-  headerIcons: {
+  headerRight: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 8,
   },
   iconButton: {
     padding: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(244, 199, 171, 0.25)',
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fffaf5',
+  },
+  badgeText: {
+    color: '#fffaf5',
+    fontSize: 10,
+    fontWeight: '700',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -564,9 +348,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#f4c7ab',
   },
-  searchIcon: {
-    marginRight: 10,
-  },
+  searchIcon: { marginRight: 10 },
   searchInput: {
     flex: 1,
     paddingVertical: 14,
@@ -576,11 +358,10 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
@@ -592,7 +373,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4c7ab',
   },
   tabText: {
-    marginLeft: 6,
     fontSize: 15,
     fontWeight: '600',
     color: '#8b5e3c',
@@ -602,11 +382,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  emptyListContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingBottom: 20,
   },
   roomItem: {
     flexDirection: 'row',
@@ -623,19 +399,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(244, 199, 171, 0.3)',
   },
   roomAvatar: {
-    marginRight: 16,
     position: 'relative',
-  },
-  roomIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  groupIcon: {
-    backgroundColor: '#a8d1e7',
+    marginRight: 16,
   },
   avatarImage: {
     width: 56,
@@ -643,6 +408,14 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 2,
     borderColor: '#f4c7ab',
+  },
+  defaultAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(244, 199, 171, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   onlineIndicator: {
     position: 'absolute',
@@ -663,117 +436,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   roomName: {
     fontSize: 17,
     fontWeight: '700',
     color: '#5c4033',
     flex: 1,
-    marginRight: 8,
   },
   roomTime: {
     fontSize: 13,
     color: '#a0785e',
+    marginLeft: 8,
   },
   roomFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  roomMessage: {
-    flex: 1,
-    fontSize: 15,
+  lastMessage: {
+    fontSize: 14,
     color: '#8b5e3c',
+    flex: 1,
     opacity: 0.8,
-    marginRight: 8,
   },
   unreadBadge: {
     backgroundColor: '#e74c3c',
     borderRadius: 12,
-    minWidth: 24,
-    height: 24,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    marginLeft: 8,
+    paddingHorizontal: 4,
   },
   unreadText: {
     color: '#fffaf5',
     fontSize: 12,
     fontWeight: '700',
   },
-  // 添加狀態行樣式
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
-  },
-  mbtiContainer: {
-    backgroundColor: 'rgba(92, 64, 51, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  mbtiText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#5c4033',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  onlineDotSmall: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#2ecc71',
-    marginRight: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#2ecc71',
-  },
-  offlineText: {
-    fontSize: 12,
-    color: '#95a5a6',
-  },
-  memberCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  memberText: {
-    fontSize: 13,
-    color: '#8b5e3c',
-    marginLeft: 4,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
-    paddingHorizontal: 20,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
     color: '#5c4033',
-    marginTop: 20,
-    textAlign: 'center',
+    marginTop: 16,
   },
   emptySubtext: {
     fontSize: 16,
     color: '#8b5e3c',
     marginTop: 8,
-    textAlign: 'center',
+    marginBottom: 24,
   },
   emptyButton: {
     backgroundColor: '#f4c7ab',
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    marginTop: 20,
   },
   emptyButtonText: {
     fontSize: 16,
@@ -781,60 +504,13 @@ const styles = StyleSheet.create({
     color: '#5c4033',
   },
   loadingContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
   },
   loadingText: {
     fontSize: 16,
     color: '#8b5e3c',
     marginTop: 12,
-  },
-  newChatButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: '#fffaf5',
-  },
-  miniFab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  fabAction: {
-    position: 'absolute',
-    alignItems: 'center',
-    flexDirection: 'row-reverse',
-    gap: 12,
-  },
-  fabLabel: {
-    color: '#5c4033',
-    fontSize: 14,
-    fontWeight: '600',
-    backgroundColor: 'rgba(255,250,245,0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    overflow: 'hidden',
   },
 });

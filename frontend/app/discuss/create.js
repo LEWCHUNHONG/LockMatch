@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Vibration,
   StatusBar,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,16 +25,17 @@ import Modal from 'react-native-modal';
 
 export default function CreatePost() {
   const [content, setContent] = useState('');
-  const [images, setImages] = useState([]); // 修改为数组，支持多张 { uri, originalUri, isEditing }
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Modal state
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageTitle, setMessageTitle] = useState('');
   const [messageText, setMessageText] = useState('');
+  const [modalType, setModalType] = useState('success'); // 'success', 'error'
 
   const router = useRouter();
-  const MAX_IMAGES = 10; // 最大图片数
+  const MAX_IMAGES = 10;
 
   // 选择多张图片
   const pickImages = async () => {
@@ -43,6 +43,7 @@ export default function CreatePost() {
     if (status !== 'granted') {
       setMessageTitle('需要權限');
       setMessageText('請允許存取相簿');
+      setModalType('error');
       setShowMessageModal(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       return;
@@ -96,16 +97,6 @@ export default function CreatePost() {
     }
   };
 
-  // 恢复特定图片的原始版本
-  const useOriginal = (index) => {
-    const img = images[index];
-    if (img.originalUri) {
-      const newImages = [...images];
-      newImages[index] = { ...newImages[index], uri: img.originalUri, isEditing: false };
-      setImages(newImages);
-    }
-  };
-
   // 删除特定图片
   const deleteImage = (index) => {
     const newImages = images.filter((_, i) => i !== index);
@@ -117,6 +108,7 @@ export default function CreatePost() {
     if (!content.trim() && images.length === 0) {
       setMessageTitle('提示');
       setMessageText('至少要寫點文字或選張圖片哦～');
+      setModalType('error');
       setShowMessageModal(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       return;
@@ -156,57 +148,94 @@ export default function CreatePost() {
 
       const token = await AsyncStorage.getItem('token');
 
-      const upload = async () => {
-        const response = await fetch(`${api.defaults.baseURL}/api/posts`, {
-          method: 'POST',
-          headers: {
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-          body: formData,
-        });
+      console.log('提交發佈貼文，內容:', content.trim());
+      console.log('圖片數量:', images.length);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || `伺服器回應 ${response.status}`);
-        }
+      const response = await fetch(`${api.defaults.baseURL}/api/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: formData,
+      });
 
-        return await response.json();
-      };
+      console.log('發佈回應狀態:', response.status);
 
-      let res;
+      const responseText = await response.text();
+      console.log('發佈回應內容:', responseText);
+
+      let data;
       try {
-        res = await upload();
-      } catch (err) {
-        if (
-          err.message.includes('Network request failed') ||
-          err.message.includes('Network') ||
-          err.message.includes('failed to fetch')
-        ) {
-          console.log('第一次上傳失敗，正在自動重試...');
-          res = await upload();
-        } else {
-          throw err;
-        }
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('解析 JSON 失敗:', e);
+        throw new Error('伺服器回應格式錯誤');
       }
 
-      if (res.success) {
+      if (response.ok && data.success) {
         setMessageTitle('成功');
         setMessageText('貼文已發佈！');
+        setModalType('success');
         setShowMessageModal(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         // 重置表单
         setContent('');
         setImages([]);
       } else {
-        throw new Error(res.error || '發文失敗');
+        // ❌ 處理 API 返回的失敗情況
+        let errorMsg = '發文失敗，請稍後再試';
+        let errorTitle = '發文失敗';
+
+        if (data.error) {
+          errorMsg = data.error;
+        }
+        if (data.message) {
+          errorMsg = data.message;
+        }
+
+        // 處理內容審核失敗
+        if (response.status === 403 || (data.error && data.error.includes('審核'))) {
+          errorTitle = '內容不恰當';
+          errorMsg = data.message || '您的言論包含不當內容，無法發佈';
+          if (data.details?.reasons) {
+            errorMsg += '\n\n原因: ' + data.details.reasons.join(', ');
+          }
+          if (data.details?.suggestion) {
+            errorMsg += '\n\n建議: ' + data.details.suggestion;
+          }
+        }
+
+        setMessageTitle(errorTitle);
+        setMessageText(errorMsg);
+        setModalType('error');
+        setShowMessageModal(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (err) {
-      console.error('發文失敗完整錯誤:', err);
-      setMessageTitle('發文失敗');
-      setMessageText(err.message || '請稍後再試');
+      console.error('發文失敗:', err);
+
+      // 處理錯誤
+      let errorTitle = '發文失敗';
+      let errorMessage = err.message || '請稍後再試';
+
+      // 特殊處理網路錯誤
+      if (err.message.includes('Network request failed') ||
+        err.message.includes('Network') ||
+        err.message.includes('fetch')) {
+        errorMessage = '網路連線不穩定，請檢查網路後再試';
+      }
+
+      // 特殊處理伺服器錯誤
+      if (err.message.includes('伺服器') || err.message.includes('500')) {
+        errorMessage = '伺服器暫時出現問題，請稍後再試';
+      }
+
+      setMessageTitle(errorTitle);
+      setMessageText(errorMessage);
+      setModalType('error');
       setShowMessageModal(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
     }
@@ -258,8 +287,6 @@ export default function CreatePost() {
               </ScrollView>
             )}
 
-
-
             {images.length < MAX_IMAGES && (
               <TouchableOpacity style={styles.imageBtn} onPress={pickImages}>
                 <MaterialCommunityIcons name="image-plus" size={26} color="#f4c7ab" />
@@ -285,24 +312,40 @@ export default function CreatePost() {
         </View>
       </LinearGradient>
 
+      {/* 簡單彈窗 */}
       <Modal
         isVisible={showMessageModal}
         onBackdropPress={() => setShowMessageModal(false)}
         animationIn="fadeIn"
         animationOut="fadeOut"
       >
-        <View style={modalStyles.container}>
+        <View style={[
+          modalStyles.container,
+          modalType === 'success' ? modalStyles.successContainer : modalStyles.errorContainer
+        ]}>
+          <View style={modalStyles.iconContainer}>
+            {modalType === 'success' ? (
+              <MaterialCommunityIcons name="check-circle" size={50} color="#2e7d32" />
+            ) : (
+              <MaterialCommunityIcons name="alert-circle" size={50} color="#d32f2f" />
+            )}
+          </View>
           <Text style={modalStyles.title}>{messageTitle}</Text>
           <Text style={modalStyles.message}>{messageText}</Text>
           <View style={modalStyles.buttonRow}>
             <TouchableOpacity
-              style={[modalStyles.button, modalStyles.confirmButton]}
+              style={[
+                modalStyles.button,
+                modalType === 'success' ? modalStyles.successButton : modalStyles.errorButton
+              ]}
               onPress={() => {
                 setShowMessageModal(false);
-				router.replace('/discuss');
+                if (modalType === 'success') {
+                  router.replace('/discuss');
+                }
               }}
             >
-              <Text style={modalStyles.confirmText}>確認</Text>
+              <Text style={modalStyles.buttonText}>確認</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -371,19 +414,21 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
 
-  imagePreviewContainer: {
-    position: 'relative',
+  imagePreviewScroll: {
+    flexDirection: 'row',
     marginTop: 16,
     marginBottom: 12,
   },
-
+  imagePreviewContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   preview: {
-    width: '100%',
-    height: 340,
+    width: 200,
+    height: 200,
     borderRadius: 16,
     backgroundColor: '#f8f1eb',
   },
-
   editButton: {
     position: 'absolute',
     top: 16,
@@ -402,48 +447,23 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-
-  imageControlContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-
-  replaceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4c7ab',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-    gap: 10,
-    shadowColor: '#c47c5e',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-
-  replaceButtonText: {
-    color: '#5c4033',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  secondaryButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+  deleteButton: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: 'rgba(255, 0, 0, 0.65)',
     borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#f4c7ab',
-    backgroundColor: 'transparent',
-  },
-
-  secondaryButtonText: {
-    color: '#8b5e3c',
-    fontSize: 15,
-    fontWeight: '500',
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 
   imageBtn: {
@@ -490,39 +510,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  imagePreviewScroll: {
-    flexDirection: 'row',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  imagePreviewContainer: {
-    position: 'relative',
-    marginRight: 12, // 图片间距
-  },
-  preview: {
-    width: 200, // 缩小预览宽度，便于横向滚动
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: '#f8f1eb',
-  },
-  deleteButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: 'rgba(255, 0, 0, 0.65)',
-    borderRadius: 24,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
 });
 
 const modalStyles = StyleSheet.create({
@@ -537,6 +524,17 @@ const modalStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 20,
+  },
+  successContainer: {
+    borderTopWidth: 6,
+    borderTopColor: '#2e7d32',
+  },
+  errorContainer: {
+    borderTopWidth: 6,
+    borderTopColor: '#d32f2f',
+  },
+  iconContainer: {
+    marginBottom: 16,
   },
   title: {
     fontSize: 22,
@@ -563,12 +561,15 @@ const modalStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  confirmButton: {
-    backgroundColor: '#f4c7ab',
+  successButton: {
+    backgroundColor: '#4caf50',
   },
-  confirmText: {
+  errorButton: {
+    backgroundColor: '#f44336',
+  },
+  buttonText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#5c4033',
+    color: '#fff',
   },
 });

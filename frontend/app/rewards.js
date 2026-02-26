@@ -24,21 +24,21 @@ const { width } = Dimensions.get('window');
 
 export default function RewardsScreen() {
   const [activeTab, setActiveTab] = useState('daily');
-  const [userPoints, setUserPoints] = useState({ 
-    points: 0, 
-    level: '新手會員', 
-    completed_tasks_count: 0 
+  const [userPoints, setUserPoints] = useState({
+    points: 0,
+    level: '新手會員',
+    completed_tasks_count: 0
   });
-  const [tasks, setTasks] = useState({ 
-    achievement: [], 
+  const [tasks, setTasks] = useState({
+    achievement: [],
     daily: []
   });
   const [shopItems, setShopItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkinStatus, setCheckinStatus] = useState({ 
-    checked_in_today: false, 
-    consecutive_week_days: 0 
+  const [checkinStatus, setCheckinStatus] = useState({
+    checked_in_today: false,
+    consecutive_week_days: 0
   });
   const [processingTask, setProcessingTask] = useState(null);
   const [showCheckinSuccessModal, setShowCheckinSuccessModal] = useState(false);
@@ -49,7 +49,7 @@ export default function RewardsScreen() {
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // 平行加載所有資料
       const [pointsRes, tasksRes, checkinRes] = await Promise.all([
         api.get('/api/user-points').catch(() => ({ data: { success: false } })),
@@ -87,6 +87,32 @@ export default function RewardsScreen() {
     }
   }, [activeTab]);
 
+  const handleRedeem = async (item) => {
+    // 前端積分檢查（可選）
+    if (userPoints.points < item.points_required) {
+      Alert.alert('積分不足', '你嘅積分唔夠兌換呢個商品');
+      return;
+    }
+
+    try {
+      const response = await api.post('/api/redeem-item', { itemId: item.id });
+      if (response.data.success) {
+        Alert.alert(
+          '兌換成功！',
+          `你已成功兌換 ${response.data.itemName || item.name}\n優惠碼: ${response.data.couponCode || ''}`,
+          [
+            { text: '查看我的優惠券', onPress: () => router.push('/coupons') },
+            { text: '繼續瀏覽', style: 'cancel' }
+          ]
+        );
+        // 重新載入用戶積分和商店列表
+        loadAllData();
+      }
+    } catch (error) {
+      Alert.alert('兌換失敗', error.response?.data?.error || '請稍後再試');
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadAllData();
@@ -104,7 +130,7 @@ export default function RewardsScreen() {
       Alert.alert('提示', '今日已簽到,明天再來吧!');
       return;
     }
-    
+
     try {
       const response = await api.post('/api/daily-checkin');
       if (response.data.success) {
@@ -131,15 +157,15 @@ export default function RewardsScreen() {
 
   const handleTaskAction = async (task) => {
     if (processingTask === task.id) return;
-    
+
     setProcessingTask(task.id);
-    
+
     try {
       if (task.user_status === 'completed') {
         Alert.alert('提示', '此任務已完成');
         return;
       }
-      
+
       if (!task.user_status || task.user_status === 'not_started') {
         // 開始任務
         const response = await api.post('/api/start-task', { taskId: task.id });
@@ -217,10 +243,10 @@ export default function RewardsScreen() {
       <View key={task.id || index} style={styles.taskCard}>
         <View style={styles.taskHeader}>
           <View style={[styles.taskIcon, { backgroundColor: getTaskColor(task.task_type) }]}>
-            <MaterialCommunityIcons 
-              name={getTaskIcon(task.task_type)} 
-              size={24} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name={getTaskIcon(task.task_type)}
+              size={24}
+              color="#fff"
             />
           </View>
           <View style={styles.taskInfo}>
@@ -232,8 +258,8 @@ export default function RewardsScreen() {
             </View>
           </View>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[buttonConfig.style, isProcessing && styles.taskButtonDisabled]}
           onPress={() => handleTaskAction(task)}
           disabled={buttonConfig.disabled || isProcessing}
@@ -247,15 +273,15 @@ export default function RewardsScreen() {
             </>
           )}
         </TouchableOpacity>
-        
+
         {task.user_status === 'in_progress' && task.progress !== undefined && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
+                  styles.progressFill,
                   { width: `${Math.min(100, task.progress)}%` }
-                ]} 
+                ]}
               />
             </View>
             <Text style={styles.progressText}>
@@ -268,10 +294,16 @@ export default function RewardsScreen() {
   };
 
   const renderShopItem = (item, index) => (
-    <View key={item.id || index} style={styles.shopCard}>
+    <TouchableOpacity
+      key={item.id || index}
+      style={styles.shopCard}
+      onPress={() => handleRedeem(item)}
+      activeOpacity={0.7}
+    >
+      {/* 原有內容不變 */}
       <View style={styles.shopImageContainer}>
         {item.image_url ? (
-          <Image 
+          <Image
             source={{ uri: `${api.defaults.baseURL}${item.image_url}` }}
             style={styles.shopImage}
             resizeMode="cover"
@@ -282,13 +314,13 @@ export default function RewardsScreen() {
           </View>
         )}
       </View>
-      
+
       <View style={styles.shopInfo}>
         <Text style={styles.shopName}>{item.name}</Text>
         <Text style={styles.shopDesc} numberOfLines={2}>
           {item.description}
         </Text>
-        
+
         <View style={styles.shopFooter}>
           <View style={styles.pointsContainer}>
             <MaterialCommunityIcons name="star-circle" size={18} color="#f4c7ab" />
@@ -296,19 +328,21 @@ export default function RewardsScreen() {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const getTaskColor = (type) => {
-    switch(type) {
+    switch (type) {
       case 'daily': return '#9b59b6';
       case 'achievement': return '#2ecc71';
       default: return '#f4c7ab';
     }
   };
 
+
+
   const getTaskIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'daily': return 'calendar-today';
       case 'achievement': return 'trophy';
       default: return 'checkbox-marked-circle';
@@ -316,7 +350,7 @@ export default function RewardsScreen() {
   };
 
   const getCategoryColor = (category) => {
-    switch(category) {
+    switch (category) {
       case 'coupon': return '#e74c3c';
       case 'virtual': return '#3498db';
       case 'physical': return '#2ecc71';
@@ -335,7 +369,7 @@ export default function RewardsScreen() {
     }
 
     return (
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl
@@ -424,7 +458,7 @@ export default function RewardsScreen() {
     <SafeAreaView style={styles.safeArea}>
       {/* 頂部欄 */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
@@ -450,7 +484,7 @@ export default function RewardsScreen() {
               <Text style={styles.levelText}>{userPoints.level}</Text>
             </View>
           </View>
-          
+
           <View style={styles.pointsStats}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{userPoints.completed_tasks_count}</Text>
@@ -462,8 +496,8 @@ export default function RewardsScreen() {
               <Text style={styles.statLabel}>連續簽到</Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[
               styles.checkinButton,
               checkinStatus.checked_in_today && styles.checkinButtonDisabled
@@ -471,10 +505,10 @@ export default function RewardsScreen() {
             onPress={handleDailyCheckin}
             disabled={checkinStatus.checked_in_today}
           >
-            <MaterialCommunityIcons 
-              name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"} 
-              size={20} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"}
+              size={20}
+              color="#fff"
             />
             <Text style={styles.checkinButtonText}>
               {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到'}
@@ -485,42 +519,42 @@ export default function RewardsScreen() {
 
       {/* 標籤欄 */}
       <View style={styles.tabBar}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'daily' && styles.activeTab]}
           onPress={() => setActiveTab('daily')}
         >
-          <MaterialCommunityIcons 
-            name="calendar-today" 
-            size={20} 
-            color={activeTab === 'daily' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="calendar-today"
+            size={20}
+            color={activeTab === 'daily' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'daily' && styles.activeTabText]}>
             每日任務
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'achievement' && styles.activeTab]}
           onPress={() => setActiveTab('achievement')}
         >
-          <MaterialCommunityIcons 
-            name="trophy" 
-            size={20} 
-            color={activeTab === 'achievement' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="trophy"
+            size={20}
+            color={activeTab === 'achievement' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'achievement' && styles.activeTabText]}>
             成就
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'shop' && styles.activeTab]}
           onPress={() => setActiveTab('shop')}
         >
-          <MaterialCommunityIcons 
-            name="store" 
-            size={20} 
-            color={activeTab === 'shop' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="store"
+            size={20}
+            color={activeTab === 'shop' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'shop' && styles.activeTabText]}>
             積分商店
@@ -543,19 +577,19 @@ export default function RewardsScreen() {
         backdropOpacity={0.4}
       >
         <View style={styles.modalContainer}>
-          <MaterialCommunityIcons 
-            name="check-circle" 
-            size={64} 
-            color="#2ecc71" 
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={64}
+            color="#2ecc71"
             style={{ marginBottom: 16 }}
           />
-          
+
           <Text style={styles.modalTitle}>簽到成功！</Text>
-          
+
           <Text style={[styles.modalMessage, { fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
             {checkinMessage}
           </Text>
-          
+
           {checkinStatus.consecutive_week_days >= 2 && (
             <Text style={[styles.modalMessage, { marginTop: 8, color: '#e67e22' }]}>
               連續簽到 {checkinStatus.consecutive_week_days} 天 🎉
