@@ -3,12 +3,22 @@
 echo "🔄 清理舊容器..."
 docker stop lockmatch-mysql 2>/dev/null || true
 docker rm lockmatch-mysql 2>/dev/null || true
+docker volume rm sql-init 2>/dev/null || true
+
+echo "🚀 創建新Volume..."
+
+docker volume create sql-init
+
+docker run --rm \
+  -v sql-init:/init \
+  alpine sh -c "apk add --no-cache curl && \
+                curl -o /init/01-mufyp.sql https://raw.githubusercontent.com/LEWCHUNHONG/LockMatch/main/database/mufyp.sql"
 
 echo "🚀 創建新容器（確定密碼）..."
 docker run -d \
   --name lockmatch-mysql \
-  -p 3307:3306 \
-  -v "$(pwd)/database/mufyp_demo.sql:/docker-entrypoint-initdb.d/01-mufyp_demo.sql" \
+  -p 3309:3306 \
+  -v sql-init:/docker-entrypoint-initdb.d \
   -e MYSQL_ROOT_PASSWORD=honghong \
   -e MYSQL_DATABASE=mufyp \
   mysql:8.0 \
@@ -51,7 +61,13 @@ DB_USER=root
 DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
-BASE_URL=http://192.168.0.243:3000
+BASE_URL=http://:3000
+AZURE_TEXT_ANALYTICS_ENDPOINT=
+AZURE_TEXT_ANALYTICS_API_KEY=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_DEPLOYMENT=
+AZURE_OPENAI_API_VERSION=
 ENVEOF
     
     echo ""
@@ -63,12 +79,6 @@ ENVEOF
     echo "   用戶: root"
     echo "   密碼: honghong"
     echo "   數據庫: mufyp"
-    echo ""
-    echo "👤 測試帳號："
-    echo "   Sam / 111111"
-    echo "   Admin / admin123"
-    echo "   Test / test123"
-    echo "========================"
     
 else
     echo "❌ 連接失敗，嘗試其他密碼..."
@@ -89,7 +99,13 @@ DB_USER=root
 DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
-BASE_URL=http://192.168.0.243:3000
+BASE_URL=http://:3000
+AZURE_TEXT_ANALYTICS_ENDPOINT=
+AZURE_TEXT_ANALYTICS_API_KEY=
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_DEPLOYMENT=
+AZURE_OPENAI_API_VERSION=
 ENVEOF
             
             echo "✅ 已更新密碼為 honghong"
