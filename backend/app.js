@@ -19,6 +19,8 @@ const groupInviteRoutes = require('./routes/groupInviteRoutes');
 const insightsRouter = require('./routes/insights');
 
 
+const tempChatRoutes = require('./routes/tempChatRoutes');
+
 
 
 const healthRoutes = require('./routes/health');
@@ -151,6 +153,12 @@ app.use('/api', discussRoutes(connection, authMiddleware, JWT_SECRET, buildAvata
 
 // 健康檢查路由
 app.use('/api', healthRoutes(connection));
+
+app.use('/api/temp-chat', tempChatRoutes);
+
+app.use('/api/user/location', require('./routes/location'));
+app.use('/api/nearby-users', require('./routes/nearby'));
+
 
 
 // 404 處理

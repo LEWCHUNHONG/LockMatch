@@ -116,16 +116,7 @@ ${userDescriptions}
             }));
         }
 
-        // 7. 過濾出有效嘅用戶 ID
-        const matchUserIds = matches.map(m => m.user_id);
-        const [validUsers] = await connection.promise().query(
-            'SELECT id FROM users WHERE id IN (?)',
-            [matchUserIds.length ? matchUserIds : [0]] // 避免空陣列出錯
-        );
-        const validIds = new Set(validUsers.map(u => u.id));
-        matches = matches.filter(m => validIds.has(m.user_id));
-
-        // 8. 查詢好友狀態
+        // 7. 查詢好友狀態
         const [friendRows] = await connection.promise().query(
             `SELECT user2_id AS friend_id FROM friendships WHERE user1_id = ? AND status = 'accepted'
              UNION
@@ -140,7 +131,59 @@ ${userDescriptions}
         );
         const sentRequestIds = new Set(sentRows.map(row => row.to_user_id));
 
-        // 9. 組合最終用戶資料
+        const [receivedRows] = await connection.promise().query(
+            'SELECT from_user_id FROM friend_requests WHERE to_user_id = ? AND status = "pending"',
+            [currentUserId]
+        );
+        const receivedRequestIds = new Set(receivedRows.map(row => row.from_user_id));
+
+        // 8. 過濾 matches，只保留可加好友的用戶
+        let filteredMatches = matches.filter(m => {
+            return !friendIds.has(m.user_id) &&
+                !sentRequestIds.has(m.user_id) &&
+                !receivedRequestIds.has(m.user_id);
+        });
+
+        // 9. 如果過濾後少於 2 個，補充隨機新朋友
+        const MIN_MATCHES = 2;
+        if (filteredMatches.length < MIN_MATCHES) {
+            const existingMatchIds = new Set(filteredMatches.map(m => m.user_id));
+            // 從 otherUsers 中找出所有可用的用戶
+            const availableUsers = otherUsers.filter(u => {
+                return !friendIds.has(u.id) &&
+                    !sentRequestIds.has(u.id) &&
+                    !receivedRequestIds.has(u.id) &&
+                    !existingMatchIds.has(u.id);
+            });
+
+            // 隨機排序
+            const shuffledAvailable = [...availableUsers].sort(() => 0.5 - Math.random());
+            const needed = MIN_MATCHES - filteredMatches.length;
+            const toAdd = shuffledAvailable.slice(0, needed);
+
+            // 轉換為 matches 格式
+            const additionalMatches = toAdd.map(user => ({
+                user_id: user.id,
+                reason: '系統推薦的新朋友',
+                match_score: 50
+            }));
+
+            filteredMatches = [...filteredMatches, ...additionalMatches];
+        }
+
+        // 更新 matches 為 filteredMatches
+        matches = filteredMatches;
+
+        // 10. 過濾出有效嘅用戶 ID
+        const matchUserIds = matches.map(m => m.user_id);
+        const [validUsers] = await connection.promise().query(
+            'SELECT id FROM users WHERE id IN (?)',
+            [matchUserIds.length ? matchUserIds : [0]]
+        );
+        const validIds = new Set(validUsers.map(u => u.id));
+        matches = matches.filter(m => validIds.has(m.user_id));
+
+        // 11. 組合最終用戶資料
         const users = matches.map(match => {
             const user = otherUsers.find(u => u.id === match.user_id);
             if (!user) return null;
@@ -163,8 +206,8 @@ ${userDescriptions}
                 distance: '未知',
                 avatar: avatarUrl,
                 status: user.bio || '尋找朋友中',
-                isFriend: friendIds.has(user.id),
-                isRequestPending: sentRequestIds.has(user.id),
+                isFriend: false,
+                isRequestPending: false,
                 matchReason: match.reason,
                 matchScore: match.match_score
             };
