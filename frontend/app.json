@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "LockMatchApp",
+    "slug": "LockMatchApp",
+    "version": "54.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "lockmatchapp",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lockmatch.LockMatchApp"
+    },
+    "android": {
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "edgeToEdgeEnabled": true,
+      "package": "com.lockmatch.LockMatchApp"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "owner": "",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}
