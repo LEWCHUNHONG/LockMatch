@@ -17,15 +17,15 @@ docker run --rm \
 echo "🚀 創建新容器（確定密碼）..."
 docker run -d \
   --name lockmatch-mysql \
-  -p 3309:3306 \
+  -p 3307:3306 \
   -v sql-init:/docker-entrypoint-initdb.d \
   -e MYSQL_ROOT_PASSWORD=honghong \
   -e MYSQL_DATABASE=mufyp \
   mysql:8.0 \
   --default-authentication-plugin=mysql_native_password
 
-echo "⏳ 等待 MySQL 啟動（60秒）..."
-sleep 60
+echo "⏳ 等待 MySQL 啟動（30秒）..."
+sleep 30
 
 echo "🔍 測試連接..."
 if docker exec lockmatch-mysql mysql -u root -phonghong -e "SELECT '✅ 連接成功';" 2>/dev/null; then
@@ -62,12 +62,12 @@ DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
 BASE_URL=http://:3000
-AZURE_TEXT_ANALYTICS_ENDPOINT=
+AZURE_TEXT_ANALYTICS_ENDPOINT=https://lockmatch.cognitiveservices.azure.com/
 AZURE_TEXT_ANALYTICS_API_KEY=
 AZURE_OPENAI_API_KEY=
 AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_DEPLOYMENT=
-AZURE_OPENAI_API_VERSION=
+AZURE_OPENAI_DEPLOYMENT=grok-3-mini
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
 ENVEOF
     
     echo ""
@@ -79,6 +79,12 @@ ENVEOF
     echo "   用戶: root"
     echo "   密碼: honghong"
     echo "   數據庫: mufyp"
+    echo ""
+    echo "👤 測試帳號："
+    echo "   Sam / 111111"
+    echo "   Admin / admin123"
+    echo "   Test / test123"
+    echo "========================"
     
 else
     echo "❌ 連接失敗，嘗試其他密碼..."
@@ -100,12 +106,12 @@ DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
 BASE_URL=http://:3000
-AZURE_TEXT_ANALYTICS_ENDPOINT=
+AZURE_TEXT_ANALYTICS_ENDPOINT=https://lockmatch.cognitiveservices.azure.com/
 AZURE_TEXT_ANALYTICS_API_KEY=
 AZURE_OPENAI_API_KEY=
 AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_DEPLOYMENT=
-AZURE_OPENAI_API_VERSION=
+AZURE_OPENAI_DEPLOYMENT=grok-3-mini
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
 ENVEOF
             
             echo "✅ 已更新密碼為 honghong"
