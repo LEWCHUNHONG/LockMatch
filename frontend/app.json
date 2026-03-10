@@ -35,12 +35,12 @@
     "plugins": [
       "expo-router"
     ],
+    "owner": "",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bb321c3e-074f-49f5-94bf-cb6b7b5ea5a6"
+        "projectId": ""
       }
-    },
-    "owner": "lockmatch"
+    }
   }
 }

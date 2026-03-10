@@ -349,5 +349,36 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
     }
   });
 
+
+
+
+
+  // =============================================
+  //  獲取指定用戶的公開資料（用於臨時聊天等）
+  //  GET /api/user/:userId
+  // =============================================
+  router.get('/user/:userId', authMiddleware(JWT_SECRET), async (req, res) => {
+    try {
+      const targetUserId = req.params.userId;
+      // 查詢用戶基本資料，包含 mbti
+      const [rows] = await connection.promise().query(
+        'SELECT id, username, avatar, mbti, status FROM users WHERE id = ?',
+        [targetUserId]
+      );
+      if (rows.length === 0) {
+        return res.status(404).json({ success: false, error: '用戶不存在' });
+      }
+      let user = rows[0];
+      // 處理頭像 URL
+      if (user.avatar && !user.avatar.startsWith('http')) {
+        user.avatar = buildAvatarUrl(user.avatar);
+      }
+      res.json({ success: true, user });
+    } catch (err) {
+      console.error('❌ 獲取用戶資料失敗:', err);
+      res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+  });
+
   return router;
 };

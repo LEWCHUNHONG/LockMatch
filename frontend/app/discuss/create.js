@@ -18,6 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+//import ImageCropPicker from 'react-native-image-crop-picker';
 import * as Haptics from 'expo-haptics';
 import api from '../../utils/api';
 import Modal from 'react-native-modal';
@@ -36,10 +37,11 @@ export default function CreatePost() {
   const router = useRouter();
   const MAX_IMAGES = 10;
 
-  // 選擇多張圖片（使用 expo-image-picker）
+
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
+      // 保持原有权限提示逻辑
       setMessageTitle('需要權限');
       setMessageText('請允許存取相簿');
       setModalType('error');
@@ -51,25 +53,51 @@ export default function CreatePost() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
+        allowsMultipleSelection: true,          // 允许多选
         selectionLimit: MAX_IMAGES - images.length,
         quality: 0.92,
         base64: false,
       });
 
-      if (!result.canceled && result.assets) {
-        const newImages = result.assets.map((asset) => ({
+      if (!result.canceled) {
+        const newImages = result.assets.map(asset => ({
           uri: asset.uri,
           originalUri: asset.uri,
+          isEditing: false,
         }));
-        setImages((prev) => [...prev, ...newImages]);
+        setImages(prev => [...prev, ...newImages]);
       }
     } catch (err) {
       console.error('選擇圖片錯誤:', err);
     }
   };
 
-  // 刪除特定圖片
+  // 编辑/裁剪特定图片
+  const editImage = async (index) => {
+    const img = images[index];
+    if (!img) return;
+
+    try {
+      const cropped = await ImageCropPicker.openCropper({
+        path: img.uri,
+        cropperCircleOverlay: false,
+        compressImageQuality: 0.88,
+        showCropGuidelines: true,
+        freeStyleCropEnabled: true,
+        includeBase64: false,
+      });
+
+      const newImages = [...images];
+      newImages[index] = { ...newImages[index], uri: cropped.path, isEditing: true };
+      setImages(newImages);
+    } catch (err) {
+      if (err.code !== 'E_PICKER_CANCELLED') {
+        console.error('裁剪錯誤:', err);
+      }
+    }
+  };
+
+  // 删除特定图片
   const deleteImage = (index) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
@@ -95,24 +123,33 @@ export default function CreatePost() {
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
         let mediaUri = img.uri;
+        let filename = mediaUri.split('/').pop() || `photo_${Date.now()}_${i}.jpg`;
+        let mimeType = 'image/jpeg';
 
-        // 壓縮圖片
         const manipResult = await ImageManipulator.manipulateAsync(
           mediaUri,
           [{ resize: { width: 1200 } }],
           { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
         );
         mediaUri = manipResult.uri;
-        const filename = `post_${Date.now()}_${i}.jpg`;
+        filename = `post_${i}.jpg`;
+
+        const lowerName = filename.toLowerCase();
+        if (lowerName.endsWith('.png')) mimeType = 'image/png';
+        else if (lowerName.endsWith('.webp')) mimeType = 'image/webp';
+        else if (lowerName.endsWith('.gif')) mimeType = 'image/gif';
 
         formData.append('media', {
           uri: mediaUri,
           name: filename,
-          type: 'image/jpeg',
+          type: mimeType,
         });
       }
 
       const token = await AsyncStorage.getItem('token');
+
+      console.log('提交發佈貼文，內容:', content.trim());
+      console.log('圖片數量:', images.length);
 
       const response = await fetch(`${api.defaults.baseURL}/api/posts`, {
         method: 'POST',
@@ -122,7 +159,11 @@ export default function CreatePost() {
         body: formData,
       });
 
+      console.log('發佈回應狀態:', response.status);
+
       const responseText = await response.text();
+      console.log('發佈回應內容:', responseText);
+
       let data;
       try {
         data = JSON.parse(responseText);
@@ -142,13 +183,18 @@ export default function CreatePost() {
         setContent('');
         setImages([]);
       } else {
+        // ❌ 處理 API 返回的失敗情況
         let errorMsg = '發文失敗，請稍後再試';
         let errorTitle = '發文失敗';
 
-        if (data.error) errorMsg = data.error;
-        if (data.message) errorMsg = data.message;
+        if (data.error) {
+          errorMsg = data.error;
+        }
+        if (data.message) {
+          errorMsg = data.message;
+        }
 
-        // 內容審核失敗
+        // 處理內容審核失敗
         if (response.status === 403 || (data.error && data.error.includes('審核'))) {
           errorTitle = '內容不恰當';
           errorMsg = data.message || '您的言論包含不當內容，無法發佈';
@@ -168,14 +214,24 @@ export default function CreatePost() {
       }
     } catch (err) {
       console.error('發文失敗:', err);
+
+      // 處理錯誤
+      let errorTitle = '發文失敗';
       let errorMessage = err.message || '請稍後再試';
-      if (err.message.includes('Network')) {
+
+      // 特殊處理網路錯誤
+      if (err.message.includes('Network request failed') ||
+        err.message.includes('Network') ||
+        err.message.includes('fetch')) {
         errorMessage = '網路連線不穩定，請檢查網路後再試';
-      } else if (err.message.includes('伺服器') || err.message.includes('500')) {
+      }
+
+      // 特殊處理伺服器錯誤
+      if (err.message.includes('伺服器') || err.message.includes('500')) {
         errorMessage = '伺服器暫時出現問題，請稍後再試';
       }
 
-      setMessageTitle('發文失敗');
+      setMessageTitle(errorTitle);
       setMessageText(errorMessage);
       setModalType('error');
       setShowMessageModal(true);
@@ -197,7 +253,9 @@ export default function CreatePost() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>撰寫貼文</Text>
+
           <View style={styles.headerRight} />
         </View>
 
@@ -218,6 +276,9 @@ export default function CreatePost() {
                 {images.map((img, index) => (
                   <View key={index} style={styles.imagePreviewContainer}>
                     <Image source={{ uri: img.uri }} style={styles.preview} />
+                    <TouchableOpacity style={styles.editButton} onPress={() => editImage(index)}>
+                      <MaterialCommunityIcons name="image-edit-outline" size={22} color="#fff" />
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.deleteButton} onPress={() => deleteImage(index)}>
                       <Ionicons name="trash-outline" size={22} color="#fff" />
                     </TouchableOpacity>
@@ -298,9 +359,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fffaf5',
   },
+
   gradient: {
     flex: 1,
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -325,10 +388,12 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 44,
   },
+
   scrollContent: {
     padding: 20,
     paddingBottom: 180,
   },
+
   inputCard: {
     backgroundColor: '#fffaf5',
     borderRadius: 16,
@@ -341,12 +406,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
+
   input: {
     minHeight: 140,
     fontSize: 16,
     color: '#5c4033',
     paddingTop: 4,
   },
+
   imagePreviewScroll: {
     flexDirection: 'row',
     marginTop: 16,
@@ -361,6 +428,24 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 16,
     backgroundColor: '#f8f1eb',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 24,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   deleteButton: {
     position: 'absolute',
@@ -380,6 +465,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+
   imageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,6 +483,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
+
   bottomSubmitContainer: {
     position: 'absolute',
     bottom: 24,

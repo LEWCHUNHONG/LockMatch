@@ -66,6 +66,8 @@ let heartbeatIntervalTime = 60000; // 每60秒發送一次心跳
 let isHeartbeatRunning = false;
 let lastHeartbeatTime = null;
 
+
+
 // 發送心跳訊號
 const sendHeartbeat = async () => {
   try {
@@ -208,32 +210,45 @@ const stopHeartbeatComplete = () => {
   console.log('✅ 完全停止心跳機制');
 };
 
-const initSocket = async () => {
-  try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return null;
+const initSocket = () => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        reject(new Error('No token'));
+        return;
+      }
 
-    if (socket && socket.connected) socket.disconnect();
+      if (socket && socket.connected) {
+        resolve(socket);
+        return;
+      }
 
-    socket = io(API_URL, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-    });
+      if (socket) {
+        socket.disconnect();
+      }
 
-    socket.on('connect', () => {
-      console.log('✅ Socket 連接成功，ID:', socket.id);
-    });
+      socket = io(API_URL, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+      });
 
-    socket.on('connect_error', (err) => {
-      console.error('❌ Socket 連接錯誤:', err.message);
-    });
+      socket.on('connect', () => {
+        console.log('✅ Socket 連接成功，ID:', socket.id);
+        resolve(socket);
+      });
 
-    return socket;
-  } catch (error) {
-    console.error('初始化 Socket 失敗:', error);
-    return null;
-  }
+      socket.on('connect_error', (err) => {
+        console.error('❌ Socket 連接錯誤:', err.message);
+        reject(err);
+      });
+
+      setTimeout(() => reject(new Error('Socket connection timeout')), 10000);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 // 獲取 Socket 實例
@@ -397,11 +412,8 @@ const chatAPI = {
     }
   },
 
+  // MBTI 匹配
   mbtiMatching: () => api.post('/api/ai/matching'),
-
-  searchUsers: (query) => api.get(`/api/search-users?query=${encodeURIComponent(query)}`),
-
-
 
   // 標記消息為已讀
   markAsRead: (roomId, messageId) => {
@@ -470,7 +482,6 @@ const chatAPI = {
   acceptGroupInvite: (inviteId) => api.post('/api/accept-group-invite', { inviteId }),
   rejectGroupInvite: (inviteId) => api.post('/api/reject-group-invite', { inviteId }),
   getPendingGroupInvites: () => api.get('/api/pending-group-invites'),
-
 
   // 除錯 API
   debugMediaFiles: () => api.get('/api/debug-media-files'),
@@ -557,6 +568,27 @@ const mbtiAPI = {
   searchByMbti: (mbtiType) => api.get(`/api/search-by-mbti?type=${mbtiType}`),
 };
 
+// 臨時聊天相關 API 函數（新增）
+const tempChatAPI = {
+  // 發送臨時聊天邀請
+  sendInvite: (targetUserId) => {
+    sendHeartbeat().catch(err => console.error('發送臨時聊天邀請時心跳失敗:', err));
+    return api.post('/api/temp-chat/invite', { targetUserId });
+  },
+  // 接受邀請
+  acceptInvite: (inviteId) => {
+    sendHeartbeat().catch(err => console.error('接受臨時聊天邀請時心跳失敗:', err));
+    return api.post('/api/temp-chat/accept', { inviteId });
+  },
+  // 拒絕邀請
+  rejectInvite: (inviteId) => {
+    sendHeartbeat().catch(err => console.error('拒絕臨時聊天邀請時心跳失敗:', err));
+    return api.post('/api/temp-chat/reject', { inviteId });
+  },
+  // 獲取待處理邀請
+  getPendingInvites: () => api.get('/api/temp-chat/pending'),
+};
+
 // Socket.io 相關函數
 const socketAPI = {
   initSocket,
@@ -583,8 +615,9 @@ export {
   chatAPI,
   userAPI,
   mbtiAPI,
+  tempChatAPI,      // 新增導出
   socketAPI,
-  heartbeatAPI,  // 新增心跳API
+  heartbeatAPI,
   API_URL,
   fixImageUrl
 };

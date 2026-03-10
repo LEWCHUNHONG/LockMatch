@@ -24,6 +24,7 @@
     "expo-document-picker": "^14.0.8",
     "expo-image-picker": "^17.0.10",
     "expo-linear-gradient": "^15.0.8",
+    "expo-server-sdk": "^6.0.0",
     "express": "^5.2.1",
     "express-session": "^1.18.2",
     "fs": "^0.0.1-security",
