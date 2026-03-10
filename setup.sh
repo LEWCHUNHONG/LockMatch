@@ -54,7 +54,8 @@ SQL
     
     # 更新 .env
     echo "📝 更新 .env..."
-    cat > ~/Desktop/LockMatch/backend/.env << 'ENVEOF'
+    echo "EXPO_PUBLIC_API_URL=http://localhost:3000" > ~/Desktop/Project/LockMatch/frontend/.env
+    cat > ~/Desktop/Project/LockMatch/backend/.env << 'ENVEOF'
 DB_HOST=localhost
 DB_PORT=3307
 DB_USER=root
@@ -94,11 +95,9 @@ else
         echo "嘗試密碼: '$pass'"
         if docker exec lockmatch-mysql mysql -u root -p"$pass" -e "SELECT 1;" 2>/dev/null; then
             echo "✅ 找到密碼: $pass"
-            
-            # 設置為 honghong
             docker exec lockmatch-mysql mysql -u root -p"$pass" -e "ALTER USER 'root'@'%' IDENTIFIED BY 'honghong'; FLUSH PRIVILEGES;"
-            
-            cat > ~/Desktop/LockMatch/backend/.env << ENVEOF
+            cat > ~/Desktop/Project/LockMatch/backend/.env
+ << ENVEOF
 DB_HOST=localhost
 DB_PORT=3307
 DB_USER=root
