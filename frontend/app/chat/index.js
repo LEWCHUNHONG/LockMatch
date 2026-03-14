@@ -189,7 +189,7 @@ export default function ChatRooms() {
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
-        {/* 頂部欄 */}
+        {/* 頂部欄 - 移除創建群組按鈕，只保留返回與鈴鐺 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
@@ -198,15 +198,6 @@ export default function ChatRooms() {
           <Text style={styles.headerTitle}>聊天室</Text>
 
           <View style={styles.headerRight}>
-            {/* 創建群組按鈕 */}
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.push('/chat/create-group')}
-            >
-              <MaterialCommunityIcons name="plus" size={26} color="#5c4033" />
-            </TouchableOpacity>
-
-            {/* 邀請鈴鐺（統一邀請頁面） */}
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => router.push('/chat/invites')}
@@ -279,6 +270,15 @@ export default function ChatRooms() {
           />
         )}
       </SafeAreaView>
+
+      {/* 右下角浮動按鈕 - 創建群組 */}
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.85}
+        onPress={() => router.push('/chat/create-group')}
+      >
+        <MaterialCommunityIcons name="account-multiple-plus" size={28} color="#fffaf5" />
+      </TouchableOpacity>
     </LinearGradient>
   );
 }
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 80, // 為 FAB 預留底部空間，避免被遮擋
   },
   roomItem: {
     flexDirection: 'row',
@@ -512,5 +512,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8b5e3c',
     marginTop: 12,
+  },
+
+  // ── 新增：右下角浮動按鈕樣式 ──
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 32,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f4c7ab',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: '#fffaf5',
   },
 });

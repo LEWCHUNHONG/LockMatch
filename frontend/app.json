@@ -27,7 +27,12 @@
         "android.permission.CAMERA"
       ],
       "edgeToEdgeEnabled": true,
-      "package": "com.lockmatch.LockMatchApp"
+      "package": "com.lockmatch.LockMatchApp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,7 +44,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": ""
+        "projectId": "bb321c3e-074f-49f5-94bf-cb6b7b5ea5a6"
       }
     }
   }

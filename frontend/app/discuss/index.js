@@ -15,10 +15,11 @@ import {
   Image,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+import { BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../utils/api';
@@ -28,6 +29,7 @@ const { width } = Dimensions.get('window');
 
 export default function Discuss() {
   const router = useRouter();
+  const pathname = usePathname();
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,22 @@ export default function Discuss() {
   // 附近按鈕動畫
   const nearbyScale = useRef(new Animated.Value(1)).current;
   const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+  useCallback(() => {
+    const onBackPress = () => {
+      router.replace('/dashboard');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      onBackPress
+    );
+
+    return () => subscription.remove();
+  }, [router])
+);
 
   // 獲取當前用戶 ID
   const loadCurrentUser = useCallback(async () => {
@@ -165,7 +183,7 @@ export default function Discuss() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
-            onPress={() => router.back()} 
+            onPress={() => router.replace('/dashboard')} 
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
@@ -306,10 +324,16 @@ onPress={() => router.push('/discuss/moments')}
               </Animated.View>
               <Text style={styles.centerLabel}>附近</Text>
             </Pressable>
-
+            
             <TouchableOpacity style={styles.tabItem}>
-              <MaterialCommunityIcons name="forum" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>討論區</Text>
+              <MaterialCommunityIcons 
+                name="forum" 
+                size={28} 
+                color="#f4c7ab"  // 固定高亮（因為這是 discuss 頁面）
+              />
+              <Text style={[styles.tabLabel, { color: '#f4c7ab', fontWeight: '700' }]}>
+                討論區
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/profile')}>

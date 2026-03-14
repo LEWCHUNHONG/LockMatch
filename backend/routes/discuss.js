@@ -683,5 +683,42 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     }
   });
 
+  // 獲取用戶自己的帖子（時間線，按時間倒序）
+router.get('/user-posts', authMiddleware(JWT_SECRET), (req, res) => {
+  const userId = req.user.id;
+  const limit = parseInt(req.query.limit) || 20;
+  const offset = parseInt(req.query.offset) || 0;
+
+  connection.query(
+    `SELECT 
+      p.id, p.content, p.media_urls, p.media_types, p.created_at,
+      u.id as user_id, u.username, u.avatar,
+      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
+      (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count,
+      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = ?) as is_liked_by_me
+    FROM posts p
+    JOIN users u ON p.user_id = u.id
+    WHERE p.user_id = ?
+    ORDER BY p.created_at DESC
+    LIMIT ? OFFSET ?`,
+    [userId, userId, limit, offset],
+    (err, results) => {
+      if (err) {
+        console.error('獲取用戶帖子失敗:', err);
+        return res.status(500).json({ error: '獲取失敗' });
+      }
+
+      // 解析 JSON 為數組
+      const formattedPosts = results.map(post => ({
+        ...post,
+        media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
+        media_types: post.media_types ? JSON.parse(post.media_types) : []
+      }));
+
+      res.json({ success: true, posts: formattedPosts });
+    }
+  );
+});
+
   return router;
 };

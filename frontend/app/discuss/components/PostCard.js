@@ -77,11 +77,14 @@ const handleLikePress = () => {
     router.push(`/discuss/edit?id=${post.id}`);
   };
 
-  const confirmDelete = () => {
-    setShowOptionsModal(false);
+const confirmDelete = () => {
+  setShowOptionsModal(false);
+
+  setTimeout(() => {
     setShowConfirmDeleteModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
+  }, 600);
+};
 
   const handleDelete = async () => {
     setShowConfirmDeleteModal(false);
@@ -112,8 +115,10 @@ const handleLikePress = () => {
     setShowOptionsModal(false);
     setMessageTitle('已報告');
     setMessageText('感謝您的回報，我們會審核此內容。');
+    setTimeout(() => {
     setShowMessageModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, 600);
   };
 
   

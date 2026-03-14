@@ -15,7 +15,7 @@ import {
   Image,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -28,6 +28,8 @@ const { width } = Dimensions.get('window');
 
 export default function Moments() {
   const router = useRouter();
+  const pathname = usePathname();
+
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -36,11 +38,9 @@ export default function Moments() {
   const [hasMore, setHasMore] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  // 附近按鈕動畫 (與 index.js 相同，可保留或移除)
   const nearbyScale = useRef(new Animated.Value(1)).current;
   const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
 
-  // 獲取當前用戶 ID
   const loadCurrentUser = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -64,7 +64,6 @@ export default function Moments() {
     const currentPage = isRefresh ? 0 : page;
 
     try {
-      // 修改為呼叫好友貼文 API
       const res = await api.get('/api/friend-posts', {
         params: { limit: 15, offset: currentPage * 15 },
         timeout: 12000,
@@ -157,31 +156,29 @@ export default function Moments() {
       style={styles.gradient}
     >
       <SafeAreaView style={styles.safeArea}>
-{/* Header */}
-<View style={styles.header}>
-  <TouchableOpacity 
-    onPress={() => router.back()} 
-    style={styles.backButton}
-  >
-    <Ionicons name="arrow-back" size={28} color="#5c4033" />
-  </TouchableOpacity>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={28} color="#5c4033" />
+          </TouchableOpacity>
 
-  {/* 標題絕對置中 */}
-  <View style={styles.headerTitleContainer}>
-    <Text style={styles.headerTitle}>朋友圈</Text>
-  </View>
+          {/* 標題絕對置中 */}
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>朋友圈</Text>
+          </View>
 
-  <View style={styles.headerRight}>
-  <TouchableOpacity 
-  style={styles.iconButton}
-  onPress={() => router.push('/chat/friends')}
-  >
-  <MaterialCommunityIcons name="account-group" size={26} color="#5c4033" />
-  </TouchableOpacity>
-  </View>
-  
-  
-</View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => router.push('/chat/friends')}
+            >
+              <MaterialCommunityIcons name="account-group" size={26} color="#5c4033" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* 搜尋欄 */}
         <View style={styles.searchContainer}>
@@ -224,61 +221,41 @@ export default function Moments() {
           onEndReached={() => fetchPosts(false)}
           onEndReachedThreshold={0.5}
           estimatedItemSize={340}
-          ListFooterComponent={
-            loading && hasMore && posts.length > 0 ? (
-              <View style={styles.footerLoading}>
-                <ActivityIndicator size="large" color="#f4c7ab" />
-              </View>
-            ) : !hasMore && posts.length > 0 ? (
-              <View style={styles.footerEnd}>
-                <Text style={styles.footerText}>已經到底囉～</Text>
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={() => {
-            if (loading && posts.length === 0) {
-              return (
-                <View style={styles.emptyContainer}>
-                  <ActivityIndicator size="large" color="#f4c7ab" />
-                  <Text style={styles.loadingText}>載入朋友圈中...</Text>
-                </View>
-              );
-            }
-
-            if (filteredPosts.length === 0) {
-              return (
-                <View style={styles.emptyContainer}>
-                  <MaterialCommunityIcons
-                    name={searchQuery ? "magnify-close" : "account-group-outline"}
-                    size={80}
-                    color="#f4c7ab"
-                  />
-                  <Text style={styles.emptyText}>
-                    {searchQuery ? "沒有找到相關貼文" : "還沒有好友的貼文"}
-                  </Text>
-                  <Text style={styles.emptySubtext}>
-                    {searchQuery ? "試試其他關鍵字吧～" : "去加好友分享更多吧！"}
-                  </Text>
-                </View>
-              );
-            }
-
-            return null;
-          }}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="account-group-outline" size={80} color="#f4c7ab" />
+              <Text style={styles.emptyText}>還沒有朋友貼文</Text>
+              <Text style={styles.emptySubtext}>
+                {searchQuery ? "試試其他關鍵字吧～" : "快去和朋友互動吧！"}
+              </Text>
+            </View>
+          )}
           contentContainerStyle={styles.listContent}
         />
 
-        {/* 底部導航欄 (與 index.js 相同) */}
+        {/* 底部導航欄 */}
         <View style={styles.bottomTabContainer}>
           <View style={styles.bottomTab}>
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/dashboard')}>
-              <MaterialCommunityIcons name="home" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>首頁</Text>
+              <MaterialCommunityIcons 
+                name="home" 
+                size={28} 
+                color={pathname === '/dashboard' ? '#f4c7ab' : '#5c4033'} 
+              />
+              <Text style={[styles.tabLabel, pathname === '/dashboard' && { color: '#f4c7ab', fontWeight: '700' }]}>
+                首頁
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
-              <MaterialCommunityIcons name="heart-multiple" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>匹配</Text>
+              <MaterialCommunityIcons 
+                name="heart-multiple" 
+                size={28} 
+                color={pathname.startsWith('/chat') ? '#f4c7ab' : '#5c4033'} 
+              />
+              <Text style={[styles.tabLabel, pathname.startsWith('/chat') && { color: '#f4c7ab', fontWeight: '700' }]}>
+                匹配
+              </Text>
             </TouchableOpacity>
 
             <Pressable
@@ -303,14 +280,33 @@ export default function Moments() {
               <Text style={styles.centerLabel}>附近</Text>
             </Pressable>
 
+            {/* 討論區 - 高亮（包含 moments 頁面） */}
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/discuss')}>
-              <MaterialCommunityIcons name="forum" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>討論區</Text>
+              <MaterialCommunityIcons 
+                name="forum" 
+                size={28} 
+                color={pathname.startsWith('/discuss') ? '#f4c7ab' : '#5c4033'} 
+              />
+              <Text style={[
+                styles.tabLabel, 
+                pathname.startsWith('/discuss') && { color: '#f4c7ab', fontWeight: '700' }
+              ]}>
+                討論區
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/profile')}>
-              <MaterialCommunityIcons name="account" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>我的</Text>
+              <MaterialCommunityIcons 
+                name="account" 
+                size={28} 
+                color={pathname === '/profile' ? '#f4c7ab' : '#5c4033'} 
+              />
+              <Text style={[
+                styles.tabLabel, 
+                pathname === '/profile' && { color: '#f4c7ab', fontWeight: '700' }
+              ]}>
+                我的
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -341,30 +337,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 250, 245, 0.7)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 199, 171, 0.3)',
+    position: 'relative',
   },
-  // 新增
-headerTitleContainer: {
-  position: 'absolute',           // 關鍵
-  left: 0,
-  right: 0,
-  alignItems: 'center',           // 水平置中
-  justifyContent: 'center',
-},
-
-headerTitle: {
-  fontSize: 24,
-  fontWeight: '800',
-  color: '#5c4033',
-},
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(244, 199, 171, 0.25)',
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: '800',
     color: '#5c4033',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(244, 199, 171, 0.25)',
   },
   headerRight: {
     flexDirection: 'row',
@@ -375,11 +365,6 @@ headerTitle: {
     borderRadius: 20,
     backgroundColor: 'rgba(244, 199, 171, 0.25)',
   },
-  iconImage: {
-  width: 28,
-  height: 28,
-  resizeMode: 'contain',
-},
 
   searchContainer: {
     flexDirection: 'row',
@@ -478,7 +463,7 @@ headerTitle: {
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 36,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,
@@ -486,7 +471,7 @@ headerTitle: {
     elevation: 12,
     width: '100%',
     maxWidth: 440,
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(244, 199, 171, 0.4)',

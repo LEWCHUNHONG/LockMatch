@@ -1,0 +1,681 @@
+// app/profile/index.js
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  RefreshControl,
+  Alert,
+  Animated,
+  Pressable,
+} from 'react-native';
+import { useRouter, usePathname } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { FlashList } from '@shopify/flash-list';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Modal from 'react-native-modal';
+
+import api from '../../utils/api';
+import PostCard from '../../app/discuss/components/PostCard';
+
+export default function Profile() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const flashListRef = useRef(null);
+
+  // 附近按鈕動畫
+  const nearbyScale = useRef(new Animated.Value(1)).current;
+  const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
+
+  const [user, setUser] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  useFocusEffect(
+  useCallback(() => {
+    const onBackPress = () => {
+      router.replace('/dashboard');
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => subscription.remove();
+  }, [router])
+);
+
+  // 新增：控制 MBTI 說明 Modal
+  const [showMbtiInfoModal, setShowMbtiInfoModal] = useState(false);
+
+  const baseURL = api.defaults.baseURL;
+
+  // 點擊「我的」回到頂部
+  const scrollToTop = () => {
+    if (flashListRef.current) {
+      flashListRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
+
+  // MBTI 顏色映射
+  const getMbtiColor = (mbti) => {
+    if (!mbti) return '#f4c7ab';
+    
+    const mbtiColors = {
+      'ISTJ': '#3498db', 'ISFJ': '#2ecc71', 'INFJ': '#9b59b6', 'INTJ': '#1abc9c',
+      'ISTP': '#e74c3c', 'ISFP': '#f39c12', 'INFP': '#d35400', 'INTP': '#34495e',
+      'ESTP': '#e67e22', 'ESFP': '#f1c40f', 'ENFP': '#2ecc71', 'ENTP': '#9b59b6',
+      'ESTJ': '#3498db', 'ESFJ': '#1abc9c', 'ENFJ': '#e74c3c', 'ENTJ': '#f39c12'
+    };
+    
+    return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
+  };
+
+  // 附近按鈕動畫
+  const handleNearbyPressIn = () => {
+    Animated.parallel([
+      Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
+      Animated.timing(nearbyBackgroundOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleNearbyPressOut = () => {
+    Animated.parallel([
+      Animated.spring(nearbyScale, { toValue: 1, friction: 8, tension: 100, useNativeDriver: true }),
+      Animated.timing(nearbyBackgroundOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const loadUser = useCallback(async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem('user');
+      const storedToken = await AsyncStorage.getItem('token');
+
+      if (!storedToken) {
+        Alert.alert('提示', '請先登入');
+        router.replace('/');
+        return;
+      }
+
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        setCurrentUserId(parsed.id);
+      }
+    } catch (err) {
+      console.error('載入使用者資料失敗:', err);
+      setError('無法載入個人資訊');
+    }
+  }, [router]);
+
+  const fetchPosts = useCallback(async (isRefresh = false) => {
+    if (loading && !isRefresh) return;
+    if (!isRefresh && !hasMore) return;
+
+    setLoading(true);
+    if (isRefresh) setRefreshing(true);
+    setError(null);
+
+    const currentPage = isRefresh ? 0 : page;
+
+    const safeParseMedia = (value, fieldName, postId) => {
+      if (Array.isArray(value)) return value;
+      if (value == null || value === '') return [];
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '' || trimmed === 'null' || trimmed === '[]') return [];
+        try {
+          const parsed = JSON.parse(trimmed);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          if (trimmed !== '[]') {
+            console.warn(`貼文 ${postId} ${fieldName} 解析失敗:`, trimmed, e.message);
+          }
+          return [];
+        }
+      }
+      return [];
+    };
+
+    try {
+      const res = await api.get('/api/user-posts', {
+        params: { limit: 15, offset: currentPage * 15 },
+        timeout: 15000,
+      });
+
+      let newPosts = res.data.posts || [];
+
+      newPosts = newPosts.map(post => ({
+        ...post,
+        media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
+        media_types: safeParseMedia(post.media_types, 'media_types', post.id),
+      }));
+
+      if (isRefresh) {
+        setPosts(newPosts);
+        setPage(1);
+      } else {
+        const existingIds = new Set(posts.map(p => p.id));
+        const uniqueNew = newPosts.filter(p => !existingIds.has(p.id));
+        if (uniqueNew.length === 0) {
+          setHasMore(false);
+        } else {
+          setPosts(prev => [...prev, ...uniqueNew]);
+          setPage(currentPage + 1);
+        }
+        setHasMore(newPosts.length >= 15);
+      }
+    } catch (err) {
+      console.error('載入貼文失敗:', err);
+      let msg = '無法載入貼文，請稍後再試';
+      if (err.response?.status === 404) msg = '後端路由 /api/user-posts 不存在';
+      if (err.response?.status === 401) {
+        msg = '登入已過期，請重新登入';
+        AsyncStorage.multiRemove(['token', 'user']);
+        router.replace('/');
+      }
+      if (err.code === 'ECONNABORTED') msg = '請求超時，請檢查網路';
+      setError(msg);
+      Alert.alert('錯誤', msg);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [page, hasMore, loading, posts, router]);
+
+  useEffect(() => {
+    const init = async () => {
+      await loadUser();
+      await fetchPosts(true);
+    };
+    init();
+  }, []);
+
+  const onRefresh = () => {
+    setHasMore(true);
+    fetchPosts(true);
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    fetchPosts(true);
+  };
+
+  const handleLikeToggle = async (postId, currentlyLiked) => {
+    try {
+      await api.post(`/api/posts/${postId}/like`);
+      setPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                is_liked_by_me: currentlyLiked ? 0 : 1,
+                like_count: currentlyLiked ? p.like_count - 1 : p.like_count + 1,
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('讚切換失敗:', err);
+    }
+  };
+
+  const handlePressComment = postId => {
+    router.push(`/discuss/${postId}`);
+  };
+
+  const handleDeletePost = deletedId => {
+    setPosts(prev => prev.filter(p => p.id !== deletedId));
+  };
+
+  if (loading && !posts.length) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#f4c7ab" />
+            <Text style={styles.loadingText}>正在載入你的個人頁面...</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
+          <View style={styles.center}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={60} color="#e74c3c" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
+              <Text style={styles.retryText}>重試</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <LinearGradient 
+      colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} 
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.safeArea}>
+
+        {/* 頂部導航欄 */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.replace('/dashboard')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#5c4033" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerTitleContainer}>
+            <TouchableOpacity onPress={scrollToTop} activeOpacity={0.6}>
+              <Text style={styles.headerTitle}>我的</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.headerRight} />
+        </View>
+
+        {/* FlashList */}
+        <FlashList
+          ref={flashListRef}
+          data={posts}
+          keyExtractor={item => item.id.toString()}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              onLikeToggle={handleLikeToggle}
+              onPressComment={handlePressComment}
+              currentUserId={currentUserId}
+              onDelete={handleDeletePost}
+            />
+          )}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f4c7ab']} />}
+          onEndReached={() => fetchPosts(false)}
+          onEndReachedThreshold={0.5}
+          estimatedItemSize={340}
+          
+          ListHeaderComponent={
+            <View style={{ paddingHorizontal: 12, paddingTop: 16 }}>
+              <View style={styles.profileCard}>
+                <Image 
+                  source={{ 
+                    uri: user?.avatar?.startsWith('http') 
+                      ? user.avatar 
+                      : user?.avatar 
+                        ? `${baseURL}${user.avatar}` 
+                        : 'https://ui-avatars.com/api/?name=User&size=128&background=f4c7ab&color=5c4033' 
+                  }} 
+                  style={styles.avatar} 
+                />
+                
+                <Text style={styles.username}>{user?.username || '使用者'}</Text>
+
+                {/* MBTI 標籤 - 可點擊開啟說明 Modal */}
+                <View style={styles.mbtiWrapper}>
+                  {user?.mbti ? (
+                    <TouchableOpacity
+                      style={[styles.mbtiTag, { backgroundColor: getMbtiColor(user.mbti) }]}
+                      onPress={() => setShowMbtiInfoModal(true)}
+                      activeOpacity={0.85}
+                    >
+                      <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
+                      <Text style={styles.mbtiText}>{user.mbti} 型</Text>
+                      <Ionicons name="information-circle" size={18} color="#fff" style={{ marginLeft: 6 }} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.mbtiTagEmpty}
+                      onPress={() => router.push('/mbti-test')}
+                    >
+                      <MaterialCommunityIcons name="brain" size={18} color="#f4c7ab" />
+                      <Text style={styles.mbtiTextEmpty}>完成 MBTI 測試</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
+                  <MaterialCommunityIcons name="pencil" size={20} color="#5c4033" />
+                  <Text style={styles.editBtnText}>編輯資料</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          }
+
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <MaterialCommunityIcons name="comment-text-multiple-outline" size={80} color="#f4c7ab" />
+              <Text style={styles.emptyText}>你還沒有發佈任何貼文</Text>
+<TouchableOpacity 
+  style={styles.createContainer}
+  onPress={() => router.push('/discuss/create')}
+>
+  <MaterialCommunityIcons name="plus-circle" size={20} color="#8b5e3c" />
+  <Text style={styles.createText}>立即發佈</Text>
+</TouchableOpacity>
+            </View>
+          }
+          contentContainerStyle={{
+            paddingHorizontal: 0,
+            paddingTop: 0,
+            paddingBottom: 130,
+          }}
+        />
+
+        {/* 底部導航欄 */}
+        <View style={styles.bottomTabContainer}>
+          <View style={styles.bottomTab}>
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/dashboard')}>
+              <MaterialCommunityIcons name="home" size={28} color="#5c4033" />
+              <Text style={styles.tabLabel}>首頁</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
+              <MaterialCommunityIcons name="heart-multiple" size={28} color="#5c4033" />
+              <Text style={styles.tabLabel}>匹配</Text>
+            </TouchableOpacity>
+
+            <Pressable
+              style={[styles.tabItem, styles.centerTab]}
+              onPressIn={handleNearbyPressIn}
+              onPressOut={handleNearbyPressOut}
+              onPress={() => {/* router.push('/nearby'); */}}
+            >
+              <Animated.View style={{ transform: [{ scale: nearbyScale }] }}>
+                <View style={styles.centerIconWrapper}>
+                  <Animated.View
+                    style={{
+                      ...StyleSheet.absoluteFillObject,
+                      backgroundColor: '#ffffff',
+                      borderRadius: 34,
+                      opacity: nearbyBackgroundOpacity,
+                    }}
+                  />
+                  <MaterialCommunityIcons name="map-marker-radius-outline" size={36} color="#5c4033" />
+                </View>
+              </Animated.View>
+              <Text style={styles.centerLabel}>附近</Text>
+            </Pressable>
+
+            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/discuss')}>
+              <MaterialCommunityIcons name="forum" size={28} color="#5c4033" />
+              <Text style={styles.tabLabel}>討論區</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.tabItem}>
+              <MaterialCommunityIcons 
+                name="account" 
+                size={28} 
+                color={pathname === '/profile' ? '#f4c7ab' : '#5c4033'} 
+              />
+              <Text style={[styles.tabLabel, pathname === '/profile' && { color: '#f4c7ab', fontWeight: '700' }]}>
+                我的
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* MBTI 資訊 Modal（與 edit.js 內容完全一致） */}
+        <Modal
+          isVisible={showMbtiInfoModal}
+          onBackdropPress={() => setShowMbtiInfoModal(false)}
+          onBackButtonPress={() => setShowMbtiInfoModal(false)}
+          backdropOpacity={0.5}
+          animationIn="fadeInUp"
+          animationOut="fadeOutDown"
+          style={{ justifyContent: 'center', margin: 0 }}
+        >
+          <View style={modalStyles.container}>
+            <Text style={[modalStyles.title, { color: '#5c4033' }]}>關於 MBTI</Text>
+            <Text style={modalStyles.message}>
+              MBTI（邁爾斯-布里格斯類型指標）是一種人格類型理論，將人格分為16種類型。{'\n\n'}
+              每個類型由4個字母組成：{'\n'}
+              • E（外向）或 I（內向）{'\n'}
+              • S（實感）或 N（直覺）{'\n'}
+              • T（思考）或 F（情感）{'\n'}
+              • J（判斷）或 P（感知）{'\n\n'}
+              完成 MBTI 測試後，系統會根據你的性格類型為你推薦最匹配的朋友！
+            </Text>
+            <TouchableOpacity
+              style={[modalStyles.button, { backgroundColor: '#f4c7ab' }]}
+              onPress={() => setShowMbtiInfoModal(false)}
+            >
+              <Text style={modalStyles.buttonText}>我了解了</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+      </SafeAreaView>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  gradient: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+  loadingText: { marginTop: 16, fontSize: 16, color: '#5c4033' },
+  errorText: { marginTop: 16, fontSize: 16, color: '#e74c3c', textAlign: 'center' },
+  retryBtn: { marginTop: 24, backgroundColor: '#f4c7ab', paddingVertical: 12, paddingHorizontal: 32, borderRadius: 30 },
+  retryText: { color: '#5c4033', fontWeight: '600', fontSize: 16 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: 'rgba(255, 250, 245, 0.7)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(244, 199, 171, 0.3)',
+  },
+
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    pointerEvents: 'box-none',
+  },
+
+  backButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(244, 199, 171, 0.25)' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#5c4033' },
+  headerRight: { minWidth: 60 },
+
+  profileCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 32,
+    padding: 32,
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 28,
+    alignItems: 'center',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 199, 171, 0.35)',
+  },
+  avatar: { width: 110, height: 110, borderRadius: 55, marginBottom: 18, borderWidth: 5, borderColor: '#fffaf5' },
+  username: { fontSize: 24, fontWeight: '700', color: '#5c4033', marginBottom: 16 },
+  editBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4c7ab', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 30, gap: 8 },
+  editBtnText: { color: '#5c4033', fontWeight: '600', fontSize: 16 },
+
+empty: { 
+  flex: 1, 
+  justifyContent: 'center', 
+  alignItems: 'center', 
+  padding: 40, 
+  marginTop: 40 
+},
+emptyText: { 
+  fontSize: 18, 
+  color: '#8b5e3c', 
+  marginBottom: 24,
+  marginTop: 20,
+  textAlign: 'center'
+},
+
+createContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#fffaf7',
+  paddingHorizontal: 20,
+  paddingVertical: 12,
+  borderRadius: 25,
+  borderWidth: 1.5,
+  borderColor: '#f4c7ab',
+  marginTop: 10,
+},
+
+createText: {
+  color: '#8b5e3c',
+  fontSize: 16,
+  fontWeight: '700',
+  marginLeft: 8,
+},
+
+  mbtiWrapper: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+
+  mbtiTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 30,
+    gap: 8,
+  },
+
+  mbtiText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  mbtiTagEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(244, 199, 171, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 30,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#f4c7ab',
+  },
+
+  mbtiTextEmpty: {
+    color: '#f4c7ab',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  bottomTabContainer: {
+    position: 'absolute',
+    bottom: 15,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  bottomTab: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: 36,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 12,
+    width: '100%',
+    maxWidth: 440,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(244, 199, 171, 0.4)',
+  },
+  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
+  centerTab: { marginTop: -36 },
+  centerIconWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#f4c7ab',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#c47c5e',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  centerLabel: { color: '#8b5e3c', fontWeight: '600', fontSize: 13 },
+  tabLabel: { color: '#8b5e3c', fontSize: 12, fontWeight: '500' },
+});
+
+const modalStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#fffaf5',
+    borderRadius: 28,
+    padding: 32,
+    alignItems: 'center',
+    marginHorizontal: 32,
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  title: { 
+    fontSize: 24, 
+    fontWeight: '800', 
+    marginBottom: 16, 
+    textAlign: 'center' 
+  },
+  message: { 
+    fontSize: 16, 
+    color: '#8b5e3c', 
+    textAlign: 'center', 
+    marginBottom: 32, 
+    lineHeight: 24 
+  },
+  button: { 
+    paddingVertical: 16, 
+    paddingHorizontal: 40, 
+    borderRadius: 24, 
+    minWidth: 180, 
+    alignItems: 'center' 
+  },
+  buttonText: { 
+    color: '#5c4033', 
+    fontSize: 17, 
+    fontWeight: '700' 
+  },
+});

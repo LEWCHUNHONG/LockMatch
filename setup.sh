@@ -21,6 +21,7 @@ docker run -d \
   -v sql-init:/docker-entrypoint-initdb.d \
   -e MYSQL_ROOT_PASSWORD=honghong \
   -e MYSQL_DATABASE=mufyp \
+  -e TZ=Asia/Hong_Kong
   mysql:8.0 \
   --default-authentication-plugin=mysql_native_password
 
@@ -104,7 +105,7 @@ DB_USER=root
 DB_PASSWORD=honghong
 DB_NAME=mufyp
 JWT_SECRET=lockmatch2026_super_strong_key
-BASE_URL=http://:3000
+BASE_URL=http://192.168.1.11:3000
 AZURE_TEXT_ANALYTICS_ENDPOINT=https://lockmatch.cognitiveservices.azure.com/
 AZURE_TEXT_ANALYTICS_API_KEY=
 AZURE_OPENAI_API_KEY=

@@ -1,4 +1,4 @@
-// app/profile.js
+// app/profile/edit.js
 import { useEffect, useState } from 'react';
 import {
   View,
@@ -21,7 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
-import api from '../utils/api';
+import api from '../../utils/api';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -142,71 +142,149 @@ const refreshCacheBuster = (url) => {
     setModalVisible(true);
   };
 
-  const handleUploadAvatar = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        setUploadErrorMsg('需要圖庫權限才能上傳頭像');
-        setShowUploadError(true);
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (result.canceled) return;
-
-      const manipResult = await ImageManipulator.manipulateAsync(
-        result.assets[0].uri,
-        [{ resize: { width: 800 } }],
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-      );
-
-      const formData = new FormData();
-      formData.append('avatar', {
-        uri: manipResult.uri,
-        type: 'image/jpeg',
-        name: 'avatar.jpg',
-      });
-
-      const token = await AsyncStorage.getItem('token');
-
-      const response = await fetch(`${api.defaults.baseURL}/api/upload-avatar`, {
-        method: 'POST',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-        body: formData,
-      });
-
-      const res = await response.json();
-
-      if (!response.ok) {
-        throw new Error(res.error || '上傳失敗');
-      }
-
-      if (res.success && res.avatar) {
-        const updatedAvatar = refreshCacheBuster(res.avatar);
-        const updatedUser = { ...user, avatar: updatedAvatar };
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-      } else {
-        throw new Error(res.error || '上傳失敗');
-      }
-    } catch (err) {
-      console.error('頭像上傳錯誤:', err);
-      let msg = '上傳失敗，請再試一次';
-      if (err.message.includes('Network')) {
-        msg = '網路連線問題，請檢查網路後再試';
-      }
-      setUploadErrorMsg(msg);
+const handleUploadAvatar = async () => {
+  try {
+    // 請求圖庫權限
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setUploadErrorMsg('需要圖庫權限才能上傳頭像');
       setShowUploadError(true);
+      return;
     }
-  };
+
+    // 選擇圖片
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    // 壓縮圖片
+    const manipResult = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 800 } }],
+      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+    );
+
+    // 準備 FormData
+    const formData = new FormData();
+    const imageUri = Platform.OS === 'android'
+      ? manipResult.uri.replace(/^file:\/\//, 'file:///')
+      : manipResult.uri;
+
+    formData.append('avatar', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'avatar.jpg',
+    });
+
+    const token = await AsyncStorage.getItem('token');
+
+    // 上傳函數（帶 timeout）
+    const uploadWithTimeout = async (url, options, timeout = 20000) => {
+      const controller = new AbortController();
+      const signal = controller.signal;
+
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeout);
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal,
+        });
+
+        clearTimeout(timeoutId);
+        return response;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('上傳超時，請檢查網路連線');
+        }
+        throw err;
+      }
+    };
+
+    // 帶重試的上傳
+    const uploadWithRetry = async (retries = 2) => {
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= retries + 1; attempt++) {
+        try {
+          const response = await uploadWithTimeout(
+            `${api.defaults.baseURL}/api/upload-avatar`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: token ? `Bearer ${token}` : '',
+                // 重要：不要手動設定 Content-Type，讓 fetch 自動處理 multipart
+              },
+              body: formData,
+            },
+            20000 // 20秒 timeout
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `伺服器回應錯誤 (${response.status})`);
+          }
+
+          const res = await response.json();
+
+          if (res.success && res.avatar) {
+            // 成功處理
+            const updatedAvatar = refreshCacheBuster(res.avatar);
+            const updatedUser = { ...user, avatar: updatedAvatar };
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
+
+            // 可選：顯示成功提示
+            showModal('上傳成功', '頭像已更新', 'success');
+            return;
+          } else {
+            throw new Error(res.error || '上傳失敗');
+          }
+        } catch (err) {
+          lastError = err;
+          console.log(`上傳嘗試 ${attempt} 失敗:`, err.message);
+
+          if (attempt <= retries) {
+            // 等待一小段時間再重試（可防止伺服器被打爆）
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            console.log(`將進行第 ${attempt + 1} 次重試...`);
+          }
+        }
+      }
+
+      // 所有重試都失敗
+      throw lastError;
+    };
+
+    // 執行上傳（最多重試 2 次）
+    await uploadWithRetry(2);
+
+  } catch (err) {
+    console.error('頭像上傳最終失敗:', err);
+    let msg = '上傳失敗，請稍後再試';
+
+    if (err.message.includes('timeout') || err.message.includes('超時')) {
+      msg = '上傳超時，請檢查網路連線是否穩定';
+    } else if (err.message.includes('Network')) {
+      msg = '網路連線失敗，請確認網路後再試';
+    } else if (err.message.includes('abort')) {
+      msg = '上傳被中斷，請再試一次';
+    } else {
+      msg = err.message || '發生未知錯誤';
+    }
+
+    setUploadErrorMsg(msg);
+    setShowUploadError(true);
+  }
+};
 
   const handleDeleteAvatar = async () => {
     try {
@@ -315,7 +393,7 @@ const refreshCacheBuster = (url) => {
   const handleModalConfirm = () => {
     setModalVisible(false);
     if (modalType === 'success') {
-      router.back();
+      router.push('/dashboard');
     }
   };
 
@@ -331,7 +409,7 @@ const refreshCacheBuster = (url) => {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()}>
+              <TouchableOpacity onPress={() => router.replace('/profile')}>
                 <Text style={styles.back}>←</Text>
               </TouchableOpacity>
               <Text style={styles.title}>個人資料</Text>

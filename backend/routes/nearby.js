@@ -16,15 +16,13 @@ const query = (sql, params) => {
 // GET /api/nearby-users?lat=...&lng=...&radius=...
 router.get('/', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
     const userId = req.user.id;
-    const { lat, lng, radius = 1000 } = req.query; // 預設半徑 1000 米
+    const { lat, lng, radius = 1000 } = req.query;
 
     if (!lat || !lng) {
         return res.status(400).json({ success: false, error: '缺少經緯度' });
     }
 
     try {
-        // 使用 Haversine 公式計算距離，篩選半徑內嘅用戶
-        // 假設我哋有一個 user_locations 表記錄每次位置，取每個用戶最新嘅位置
         const sql = `
       SELECT 
         u.id, 
@@ -43,11 +41,12 @@ router.get('/', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
       WHERE ul.id IN (
         SELECT MAX(id) FROM user_locations GROUP BY user_id
       )
+      AND u.id != ?                  -- ← 新增這行：排除自己
       HAVING distance < ?
       ORDER BY distance
     `;
 
-        const nearbyUsers = await query(sql, [lat, lng, lat, radius]);
+        const nearbyUsers = await query(sql, [lat, lng, lat, userId, radius]);
 
         res.json({
             success: true,
