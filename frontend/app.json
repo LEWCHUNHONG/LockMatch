@@ -30,7 +30,7 @@
       "package": "com.lockmatch.LockMatchApp",
       "config": {
         "googleMaps": {
-          "apiKey": "EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY"
+          "apiKey": "process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY"
         }
       }
     },
