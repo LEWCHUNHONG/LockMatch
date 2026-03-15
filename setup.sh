@@ -21,6 +21,7 @@ docker run -d \
   -v sql-init:/docker-entrypoint-initdb.d \
   -e MYSQL_ROOT_PASSWORD=honghong \
   -e MYSQL_DATABASE=mufyp \
+  -e TZ=Asia/Hong_Kong \
   mysql:8.0 \
   --default-authentication-plugin=mysql_native_password
 
