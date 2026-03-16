@@ -131,3 +131,7 @@ dist
 # local env files
 .env
 .env.local
+
+uploads/chat_media/
+uploads/post_media/
+uploads/avatars/

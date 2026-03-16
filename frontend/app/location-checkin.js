@@ -173,28 +173,41 @@ export default function LocationCheckin() {
     }, [])
   );
 
-  const renderAvatarMarker = (user) => {
-    return (
-      <Marker
-        key={user.id}
-        coordinate={{
-          latitude: user.latitude,
-          longitude: user.longitude,
-        }}
-        onPress={() => sendTempChatInvite(user.id, user.username)}
-      >
-        <View style={styles.markerContainer}>
-          {user.avatar ? (
-            <Image source={{ uri: user.avatar }} style={styles.markerAvatar} />
-          ) : (
-            <View style={styles.markerDefault}>
-              <Text style={styles.markerText}>{user.username?.charAt(0) || '?'}</Text>
-            </View>
-          )}
-        </View>
-      </Marker>
-    );
-  };
+const renderAvatarMarker = (user) => {
+  const avatarUri = user.avatar
+    ? user.avatar.startsWith('http')
+      ? user.avatar
+      : `${api.defaults.baseURL}${user.avatar}`
+    : null;   // 或放預設圖
+
+  return (
+    <Marker
+      key={user.id}
+      coordinate={{
+        latitude: user.latitude,
+        longitude: user.longitude,
+      }}
+      onPress={() => sendTempChatInvite(user.id, user.username)}
+      tracksViewChanges={true}
+      anchor={{ x: 0.5, y: 0.6 }}
+    >
+      <View style={styles.markerContainer}>
+        {avatarUri ? (
+          <Image
+            source={{ uri: avatarUri }}
+            style={styles.markerAvatar}
+            // 建議加上這兩行，幫助 debug
+            onError={(e) => console.log('頭像載入失敗:', user.id, e.nativeEvent.error)}
+          />
+        ) : (
+          <View style={styles.markerDefault}>
+            <Text style={styles.markerText}>{user.username?.charAt(0) || '?'}</Text>
+          </View>
+        )}
+      </View>
+    </Marker>
+  );
+};
 
   const sendTempChatInvite = async (targetUserId, targetUsername) => {
     try {
@@ -379,19 +392,23 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-  markerContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#f4c7ab',
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-  },
-  markerAvatar: {
-    width: '100%',
-    height: '100%',
-  },
+markerContainer: {
+  width: 38,               // 縮小到 48（或 44–50 之間測試）
+  height: 38,
+  borderRadius: 24,
+  borderWidth: 2,          // 邊框也薄一點
+  borderColor: '#f4c7ab',
+  backgroundColor: '#fff',
+  overflow: 'visible',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+markerAvatar: {
+  width: 28,               // 圖片再小 8px，避免頂到 bitmap 邊界
+  height: 28,
+  borderRadius: 20,
+},
   markerDefault: {
     width: '100%',
     height: '100%',
