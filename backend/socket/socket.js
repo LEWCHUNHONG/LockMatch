@@ -30,7 +30,7 @@ const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
 
     // 更新在線狀態
     connection.query(
-      'UPDATE users SET last_active = NOW(), online_status = "online" WHERE id = ?',
+      'UPDATE users SET last_active = NOW() WHERE id = ?',
       [socket.userId],
       (err) => { if (err) console.error('更新在線狀態失敗:', err); }
     );
@@ -154,7 +154,7 @@ const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
     socket.on('disconnect', () => {
       console.log(`🔌 用戶斷開: ${socket.userId}`);
       connection.query(
-        'UPDATE users SET last_active = NOW(), online_status = "offline" WHERE id = ?',
+        'UPDATE users SET last_active = NOW() WHERE id = ?',
         [socket.userId],
         (err) => { if (err) console.error('更新離線狀態失敗:', err); }
       );

@@ -41,7 +41,8 @@ router.get('/', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
       WHERE ul.id IN (
         SELECT MAX(id) FROM user_locations GROUP BY user_id
       )
-      AND u.id != ?                  -- ← 新增這行：排除自己
+        AND ul.created_at >= NOW() - INTERVAL 1 MINUTE
+      AND u.id != ?
       HAVING distance < ?
       ORDER BY distance
     `;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useFocusEffect } from '@react-navigation/native';
 import api from '../utils/api';
 
 export default function LocationCheckin() {
@@ -24,7 +25,23 @@ export default function LocationCheckin() {
   const [initialLoading, setInitialLoading] = useState(true);
   const mapRef = useRef(null);
 
-  // 獲取當前位置及附近用戶
+  const lastUploadedLocationRef = useRef(null);
+
+  const AUTO_UPDATE_INTERVAL_MS = 10000;
+  const MIN_DISTANCE_THRESHOLD = 80;
+
+  const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const getCurrentLocationAndNearby = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
@@ -39,49 +56,74 @@ export default function LocationCheckin() {
         accuracy: Location.Accuracy.Highest,
       });
 
+      const currentLat = loc.coords.latitude;
+      const currentLng = loc.coords.longitude;
+
       const newLocation = {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
+        latitude: currentLat,
+        longitude: currentLng,
         latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       };
-
       setLocation(newLocation);
 
       if (mapRef.current) {
         mapRef.current.animateToRegion(newLocation, 1000);
       }
 
-      // 儲存位置到後端（打卡 + 積分）
-      const saveRes = await api.post('/api/user/location', {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-        accuracy: loc.coords.accuracy,
-      });
+      let shouldUpload = true;
 
-      if (saveRes.data.success) {
-        const earned = saveRes.data.pointsEarned || 50;
-        Alert.alert('打卡成功', `獲得 ${earned} 積分！`);
+      if (lastUploadedLocationRef.current) {
+        const distance = calculateDistanceMeters(
+          lastUploadedLocationRef.current.latitude,
+          lastUploadedLocationRef.current.longitude,
+          currentLat,
+          currentLng
+        );
+
+        console.log(`距離上次上傳位置：${distance.toFixed(2)} 公尺`);
+
+        if (distance < MIN_DISTANCE_THRESHOLD) {
+          console.log(`距離小於 ${MIN_DISTANCE_THRESHOLD}m → 跳過上傳`);
+          shouldUpload = false;
+        } else {
+          console.log(`距離 ≥ ${MIN_DISTANCE_THRESHOLD}m → 將上傳`);
+        }
+      } else {
+        console.log('首次上傳，無上次記錄');
       }
 
-      // 獲取附近用戶
+      if (shouldUpload) {
+        try {
+          console.log('[上傳開始]', new Date().toLocaleTimeString());
+          const saveRes = await api.post('/api/user/location', {
+            latitude: currentLat,
+            longitude: currentLng,
+            accuracy: loc.coords.accuracy,
+          });
+          console.log('[上傳成功]', saveRes.data);
+
+          lastUploadedLocationRef.current = {
+            latitude: currentLat,
+            longitude: currentLng,
+          };
+          console.log('已更新上次上傳記錄 →', lastUploadedLocationRef.current);
+        } catch (uploadError) {
+          console.error('[上傳失敗]', uploadError);
+        }
+      }
+
       const nearbyRes = await api.get('/api/nearby-users', {
         params: {
-          lat: loc.coords.latitude,
-          lng: loc.coords.longitude,
-          radius: 1000, // 可先改大一點測試，例如 5000
+          lat: currentLat,
+          lng: currentLng,
+          radius: 1000,
         },
       });
 
       if (nearbyRes.data.success) {
         const users = nearbyRes.data.users || [];
 
-        console.log('API 原始附近用戶數量:', users.length);
-        if (users.length > 0) {
-          console.log('第一筆用戶資料範例:', users[0]);
-        }
-
-        // 更寬鬆的過濾：接受 string 或 number，只要能轉成有效數字即可
         const validUsers = users
           .filter(user => {
             const lat = Number(user.latitude);
@@ -97,15 +139,9 @@ export default function LocationCheckin() {
           })
           .map(user => ({
             ...user,
-            latitude: Number(user.latitude),   // 統一轉成 number
+            latitude: Number(user.latitude),
             longitude: Number(user.longitude),
           }));
-
-        console.log('過濾後有效用戶數量:', validUsers.length);
-
-        if (validUsers.length === 0 && users.length > 0) {
-          console.warn('所有用戶被濾掉，可能 latitude/longitude 格式異常');
-        }
 
         setNearbyUsers(validUsers);
       } else {
@@ -120,11 +156,23 @@ export default function LocationCheckin() {
     }
   };
 
-  useEffect(() => {
-    getCurrentLocationAndNearby(true);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      // 頁面 focus 時立刻做一次完整更新（帶 loading）
+      getCurrentLocationAndNearby(true);
 
-  // 渲染 Marker（已簡化，因為資料已預先轉型）
+      const intervalId = setInterval(() => {
+        getCurrentLocationAndNearby(false);
+        console.log(`自動更新循環觸發 @ ${new Date().toLocaleTimeString()}`);
+      }, AUTO_UPDATE_INTERVAL_MS);
+
+      return () => {
+        clearInterval(intervalId);
+        console.log('離開地圖頁 → 停止自動更新');
+      };
+    }, [])
+  );
+
   const renderAvatarMarker = (user) => {
     return (
       <Marker
@@ -148,7 +196,6 @@ export default function LocationCheckin() {
     );
   };
 
-  // 開始臨時聊天邀請
   const sendTempChatInvite = async (targetUserId, targetUsername) => {
     try {
       console.log('🔘 點擊邀請按鈕，目標用戶 ID:', targetUserId);
@@ -170,13 +217,7 @@ export default function LocationCheckin() {
                 }
               } catch (err) {
                 console.error('❌ 發送邀請錯誤:', err);
-                if (err.response) {
-                  Alert.alert('錯誤', err.response.data.error || `伺服器錯誤 (${err.response.status})`);
-                } else if (err.request) {
-                  Alert.alert('網絡錯誤', '無法連接到伺服器，請檢查網絡');
-                } else {
-                  Alert.alert('錯誤', err.message);
-                }
+                Alert.alert('錯誤', '發送失敗，請稍後再試');
               }
             },
           },
@@ -194,7 +235,7 @@ export default function LocationCheckin() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>即時位置打卡</Text>
+          <Text style={styles.headerTitle}>附近的人</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={styles.loadingContainer}>
@@ -211,7 +252,7 @@ export default function LocationCheckin() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>即時位置打卡</Text>
+        <Text style={styles.headerTitle}>附近的人</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -261,144 +302,106 @@ export default function LocationCheckin() {
 const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fffaf5' },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 10,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(244,199,171,0.3)',
-    },
-    backButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: 'rgba(244,199,171,0.25)',
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        color: '#5c4033',
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 16,
-        color: '#8b5e3c',
-    },
-    mapContainer: {
-        flex: 1,
-        margin: 16,
-        borderRadius: 16,
-        overflow: 'hidden',
-        borderWidth: 2,
-        borderColor: '#f4c7ab',
-    },
-    map: {
-        width: '100%',
-        height: '100%',
-    },
-    buttonContainer: {
-        padding: 20,
-        alignItems: 'center',
-    },
-    updateButton: {
-        flexDirection: 'row',
-        backgroundColor: '#f4c7ab',
-        paddingVertical: 14,
-        paddingHorizontal: 30,
-        borderRadius: 30,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        shadowColor: '#c47c5e',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    updateButtonText: {
-        color: '#5c4033',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    note: {
-        marginTop: 16,
-        fontSize: 14,
-        color: '#8b5e3c',
-        textAlign: 'center',
-    },
-    disabled: {
-        opacity: 0.6,
-    },
-    // Marker 樣式
-    markerContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 2,
-        borderColor: '#f4c7ab',
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-    },
-    markerAvatar: {
-        width: '100%',
-        height: '100%',
-    },
-    markerDefault: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#f4c7ab',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    markerText: {
-        fontSize: 18,
-        fontWeight: '800',
-        color: '#5c4033',
-    },
-    // Callout 樣式
-    calloutContainer: {
-        backgroundColor: '#fffaf5',
-        borderRadius: 16,
-        padding: 12,
-        minWidth: 160,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#f4c7ab',
-    },
-    calloutName: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#5c4033',
-    },
-    calloutMbti: {
-        fontSize: 14,
-        color: '#8b5e3c',
-        marginTop: 2,
-    },
-    calloutDistance: {
-        fontSize: 12,
-        color: '#a0785e',
-        marginTop: 4,
-    },
-    calloutButton: {
-        backgroundColor: '#f4c7ab',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        marginTop: 8,
-    },
-    calloutButtonText: {
-        color: '#5c4033',
-        fontSize: 14,
-        fontWeight: '600',
-    },
+  container: { flex: 1, backgroundColor: '#fffaf5' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(244,199,171,0.3)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(244,199,171,0.25)',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#5c4033',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#8b5e3c',
+  },
+  mapContainer: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#f4c7ab',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  buttonContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  updateButton: {
+    flexDirection: 'row',
+    backgroundColor: '#f4c7ab',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#c47c5e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  updateButtonText: {
+    color: '#5c4033',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  note: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#8b5e3c',
+    textAlign: 'center',
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+  markerContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#f4c7ab',
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  markerAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  markerDefault: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f4c7ab',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  markerText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#5c4033',
+  },
 });
