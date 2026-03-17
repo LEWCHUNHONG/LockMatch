@@ -31,7 +31,7 @@ router.post('/', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
         );
 
         // 2. 獎勵積分（每次打卡加 50）
-        const pointsReward = 50;
+        const pointsReward = 5;
         await query('UPDATE users SET points = points + ? WHERE id = ?', [pointsReward, userId]);
 
         // 3. 記錄積分明細（使用 task_reward 類型，兼容現有表結構）
@@ -42,7 +42,7 @@ router.post('/', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
 
         res.json({
             success: true,
-            message: '位置已儲存，獲得 50 積分',
+            message: '位置已儲存，獲得 5 積分',
             pointsEarned: pointsReward
         });
     } catch (error) {

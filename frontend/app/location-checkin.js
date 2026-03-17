@@ -12,7 +12,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../utils/api';
@@ -27,8 +27,9 @@ export default function LocationCheckin() {
 
   const lastUploadedLocationRef = useRef(null);
 
-  const AUTO_UPDATE_INTERVAL_MS = 10000;
-  const MIN_DISTANCE_THRESHOLD = 80;
+const AUTO_UPDATE_INTERVAL_MS = 15000;       // 普通檢查間隔：15 秒
+const FORCE_UPLOAD_INTERVAL_MS = 300000;     // 強制上傳間隔：5 分鐘 
+const MIN_DISTANCE_THRESHOLD = 80;
 
   const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
@@ -42,136 +43,147 @@ export default function LocationCheckin() {
     return R * c;
   };
 
-  const getCurrentLocationAndNearby = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
+const getCurrentLocationAndNearby = async (showLoading = true, isForceUpload = false) => {
+  try {
+    if (showLoading) setLoading(true);
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('需要位置權限', '請允許存取位置');
-        return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
-      });
-
-      const currentLat = loc.coords.latitude;
-      const currentLng = loc.coords.longitude;
-
-      const newLocation = {
-        latitude: currentLat,
-        longitude: currentLng,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      };
-      setLocation(newLocation);
-
-      if (mapRef.current) {
-        mapRef.current.animateToRegion(newLocation, 1000);
-      }
-
-      let shouldUpload = true;
-
-      if (lastUploadedLocationRef.current) {
-        const distance = calculateDistanceMeters(
-          lastUploadedLocationRef.current.latitude,
-          lastUploadedLocationRef.current.longitude,
-          currentLat,
-          currentLng
-        );
-
-        console.log(`距離上次上傳位置：${distance.toFixed(2)} 公尺`);
-
-        if (distance < MIN_DISTANCE_THRESHOLD) {
-          console.log(`距離小於 ${MIN_DISTANCE_THRESHOLD}m → 跳過上傳`);
-          shouldUpload = false;
-        } else {
-          console.log(`距離 ≥ ${MIN_DISTANCE_THRESHOLD}m → 將上傳`);
-        }
-      } else {
-        console.log('首次上傳，無上次記錄');
-      }
-
-      if (shouldUpload) {
-        try {
-          console.log('[上傳開始]', new Date().toLocaleTimeString());
-          const saveRes = await api.post('/api/user/location', {
-            latitude: currentLat,
-            longitude: currentLng,
-            accuracy: loc.coords.accuracy,
-          });
-          console.log('[上傳成功]', saveRes.data);
-
-          lastUploadedLocationRef.current = {
-            latitude: currentLat,
-            longitude: currentLng,
-          };
-          console.log('已更新上次上傳記錄 →', lastUploadedLocationRef.current);
-        } catch (uploadError) {
-          console.error('[上傳失敗]', uploadError);
-        }
-      }
-
-      const nearbyRes = await api.get('/api/nearby-users', {
-        params: {
-          lat: currentLat,
-          lng: currentLng,
-          radius: 1000,
-        },
-      });
-
-      if (nearbyRes.data.success) {
-        const users = nearbyRes.data.users || [];
-
-        const validUsers = users
-          .filter(user => {
-            const lat = Number(user.latitude);
-            const lng = Number(user.longitude);
-            return (
-              !isNaN(lat) &&
-              !isNaN(lng) &&
-              lat >= -90 &&
-              lat <= 90 &&
-              lng >= -180 &&
-              lng <= 180
-            );
-          })
-          .map(user => ({
-            ...user,
-            latitude: Number(user.latitude),
-            longitude: Number(user.longitude),
-          }));
-
-        setNearbyUsers(validUsers);
-      } else {
-        console.warn('附近用戶 API 回傳不成功:', nearbyRes.data);
-      }
-    } catch (error) {
-      console.error('獲取位置/附近用戶失敗:', error);
-      Alert.alert('錯誤', error.message || '無法獲取位置或附近用戶');
-    } finally {
-      if (showLoading) setLoading(false);
-      setInitialLoading(false);
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('需要位置權限', '請允許存取位置');
+      return;
     }
-  };
 
-  useFocusEffect(
-    useCallback(() => {
-      // 頁面 focus 時立刻做一次完整更新（帶 loading）
-      getCurrentLocationAndNearby(true);
+    const loc = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Highest,
+    });
 
-      const intervalId = setInterval(() => {
-        getCurrentLocationAndNearby(false);
-        console.log(`自動更新循環觸發 @ ${new Date().toLocaleTimeString()}`);
-      }, AUTO_UPDATE_INTERVAL_MS);
+    const currentLat = loc.coords.latitude;
+    const currentLng = loc.coords.longitude;
 
-      return () => {
-        clearInterval(intervalId);
-        console.log('離開地圖頁 → 停止自動更新');
-      };
-    }, [])
-  );
+    const newLocation = {
+      latitude: currentLat,
+      longitude: currentLng,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    };
+    setLocation(newLocation);
+
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(newLocation, 1000);
+    }
+
+    let shouldUpload = isForceUpload; // 如果是強制上傳，就一定上傳
+
+    if (!isForceUpload && lastUploadedLocationRef.current) {
+      const distance = calculateDistanceMeters(
+        lastUploadedLocationRef.current.latitude,
+        lastUploadedLocationRef.current.longitude,
+        currentLat,
+        currentLng
+      );
+
+      console.log(`距離上次上傳：${distance.toFixed(2)} 公尺`);
+
+      if (distance >= MIN_DISTANCE_THRESHOLD) {
+        console.log(`距離 ≥ ${MIN_DISTANCE_THRESHOLD}m → 上傳`);
+        shouldUpload = true;
+      } else {
+        console.log(`距離 < ${MIN_DISTANCE_THRESHOLD}m → 跳過`);
+      }
+    } else if (!lastUploadedLocationRef.current) {
+      console.log('首次上傳');
+      shouldUpload = true;
+    }
+
+    if (shouldUpload) {
+      try {
+        console.log('[位置上傳]', isForceUpload ? '(強制)' : '(移動觸發)', new Date().toLocaleTimeString());
+        const saveRes = await api.post('/api/user/location', {
+          latitude: currentLat,
+          longitude: currentLng,
+          accuracy: loc.coords.accuracy,
+        });
+        console.log('[上傳成功]', saveRes.data);
+
+        lastUploadedLocationRef.current = {
+          latitude: currentLat,
+          longitude: currentLng,
+        };
+      } catch (uploadError) {
+        console.error('[上傳失敗]', uploadError);
+      }
+    }
+
+    // 獲取附近用戶（無論是否上傳都重新抓一次）
+    const nearbyRes = await api.get('/api/nearby-users', {
+      params: {
+        lat: currentLat,
+        lng: currentLng,
+        radius: 1000,
+      },
+    });
+
+    console.log('附近用戶 API 完整回應：', nearbyRes.data);
+
+    if (nearbyRes.data.success) {
+      const users = nearbyRes.data.users || [];
+      console.log('收到附近用戶數量：', users.length);       // ← 新增
+      console.log('附近用戶資料（前2筆）：', users.slice(0, 2)); // ← 新增，可看到是否有資料
+      const validUsers = users
+        .filter(user => {
+          const lat = Number(user.latitude);
+          const lng = Number(user.longitude);
+          return (
+            !isNaN(lat) &&
+            !isNaN(lng) &&
+            lat >= -90 && lat <= 90 &&
+            lng >= -180 && lng <= 180
+          );
+        })
+        .map(user => ({
+          ...user,
+          latitude: Number(user.latitude),
+          longitude: Number(user.longitude),
+        }));
+
+      setNearbyUsers(validUsers);
+    }
+  } catch (error) {
+    console.error('位置/附近用戶錯誤:', error);
+    if (showLoading) {
+      Alert.alert('錯誤', '無法獲取位置或附近用戶');
+    }
+  } finally {
+    if (showLoading) setLoading(false);
+    setInitialLoading(false);
+  }
+};
+
+// useFocusEffect 只保留這一個版本
+useFocusEffect(
+  useCallback(() => {
+    // 進入頁面立即更新一次（帶 loading）
+    getCurrentLocationAndNearby(true, false);  // 初次不算強制，但會因為首次而上传
+
+    // 普通檢查：每 15 秒看是否移動夠遠 → 決定是否上傳
+    const normalInterval = setInterval(() => {
+      getCurrentLocationAndNearby(false, false);
+      console.log(`普通檢查 @ ${new Date().toLocaleTimeString()}`);
+    }, AUTO_UPDATE_INTERVAL_MS);
+
+    // 強制上傳：每 5 分鐘強制上傳一次，保證靜止也維持可見
+    const forceInterval = setInterval(() => {
+      getCurrentLocationAndNearby(false, true);
+      console.log(`強制上傳 @ ${new Date().toLocaleTimeString()}`);
+    }, FORCE_UPLOAD_INTERVAL_MS);
+
+    return () => {
+      clearInterval(normalInterval);
+      clearInterval(forceInterval);
+      console.log('離開頁面 → 停止所有自動更新');
+    };
+  }, [])
+);
 
 const renderAvatarMarker = (user) => {
   const avatarUri = user.avatar
@@ -279,6 +291,18 @@ const renderAvatarMarker = (user) => {
             showsMyLocationButton={false}
             provider={PROVIDER_GOOGLE}
           >
+            {/* 畫出 600m 範圍的紅色圓 */}
+    <Circle
+      center={{
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }}
+      radius={1000}
+      strokeColor="#ff0000"          // 純紅 #ff0000 或 "#e63946"
+      strokeOpacity={0.9}
+      strokeWidth={2.5}
+      fillColor="rgba(255, 100, 100, 0.1)"  // 淡紅填充
+    />
             {nearbyUsers.map(user => renderAvatarMarker(user))}
           </MapView>
         ) : (
