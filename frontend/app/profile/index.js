@@ -393,7 +393,7 @@ export default function Profile() {
               style={[styles.tabItem, styles.centerTab]}
               onPressIn={handleNearbyPressIn}
               onPressOut={handleNearbyPressOut}
-              onPress={() => {/* router.push('/nearby'); */}}
+              onPress={() => router.push('/location-checkin')}
             >
               <Animated.View style={{ transform: [{ scale: nearbyScale }] }}>
                 <View style={styles.centerIconWrapper}>

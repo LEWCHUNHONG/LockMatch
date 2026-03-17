@@ -307,6 +307,7 @@ onPress={() => router.push('/discuss/moments')}
               style={[styles.tabItem, styles.centerTab]}
               onPressIn={handleNearbyPressIn}
               onPressOut={handleNearbyPressOut}
+              onPress={() => router.push('/location-checkin')}
             >
               <Animated.View style={[styles.centerIconWrapper, { transform: [{ scale: nearbyScale }] }]}>
                 <Animated.View
