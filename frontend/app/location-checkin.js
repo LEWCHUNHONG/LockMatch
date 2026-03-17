@@ -24,6 +24,7 @@ export default function LocationCheckin() {
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
   const mapRef = useRef(null);
 
   const lastUploadedLocationRef = useRef(null);
@@ -379,14 +380,87 @@ onPress={() => setSuccessModalVisible(false)}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <Modal
+  animationType="fade"
+  transparent={true}
+  visible={infoModalVisible}
+  onRequestClose={() => setInfoModalVisible(false)}
+>
+  <TouchableOpacity
+    style={modalStyles.modalOverlay}
+    activeOpacity={1}
+    onPress={() => setInfoModalVisible(false)}
+  >
+    <TouchableOpacity
+      activeOpacity={1}
+      style={[modalStyles.modalContainer, { maxHeight: '70%' }]}
+      onPress={() => {}}
+    >
+      <Text style={modalStyles.modalTitle}>使用說明</Text>
+
+<Text style={[modalStyles.modalMessage, { textAlign: 'left', lineHeight: 24 }]}>
+  • 每 15 秒自動檢查位置，移動 80m 時上傳{'\n\n'}
+  • 每 5 分鐘強制更新一次{'\n\n'}
+  • 顯示 1 公里內的用戶（紅色圓圈）{'\n\n'}
+  • 點大頭針可發送聊天邀請{'\n\n'}
+</Text>
+
+      <TouchableOpacity
+        onPress={() => setInfoModalVisible(false)}
+        style={{
+          backgroundColor: '#f4c7ab',
+          paddingVertical: 14,
+          paddingHorizontal: 40,
+          borderRadius: 12,
+          marginTop: 24,
+        }}
+      >
+        <Text style={{
+          color: '#3d2a1f',
+          fontSize: 17,
+          fontWeight: '700',
+        }}>
+          知道了
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  </TouchableOpacity>
+</Modal>
       
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>附近的人</Text>
-        <View style={{ width: 28 }} />
-      </View>
+<View style={styles.header}>
+  {/* 左邊返回按鈕*/}
+  <TouchableOpacity 
+    onPress={() => router.back()} 
+    style={[styles.backButton, { zIndex: 10 }]}  // 加 zIndex
+  >
+    <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
+  </TouchableOpacity>
+
+  {/* 中間標題 */}
+  <Text 
+    style={[
+      styles.headerTitle, 
+      { 
+        position: 'absolute', 
+        left: 0, 
+        right: 0, 
+        textAlign: 'center',
+        pointerEvents: 'none'
+      }
+    ]}
+  >
+    附近的人
+  </Text>
+
+  {/* 右邊說明按鈕*/}
+  <TouchableOpacity 
+    onPress={() => setInfoModalVisible(true)}
+    style={[styles.infoButton, { zIndex: 10 }]}
+  >
+    <MaterialCommunityIcons name="information" size={28} color="#5c4033" />
+  </TouchableOpacity>
+</View>
 
       <View style={styles.mapContainer}>
         {location ? (
@@ -620,4 +694,9 @@ const modalStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  infoButton: {
+  padding: 8,
+  borderRadius: 20,
+  backgroundColor: 'rgba(244,199,171,0.25)',
+},
 });
