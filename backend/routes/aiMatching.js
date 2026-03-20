@@ -194,7 +194,7 @@ ${userDescriptions}
                     avatarUrl = user.avatar;
                 } else {
                     const path = user.avatar.startsWith('/') ? user.avatar : '/' + user.avatar;
-                    avatarUrl = `${process.env.API_URL || 'http://localhost:3000'}${path}`;
+                    avatarUrl = `${process.env.BASE_URL}${path}`;
                 }
             }
 
@@ -363,7 +363,7 @@ ${userDescriptions}
                 avatarUrl = matchedUser.avatar;
             } else {
                 const path = matchedUser.avatar.startsWith('/') ? matchedUser.avatar : '/' + matchedUser.avatar;
-                avatarUrl = `${process.env.API_URL || 'http://localhost:3000'}${path}`;
+                avatarUrl = `${process.env.BASE_URL}${path}`;
             }
         }
 
