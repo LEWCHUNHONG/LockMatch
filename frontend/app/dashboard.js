@@ -722,101 +722,169 @@ export default function Dashboard() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f4c7ab']} tintColor="#f4c7ab" />}
         >
           {/* 歡迎卡片 */}
-          <View style={styles.welcomeCard}>
-            <View style={styles.avatarWrapper}>
-              <View style={styles.avatarCircle}>
-                {user?.avatar ? (
-                  <Image
-                    source={{ uri: user.avatar.includes('http') ? user.avatar : `${api.defaults.baseURL}${user.avatar}?cb=${Date.now()}` }}
-                    style={styles.avatarImage}
-                    onError={() => {
-                      setUser(prev => ({ ...prev, avatar: `${api.defaults.baseURL}/uploads/avatars/default.png?cb=${Date.now()}` }));
-                    }}
-                  />
-                ) : (
-                  <Text style={styles.avatarNumber}>{user?.id || '?'}</Text>
-                )}
-              </View>
-            </View>
+<View style={styles.welcomeCard}>
+  {/* 頂部：頭像 + 問候 + MBTI狀態/測試按鈕 + 積分 */}
+  <View style={{
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  }}>
+    <View style={[styles.avatarCircle, { width: 80, height: 80, borderRadius: 40 }]}>
+      {user?.avatar ? (
+        <Image 
+          source={{ uri: user.avatar }} 
+          style={styles.avatarImage} 
+        />
+      ) : (
+        <Text style={styles.avatarNumber}>{user?.id || '?'}</Text>
+      )}
+    </View>
 
-            <View style={styles.welcomeInfo}>
-              <Text style={styles.welcomeText}>嗨，{user?.username || '使用者'}！</Text>
-              <View style={styles.statusContainer}>
-                {user?.mbti ? (
-                  <View style={[styles.statusTag, { backgroundColor: getMbtiColor(user.mbti) }]}>
-                    <MaterialCommunityIcons name="account-check" size={16} color="#fff" />
-                    <Text style={[styles.statusTagText, { color: '#fff' }]}>{user.mbti} 型</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.statusTag} onPress={() => router.push('/mbti-test')}>
-                    <Text style={styles.statusTagText}>待測 MBTI</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => router.push('/rewards')}>
-                  <Text style={styles.points}>★ {userPoints.points} 積分 →</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+    <View style={{ marginLeft: 16, flex: 1 }}>
+      <Text style={[styles.welcomeText, { fontSize: 22, marginBottom: 8 }]}>
+        嗨，{user?.username || '使用者'}！
+      </Text>
 
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#f4c7ab' }]} onPress={() => router.push('/mbti-test')}>
-                <Text style={styles.actionBtnText}>{user?.mbti ? '重新測試 MBTI' : '開始 MBTI 遊戲測試'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.chatButtonsRow}>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#f4c7ab', flex: 1 }]} onPress={() => router.push('/chat/ai-chat')}>
-                <Text style={styles.actionBtnText}>與 AI 聊天</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.chatButtonsRow}>
-              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f4c7ab', flex: 1 }]} onPress={() => router.push('/insights')}>
-                <Text style={styles.actionBtnText}>性格分析</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f4c7ab', flex: 1, position: 'relative' }]}
-                onPress={() => router.push('/temp-chat-invites')}
-              >
-                <View style={{ position: 'relative' }}>
-                  <Text style={[styles.actionBtnText, { color: '#8b5e3c' }]}>📩 臨時聊天邀請</Text>
-                  {pendingInvitesCount > 0 && (
-                    <View style={[styles.badge, { top: -8, right: -20 }]}>
-                      <Text style={styles.badgeText}>{pendingInvitesCount}</Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.levelContainer}>
-              <View style={styles.levelBadge}>
-                <MaterialCommunityIcons name="crown" size={16} color={getLevelColor(userPoints.level)} />
-                <Text style={styles.levelText}>{userPoints.level}</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.checkinButton, (checkinStatus.checked_in_today || isCheckingIn) && { backgroundColor: '#d9b8a3', opacity: 0.8 }]}
-                onPress={handleDailyCheckin}
-                disabled={checkinStatus.checked_in_today || isCheckingIn || refreshing || isLoading}
-                activeOpacity={0.7}
-              >
-                {isCheckingIn ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons
-                      name={checkinStatus.checked_in_today ? 'check-circle' : 'calendar-check'}
-                      size={16}
-                      color="#fff"
-                    />
-                    <Text style={styles.checkinButtonText}>
-                      {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到'}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        {/* MBTI 狀態或開始測試按鈕 */}
+        {user?.mbti ? (
+          <View style={[styles.statusTag, { 
+            backgroundColor: getMbtiColor?.(user.mbti) || '#f4c7ab', 
+            paddingHorizontal: 12, 
+            paddingVertical: 6 
+          }]}>
+            <MaterialCommunityIcons name="account-check" size={14} color="#fff" />
+            <Text style={[styles.statusTagText, { color: '#fff', fontSize: 13 }]}>
+              {user.mbti} 型
+            </Text>
           </View>
+        ) : (
+          <TouchableOpacity 
+            style={[styles.statusTag, { 
+              backgroundColor: '#f4c7ab', 
+              paddingHorizontal: 12, 
+              paddingVertical: 6 
+            }]} 
+            onPress={() => router.push('/mbti-test')}
+          >
+            <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
+            <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
+              開始 MBTI 遊戲測試
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 積分 */}
+        <TouchableOpacity onPress={() => router.push('/rewards')}>
+          <Text style={[styles.points, { fontSize: 15, fontWeight: '700' }]}>
+            ★ {userPoints.points} 積分 →
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+
+  {/* 每日簽到 - 大按鈕 */}
+  <TouchableOpacity
+    style={[
+      styles.checkinButton,
+      {
+        width: '100%',
+        paddingVertical: 18,
+        marginBottom: 16,
+        borderRadius: 20,
+        shadowColor: '#c47c5e',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 6,
+      },
+      (checkinStatus.checked_in_today || isCheckingIn) && {
+        backgroundColor: '#d9b8a3',
+        opacity: 0.85,
+      },
+    ]}
+    onPress={handleDailyCheckin}
+    disabled={checkinStatus.checked_in_today || isCheckingIn}
+    activeOpacity={0.85}
+  >
+    {isCheckingIn ? (
+      <ActivityIndicator size="small" color="#fff" />
+    ) : (
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+        <MaterialCommunityIcons
+          name={checkinStatus.checked_in_today ? 'check-circle' : 'calendar-check'}
+          size={22}
+          color="#fff"
+        />
+        <Text style={[styles.checkinButtonText, { fontSize: 16, fontWeight: '700' }]}>
+          {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到領積分'}
+        </Text>
+      </View>
+    )}
+  </TouchableOpacity>
+
+{/* 2×2 小工具格子 */}
+<View style={{
+  width: '100%',
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  justifyContent: 'space-between',
+  gap: 12,
+  marginTop: 8,
+}}>
+  {/* 臨時聊天邀請 */}
+  <TouchableOpacity
+  style={styles.smallToolItem}
+  onPress={() => router.push('/temp-chat-invites')}
+  >
+    <View style={{ position: 'relative' }}>
+      <MaterialCommunityIcons name="chat-plus-outline" size={26} color="#5c4033" />
+      {pendingInvitesCount > 0 && (
+        <View style={[styles.badge, { top: -8, right: -12 }]}>
+          <Text style={styles.badgeText}>{pendingInvitesCount}</Text>
+        </View>
+      )}
+    </View>
+    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+      臨時邀請
+    </Text>
+  </TouchableOpacity>
+
+  {/* MBTI 重新測試 / 開始測試 */}
+  <TouchableOpacity
+  style={styles.smallToolItem}
+  onPress={() => router.push('/mbti-test')}
+  >
+    <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
+    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+      {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
+    </Text>
+  </TouchableOpacity>
+
+  {/* AI 聊天 */}
+  <TouchableOpacity
+  style={styles.smallToolItem}
+  onPress={() => router.push('/chat/ai-chat')}
+  >
+    <MaterialCommunityIcons name="robot-happy-outline" size={26} color="#9b59b6" />
+    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+      AI 聊天
+    </Text>
+  </TouchableOpacity>
+
+  {/* 性格分析 */}
+  <TouchableOpacity
+  style={styles.smallToolItem}
+  onPress={() => router.push('/insights')}
+  >
+    <MaterialCommunityIcons name="file-chart-outline" size={26} color="#9b59b6" />
+    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+      性格分析
+    </Text>
+  </TouchableOpacity>
+</View>
+</View>
 
           {/* 功能卡片網格 */}
           <View style={styles.cardsGrid}>
@@ -970,6 +1038,19 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
+smallToolItem: {
+      flexBasis: '47%',
+      maxWidth: '47%',
+      backgroundColor: '#fffaf5',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(244,199,171,0.5)',
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+},
   gradient: { flex: 1 },
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
