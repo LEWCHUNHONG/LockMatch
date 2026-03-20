@@ -1,23 +1,30 @@
 // app/chat/friends.js
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  Image,
-  FlatList,
-  ActivityIndicator,
+import React, { 
+  useState, 
+  useEffect, 
+  useCallback 
+} from 'react';
+
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  TextInput, 
+  Image, 
+  FlatList, 
+  ActivityIndicator 
 } from 'react-native';
+
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
-import { chatAPI } from '../../utils/api';
-import { useFocusEffect } from '@react-navigation/native';
 
+import { useFocusEffect } from 'expo-router';
+
+import { chatAPI, socketAPI } from '../../utils/api';
 
 export default function FriendsList() {
   const router = useRouter();
