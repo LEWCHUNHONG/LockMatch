@@ -6,17 +6,33 @@ import { StyleSheet, Alert } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { socketAPI } from '../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Layout() {
   const router = useRouter();
   const listenersRegistered = useRef(false);
 
   useEffect(() => {
-    const setupSocket = async () => {
+    let isMounted = true;
+
+    const trySetupSocket = async () => {
       try {
+        // 先檢查 token 是否存在
+        const token = await AsyncStorage.getItem('token');
+        
+        if (!token) {
+          console.log('[SOCKET] 尚未登入，跳過 socket 初始化');
+          return;
+        }
+
+        if (!isMounted) return;
+
+        console.log('[SOCKET] 偵測到 token，開始初始化...');
+
         const socket = await socketAPI.initSocket();
+        
         if (!socket) {
-          console.error('❌ Socket 初始化失敗');
+          console.log('[SOCKET] 初始化返回 null，跳過事件綁定');
           return;
         }
 
@@ -55,7 +71,7 @@ export default function Layout() {
         socket.on('friend-request-accepted', (data) => {
           Alert.alert(
             '好友請求已接受',
-            `${data.toUsername} 已經接受你嘅好友請求`,
+            `${data.toUsername} 已經接受你的好友請求`,
             [
               { text: '稍後', style: 'cancel' },
               { text: '去聊天', onPress: () => router.push(`/chat/${data.roomId}`) }
@@ -65,7 +81,6 @@ export default function Layout() {
 
         socket.on('temp-chat-accepted', (data) => {
           console.log('📩 收到 temp-chat-accepted 事件:', data);
-          // 雙方都直接跳轉到臨時聊天室（重要：路徑必須是 /temp-chat/ 開頭）
           router.push(`/temp-chat/${data.roomId}?otherUserId=${data.withUserId}`);
         });
 
@@ -74,14 +89,23 @@ export default function Layout() {
         });
 
         listenersRegistered.current = true;
+        console.log('[SOCKET] 事件監聽器註冊完成');
+
       } catch (error) {
-        console.error('❌ Socket 設置失敗:', error);
+        // 只在「不是 No token」的錯誤才顯示較明顯的 warning
+        if (error.message === 'No token') {
+          console.log('[SOCKET] 無有效 token，等待使用者登入');
+        } else {
+          console.warn('⚠️ Socket 初始化失敗:', error.message);
+        }
       }
     };
 
-    setupSocket();
+    trySetupSocket();
 
     return () => {
+      isMounted = false;
+      
       const socket = socketAPI.getSocket();
       if (socket) {
         socket.off('temp-chat-invite');
@@ -90,6 +114,7 @@ export default function Layout() {
         socket.off('temp-chat-accepted');
         socket.off('temp-chat-rejected');
         listenersRegistered.current = false;
+        console.log('[SOCKET] 清理事件監聽器完成');
       }
     };
   }, []);
