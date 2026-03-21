@@ -824,7 +824,7 @@ export default function Dashboard() {
     )}
   </TouchableOpacity>
 
-{/* 2×2 小工具格子 */}
+{/* 2×2 格 */}
 <View style={{
   width: '100%',
   flexDirection: 'row',
@@ -833,6 +833,18 @@ export default function Dashboard() {
   gap: 12,
   marginTop: 8,
 }}>
+
+  {/* MBTI 重新測試 / 開始測試 */}
+  <TouchableOpacity
+  style={styles.smallToolItem}
+  onPress={() => router.push('/mbti-test')}
+  >
+    <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
+    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+      {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
+    </Text>
+  </TouchableOpacity>
+
   {/* 臨時聊天邀請 */}
   <TouchableOpacity
   style={styles.smallToolItem}
@@ -850,18 +862,7 @@ export default function Dashboard() {
       臨時邀請
     </Text>
   </TouchableOpacity>
-
-  {/* MBTI 重新測試 / 開始測試 */}
-  <TouchableOpacity
-  style={styles.smallToolItem}
-  onPress={() => router.push('/mbti-test')}
-  >
-    <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
-    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
-    </Text>
-  </TouchableOpacity>
-
+  
   {/* AI 聊天 */}
   <TouchableOpacity
   style={styles.smallToolItem}
@@ -888,14 +889,14 @@ export default function Dashboard() {
 
 {/* ────────────── 探索 LockMATCH 標題區 ────────────── */}
         <View style>
-          <View style={styles.sectionHeader}>
+          <View style={styles.firstsectionHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <MaterialCommunityIcons 
                 name="compass" 
                 size={26} 
                 color="#5c4033" 
               />
-              <Text style={styles.sectionTitle}>探索 LockMATCH</Text>
+              <Text style={styles.firstsectionTitle}>探索 LockMATCH</Text>
             </View>
           </View>
         </View>
@@ -1015,6 +1016,7 @@ export default function Dashboard() {
             </TouchableOpacity>
           </View>
         </View>
+      
       </SafeAreaView>
 
       {/* 登出確認 Modal */}
@@ -1052,13 +1054,13 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
-  sectionHeader: {
+  firstsectionHeader: {
   flexDirection: 'row',
   justifyContent: 'space-between',
   alignItems: 'center',
   marginBottom: 16,
 },
-sectionTitle: {
+firstsectionTitle: {
   fontSize: 20,
   fontWeight: '700',
   color: '#5c4033',
