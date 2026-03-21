@@ -886,6 +886,20 @@ export default function Dashboard() {
 </View>
 </View>
 
+{/* ────────────── 探索 LockMATCH 標題區 ────────────── */}
+        <View style>
+          <View style={styles.sectionHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <MaterialCommunityIcons 
+                name="compass" 
+                size={26} 
+                color="#5c4033" 
+              />
+              <Text style={styles.sectionTitle}>探索 LockMATCH</Text>
+            </View>
+          </View>
+        </View>
+    
           {/* 功能卡片網格 */}
           <View style={styles.cardsGrid}>
             <AnimatedCard icon="chat-outline" title="開始聊天" desc="和附近的人即時聊天、分享心情或找活動夥伴" buttonText="開啟聊天" onPress={() => router.push('/chat')} cardWidth={cardWidth} />
@@ -1038,6 +1052,17 @@ export default function Dashboard() {
 }
 
 const styles = StyleSheet.create({
+  sectionHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 16,
+},
+sectionTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  color: '#5c4033',
+},
 smallToolItem: {
       flexBasis: '47%',
       maxWidth: '47%',
@@ -1074,7 +1099,7 @@ smallToolItem: {
     backgroundColor: '#ffffff',
     borderRadius: 32,
     padding: 28,
-    marginBottom: 32,
+    marginBottom: 15,
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 8 },
