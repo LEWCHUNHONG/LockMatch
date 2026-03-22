@@ -379,7 +379,7 @@ router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
       const targetUserId = req.params.userId;
       // 查詢用戶基本資料，包含 mbti
       const [rows] = await connection.promise().query(
-        'SELECT id, username, avatar, mbti, status FROM users WHERE id = ?',
+        'SELECT id, username, avatar, mbti, status, bio FROM users WHERE id = ?',
         [targetUserId]
       );
       if (rows.length === 0) {

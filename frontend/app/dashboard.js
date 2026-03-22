@@ -151,7 +151,7 @@ export default function Dashboard() {
   };
 
 
-  const fetchPendingInvites = useCallback(async () => {
+ /* const fetchPendingInvites = useCallback(async () => {
     try {
       setLoadingInvites(true);
       const res = await api.get('/api/temp-chat/pending');
@@ -249,7 +249,7 @@ export default function Dashboard() {
     } catch (error) {
       Alert.alert('錯誤', error.message);
     }
-  };
+  }; */
   // --------------------------------------------------------------
 
   // 從後端獲取最新用戶信息
@@ -556,7 +556,6 @@ export default function Dashboard() {
           fetchCheckinStatus(),
           fetchTasks(),
           fetchCouponCount(),
-          fetchPendingInvites(),
         ]);
         setIsLoading(false);
         return;
@@ -845,13 +844,13 @@ export default function Dashboard() {
     </Text>
   </TouchableOpacity>
 
-  {/* 臨時聊天邀請 */}
+  {/* 朋友列表 */}
   <TouchableOpacity
   style={styles.smallToolItem}
-  onPress={() => router.push('/temp-chat-invites')}
+  onPress={() => router.push('/chat/friends')}
   >
     <View style={{ position: 'relative' }}>
-      <MaterialCommunityIcons name="chat-plus-outline" size={26} color="#5c4033" />
+      <MaterialCommunityIcons name="account-multiple-outline" size={26} color="#5c4033" />
       {pendingInvitesCount > 0 && (
         <View style={[styles.badge, { top: -8, right: -12 }]}>
           <Text style={styles.badgeText}>{pendingInvitesCount}</Text>
@@ -859,7 +858,7 @@ export default function Dashboard() {
       )}
     </View>
     <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      臨時邀請
+      朋友列表
     </Text>
   </TouchableOpacity>
   

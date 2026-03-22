@@ -684,9 +684,16 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
   });
 
   // 獲取用戶自己的帖子（時間線，按時間倒序）
+// 獲取指定用戶的帖子（支援 ?user_id=xxx，若沒傳則預設自己）
 router.get('/user-posts', authMiddleware(JWT_SECRET), (req, res) => {
-  const userId = req.user.id;
-  const limit = parseInt(req.query.limit) || 20;
+  const currentUserId = req.user.id;
+  const targetUserId = req.query.user_id ? parseInt(req.query.user_id) : currentUserId;
+  
+  // 可選：如果不是查自己，可以加額外邏輯（例如檢查隱私設定）
+  // 這裡先簡單允許所有人查看別人的公開貼文
+  // 如果未來要加隱私，可在此處判斷 targetUserId 是否為好友等
+
+  const limit  = parseInt(req.query.limit)  || 20;
   const offset = parseInt(req.query.offset) || 0;
 
   connection.query(
@@ -701,17 +708,16 @@ router.get('/user-posts', authMiddleware(JWT_SECRET), (req, res) => {
     WHERE p.user_id = ?
     ORDER BY p.created_at DESC
     LIMIT ? OFFSET ?`,
-    [userId, userId, limit, offset],
+    [currentUserId, targetUserId, limit, offset],   // ← 第一個 ? 是 is_liked_by_me 用 currentUserId
     (err, results) => {
       if (err) {
         console.error('獲取用戶帖子失敗:', err);
         return res.status(500).json({ error: '獲取失敗' });
       }
 
-      // 解析 JSON 為數組
       const formattedPosts = results.map(post => ({
         ...post,
-        media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
+        media_urls:  post.media_urls  ? JSON.parse(post.media_urls)  : [],
         media_types: post.media_types ? JSON.parse(post.media_types) : []
       }));
 

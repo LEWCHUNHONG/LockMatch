@@ -15,21 +15,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
-import api from '../../../utils/api'; // 根據你的專案結構調整路徑
+import api from '../../../utils/api';
+import PostCard from '../../discuss/components/PostCard';
 
 export default function PublicProfile() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
 
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(true);
+
+  const handleLikeToggle = async (postId, currentlyLiked) => {
+    try {
+      await api.post(`/api/posts/${postId}/like`);
+      setPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                is_liked_by_me: currentlyLiked ? 0 : 1,
+                like_count: currentlyLiked ? p.like_count - 1 : p.like_count + 1,
+              }
+            : p
+        )
+      );
+    } catch (err) {
+      console.error('讚切換失敗:', err);
+    }
+  };
+
+  const handlePressComment = postId => {
+    router.push(`/discuss/${postId}`);
+  };
 
   useEffect(() => {
     if (!id) return;
 
     const fetchProfile = async () => {
       try {
-        setLoading(true);
+        setLoadingProfile(true);
         const res = await api.get(`/api/user/${id}`);
 
         if (!res.data?.success) {
@@ -42,12 +68,59 @@ export default function PublicProfile() {
         Alert.alert('提示', '無法查看此用戶資料，可能已設為隱私或不存在');
         router.back();
       } finally {
-        setLoading(false);
+        setLoadingProfile(false);
+      }
+    };
+
+    const fetchRecentPosts = async () => {
+      try {
+        setLoadingPosts(true);
+        const res = await api.get('/api/user-posts', {
+          params: {
+            user_id: id,
+            limit: 5,
+            offset: 0,
+          },
+        });
+
+        let fetchedPosts = res.data.posts || [];
+
+        fetchedPosts = fetchedPosts.map(post => ({
+          ...post,
+          media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
+          media_types: safeParseMedia(post.media_types, 'media_types', post.id),
+        }));
+
+        setPosts(fetchedPosts);
+      } catch (err) {
+        console.error('載入用戶最近貼文失敗:', err);
+      } finally {
+        setLoadingPosts(false);
       }
     };
 
     fetchProfile();
+    fetchRecentPosts();
   }, [id]);
+
+  const safeParseMedia = (value, fieldName, postId) => {
+    if (Array.isArray(value)) return value;
+    if (value == null || value === '') return [];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed === '' || trimmed === 'null' || trimmed === '[]') return [];
+      try {
+        const parsed = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        if (trimmed !== '[]') {
+          console.warn(`貼文 ${postId} ${fieldName} 解析失敗:`, trimmed, e.message);
+        }
+        return [];
+      }
+    }
+    return [];
+  };
 
   const getMbtiColor = (mbti) => {
     if (!mbti) return '#f4c7ab';
@@ -60,7 +133,7 @@ export default function PublicProfile() {
     return colors[mbti.toUpperCase()] || '#f4c7ab';
   };
 
-  if (loading) {
+  if (loadingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
@@ -115,21 +188,84 @@ export default function PublicProfile() {
 
             <Text style={styles.username}>{profile.username || '匿名用戶'}</Text>
 
-            {profile.mbti && (
-              <View style={[styles.mbtiTag, { backgroundColor: getMbtiColor(profile.mbti) }]}>
-                <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
-                <Text style={styles.mbtiText}>{profile.mbti} 型</Text>
-              </View>
-            )}
+{/* MBTI 顯示區域 */}
+{profile.mbti ? (
+  <View style={[styles.mbtiTag, { backgroundColor: getMbtiColor(profile.mbti) }]}>
+    <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
+    <Text style={styles.mbtiText}>{profile.mbti} 型</Text>
+  </View>
+) : (
+  <View style={styles.mbtiPlaceholder}>
+    <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
+    <Text style={styles.mbtiPlaceholderText}>尚未設置 MBTI</Text>
+  </View>
+)}
 
-            {profile.status && (
-              <Text style={styles.statusText}>
-                <MaterialCommunityIcons name="circle" size={12} color="#2ecc71" /> {profile.status}
-              </Text>
-            )}
+            {/* 目前狀態 + 個人簡介 兩個小卡片 */}
+            <View style={styles.extraInfoContainer}>
+              {/* 目前心情卡片 */}
+              <View style={styles.extraInfoCard}>
+                <Text style={styles.cardTitle}>
+                  <MaterialCommunityIcons name="emoticon-outline" size={18} color="#f39c12" />{' '}
+                  目前心情
+                </Text>
+                <Text style={styles.cardContent}>
+                  {profile.status ? (
+                    <>
+                      <MaterialCommunityIcons 
+                        name="circle" 
+                        size={14} 
+                        color="#2ecc71" 
+                      />{' '}
+                      {profile.status}
+                    </>
+                  ) : (
+                    '尚未設置心情～'
+                  )}
+                </Text>
+              </View>
+
+              {/* 關於我卡片（有內容才顯示） */}
+              {profile.bio ? (
+                <View style={styles.extraInfoCard}>
+                  <Text style={styles.cardTitle}>
+                    <MaterialCommunityIcons name="card-text-outline" size={18} color="#9b59b6" />{' '}
+                    關於我
+                  </Text>
+                  <Text style={styles.cardContent}>{profile.bio}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
-          {/* 之後想加更多欄位（自我介紹、興趣等）就在這裡擴充 */}
+          {/* 最近貼文區塊 */}
+          <View style={styles.postsSection}>
+            <Text style={styles.sectionTitle}>最近 5 篇貼文</Text>
+
+            {loadingPosts ? (
+  <ActivityIndicator size="small" color="#f4c7ab" style={{ marginTop: 20 }} />
+) : posts.length === 0 ? (
+  <View style={styles.emptyPostsContainer}>
+    <MaterialCommunityIcons 
+      name="comment-text-multiple-outline" 
+      size={80} 
+      color="#f4c7ab" 
+    />
+    <Text style={styles.noPostsText}>
+      該用戶尚未發布任何貼文
+    </Text>
+  </View>
+) : (
+              posts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onLikeToggle={handleLikeToggle}
+                  onPressComment={handlePressComment}
+                />
+              ))
+            )}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -159,8 +295,8 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 40 },
   profileCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 28,
-    padding: 32,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 6 },
@@ -171,18 +307,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(244,199,171,0.3)',
   },
   avatar: {
-    width: 140,
-    height: 140,
+    width: 120,
+    height: 120,
     borderRadius: 70,
     marginBottom: 20,
     borderWidth: 5,
     borderColor: '#fffaf5',
   },
   username: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#5c4033',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   mbtiTag: {
     flexDirection: 'row',
@@ -191,13 +327,104 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 30,
     gap: 8,
-    marginBottom: 20,
+    marginBottom: 16, // 與下方卡片拉開距離
   },
   mbtiText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  statusText: {
-    fontSize: 16,
-    color: '#5c4033',
-    marginTop: 8,
-    textAlign: 'center',
+
+emptyPostsContainer: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginTop: 40,           // 從上方拉開一點距離
+  paddingVertical: 30,
+  gap: 16,                 // icon 與文字之間的間距
+},
+
+noPostsText: {
+  fontSize: 16,
+  color: '#8b5e3c',
+  textAlign: 'center',
+  opacity: 0.7,
+},
+
+// 兩個小卡片也壓縮一點
+  extraInfoContainer: {
+    width: '100%',
+    marginTop: 12,                     // ← 從 16 降到 12
+    marginBottom: 4,
+    gap: 12,                           // ← 從 16 降到 12
   },
+
+  extraInfoCard: {
+    backgroundColor: 'rgba(255, 245, 237, 1)',
+    borderRadius: 16,                  // ← 圓角小一點
+    paddingVertical: 12,               // ← 從 16 降到 12
+    paddingHorizontal: 16,             // ← 從 20 降到 16
+    borderWidth: 1,
+    borderColor: 'rgba(244, 199, 171, 0.5)',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: 'center',
+  },
+
+  cardTitle: {
+    fontSize: 14,                      // ← 從 15 降到 14，更精簡
+    fontWeight: '700',
+    color: '#6b4e3a',
+    marginBottom: 6,                   // ← 從 10 降到 6
+    letterSpacing: 0.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+
+  cardContent: {
+    fontSize: 15,                      // ← 從 15.5 降到 15
+    lineHeight: 22,                    // ← 行高也稍微壓縮
+    color: '#4a2c1f',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+
+  // 貼文區塊
+  postsSection: {
+    marginTop: 32,
+    paddingHorizontal: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#5c4033',
+    marginBottom: 16,
+    paddingLeft: 8,
+  },
+  noPostsText: {
+    fontSize: 16,
+    color: '#8b5e3c',
+    textAlign: 'center',
+    opacity: 0.7,
+    marginTop: 20,
+    fontStyle: 'italic',
+  },
+  mbtiPlaceholder: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: 20,
+  paddingVertical: 9,
+  borderRadius: 30,
+  backgroundColor: 'rgba(244, 199, 171, 0.15)', // 非常淡的暖灰底
+  borderWidth: 1,
+  borderColor: 'rgba(244, 199, 171, 0.3)',
+  gap: 8,
+  marginBottom: 16,
+},
+
+mbtiPlaceholderText: {
+  color: '#a68a7c',           // 灰棕色，比較低調
+  fontSize: 15,
+  fontWeight: '600',
+  letterSpacing: 0.3,
+},
 });

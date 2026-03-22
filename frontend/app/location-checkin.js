@@ -313,31 +313,54 @@ export default function LocationCheckin() {
         {previewUser?.username || '用戶'}
       </Text>
 
-      {/* 新增：MBTI 顯示 */}
-      {previewUser?.mbti ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: getMbtiColor(previewUser.mbti),
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: 20,
-            gap: 8,
-            marginBottom: 24,
-          }}
-        >
-          <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-            {previewUser.mbti} 型
-          </Text>
-        </View>
-      ) : (
-        <Text style={{ color: '#8b5e3c', fontSize: 14, marginBottom: 24, opacity: 0.7 }}>
-          未設定 MBTI
-        </Text>
-      )}
-
+{previewUser?.mbti ? (
+  <View
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: getMbtiColor(previewUser.mbti),
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+      borderRadius: 30,
+      gap: 8,
+      marginBottom: 24,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.3)', // 輕微白色邊框增加質感
+    }}
+  >
+    <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
+    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+      {previewUser.mbti} 型
+    </Text>
+  </View>
+) : (
+  <View
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+      borderRadius: 30,
+      backgroundColor: 'rgba(244, 199, 171, 0.15)', // 跟公開頁面一致的極淡暖灰
+      borderWidth: 1,
+      borderColor: 'rgba(244, 199, 171, 0.3)',
+      gap: 8,
+      marginBottom: 24,
+    }}
+  >
+    <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
+    <Text
+      style={{
+        color: '#a68a7c',
+        fontSize: 15,
+        fontWeight: '600',
+        letterSpacing: 0.3,
+      }}
+    >
+      尚未設置 MBTI
+    </Text>
+  </View>
+)}
       {/* 查看個人卡片按鈕 */}
       <TouchableOpacity
         style={{

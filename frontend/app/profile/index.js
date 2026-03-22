@@ -674,10 +674,25 @@ const handleUpdateStatus = async (newStatus) => {
 </View>
 
                 <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
-                  <MaterialCommunityIcons name="pencil" size={18} color="#5c4033" />
+                  <MaterialCommunityIcons name="pencil" size={20} color="#5c4033" />
                   <Text style={styles.editBtnText}>編輯資料</Text>
                 </TouchableOpacity>
               </View>
+              <View style={{
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 10,
+  gap: 10,
+}}>
+  <MaterialCommunityIcons name="post" size={22} color="#c47c5e" />
+  <Text style={{
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#5c4033',
+  }}>
+    我的貼文
+  </Text>
+</View>
             </View>
           }
 
