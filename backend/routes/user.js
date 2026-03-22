@@ -107,47 +107,58 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
   //  更新個人資料 API
   //  PUT /api/update-profile
   // =============================================
-  router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
-    const { username, email, status, bio } = req.body;
+router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
+  const { username, email, status, bio } = req.body;
 
-    if (!username && !email && !status && bio === undefined) {
-      return res.status(400).json({ error: '請提供至少一項更新資訊' });
-    }
+  // 改用 hasOwnProperty 或 in 來判斷是否有傳入任何欄位
+  const hasUpdate = 
+    'username' in req.body ||
+    'email' in req.body ||
+    'status' in req.body ||    // 即使是 null 或 "" 也算有更新意圖
+    'bio' in req.body;
 
-    let updates = [];
-    let params = [];
+  if (!hasUpdate) {
+    return res.status(400).json({ error: '請提供至少一項更新資訊' });
+  }
 
-    if (username) {
-      updates.push('username = ?');
-      params.push(username);
-    }
-    if (email) {
-      updates.push('email = ?');
-      params.push(email);
-    }
-    if (status !== undefined) {
+  let updates = [];
+  let params = [];
+
+  if ('username' in req.body) {
+    updates.push('username = ?');
+    params.push(username);
+  }
+  if ('email' in req.body) {
+    updates.push('email = ?');
+    params.push(email);
+  }
+  if ('status' in req.body) {
     updates.push('status = ?');
-    params.push(status ? status.trim().slice(0, 255) : null); // 限制長度 + 處理空字串
+    const finalStatus = (status === null || (typeof status === 'string' && status.trim() === ''))
+      ? null
+      : (status ? status.trim().slice(0, 255) : null);
+    params.push(finalStatus);
   }
-  if (bio !== undefined) {
-    // 明確允許 bio 為空字串或 null → 清空
-    const trimmedBio = bio ? bio.trim() : null;
+  if ('bio' in req.body) {
+    const trimmedBio = (bio === null || (typeof bio === 'string' && bio.trim() === ''))
+      ? null
+      : (bio ? bio.trim() : null);
     updates.push('bio = ?');
-    params.push(trimmedBio);  // 如果前端傳 "" 或 null，都存成 null
+    params.push(trimmedBio);
   }
 
-    params.push(req.user.id);
+  params.push(req.user.id);
 
-    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+  const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
 
-    connection.query(query, params, (err) => {
-      if (err) {
-        console.error('更新個人資料失敗:', err);
-        return res.status(500).json({ error: '更新失敗' });
-      }
-      res.json({ success: true, message: '個人資料更新成功' });
-    });
+  connection.query(query, params, (err) => {
+    if (err) {
+      console.error('更新個人資料失敗:', err);
+      return res.status(500).json({ error: '更新失敗', detail: err.sqlMessage || err.message });
+    }
+    res.json({ success: true, message: '個人資料更新成功' });
   });
+});
 
   // =============================================
   //  專用 API：更新 MBTI 結果

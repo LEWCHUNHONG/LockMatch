@@ -50,6 +50,19 @@ export default function Profile() {
   const [tempStatus, setTempStatus] = useState('');
   const [tempBio, setTempBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+
+  const STATUS_OPTIONS = [
+  { id: 'happy',    label: '開心 😊',       emoji: '😊' },
+  { id: 'relaxed',  label: '放鬆～ 😌',      emoji: '😌' },
+  { id: 'sleepy',   label: '想睡覺 😴',      emoji: '😴' },
+  { id: 'excited',  label: '超興奮！🔥',     emoji: '🔥' },
+  { id: 'thinking', label: '思考人生 🤔',    emoji: '🤔' },
+  { id: 'love',     label: '戀愛中 💕',      emoji: '💕' },
+  { id: 'busy',     label: '忙到爆炸 💼',    emoji: '💼' },
+  { id: 'coffee',   label: '咖啡續命 ☕',    emoji: '☕' },
+  { id: 'clear',    label: '清除狀態',       emoji: '✖️', isClear: true },
+];
 
   useFocusEffect(
     useCallback(() => {
@@ -310,6 +323,94 @@ const handleSaveBio = async () => {
   }
 };
 
+const handleUpdateStatus = async (newStatus) => {
+  try {
+    setSaving(true);
+
+    // 明確定義要傳送的 payload
+    let payload = {};
+    
+    // 處理清除狀態的情況（null 或空字串都視為清空）
+    if (newStatus === null || newStatus === '' || (typeof newStatus === 'string' && newStatus.trim() === '')) {
+      payload.status = null;  // 建議傳 null，讓後端明確存為 NULL
+      console.log('[handleUpdateStatus] 準備清空狀態，傳送 payload:', payload);
+    } else {
+      // 正常狀態更新，trim 並限制長度
+      const trimmedStatus = newStatus.trim().slice(0, 255);
+      payload.status = trimmedStatus;
+      console.log('[handleUpdateStatus] 準備更新狀態，傳送 payload:', payload);
+    }
+
+    // 發送請求
+    const res = await api.put('/api/update-profile', payload, {
+      timeout: 10000,  // 避免卡住太久
+    });
+
+    console.log('[handleUpdateStatus] API 回應狀態碼:', res.status);
+    console.log('[handleUpdateStatus] API 回應資料:', res.data);
+
+    if (res.data.success) {
+      // 優先使用後端回傳的 user.status（如果有），否則用我們計算的值
+      let updatedStatus = '';
+      if (res.data.user?.status !== undefined) {
+        updatedStatus = res.data.user.status || '';  // 後端回 null 時顯示為 ''
+      } else {
+        updatedStatus = (newStatus === null || newStatus === '') ? '' : (newStatus?.trim() || '');
+      }
+
+      // 更新本地 state
+      setUser(prev => ({
+        ...prev,
+        status: updatedStatus
+      }));
+
+      // 同步到 AsyncStorage
+      try {
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.status = updatedStatus;
+          await AsyncStorage.setItem('user', JSON.stringify(parsed));
+        }
+      } catch (storageErr) {
+        console.warn('[handleUpdateStatus] AsyncStorage 更新失敗:', storageErr);
+      }
+
+      // 可選：成功後給使用者一點反饋
+      // Alert.alert('成功', '狀態已更新');
+    } else {
+      // 後端明確說 success: false
+      throw new Error(res.data.error || res.data.message || '後端回應失敗');
+    }
+  } catch (err) {
+    console.error('[handleUpdateStatus] 更新狀態發生錯誤:', err);
+
+    let errorMessage = '更新狀態失敗，請稍後再試';
+    
+    if (err.response) {
+      // 有 HTTP 回應，但不是 2xx
+      console.error('[handleUpdateStatus] HTTP 狀態碼:', err.response.status);
+      console.error('[handleUpdateStatus] 後端回傳錯誤資料:', err.response.data);
+      
+      errorMessage = err.response.data?.error 
+        || err.response.data?.message 
+        || `伺服器錯誤 (${err.response.status})`;
+    } else if (err.request) {
+      // 請求發出去了，但沒收到回應（網路問題、timeout）
+      console.error('[handleUpdateStatus] 無回應，可能網路問題');
+      errorMessage = '無法連線到伺服器，請檢查網路';
+    } else {
+      // 其他錯誤（例如程式碼錯誤）
+      console.error('[handleUpdateStatus] 其他錯誤:', err.message);
+      errorMessage = err.message || '發生未知錯誤';
+    }
+
+    Alert.alert('更新失敗', errorMessage);
+  } finally {
+    setSaving(false);
+  }
+};
+
   if (loading && !posts.length) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -452,16 +553,16 @@ const handleSaveBio = async () => {
                       </View>
                     </View>
                   ) : (
-                    <Pressable
-                      style={{ width: '100%', alignItems: 'center' }}
-                      onPress={() => setIsEditingStatus(true)}
-                    >
-                      {user?.status ? (
-                        <Text style={localStyles.statusText}>{user.status}</Text>
-                      ) : (
-                        <Text style={localStyles.placeholderText}>點擊設定一句話狀態</Text>
-                      )}
-                    </Pressable>
+<Pressable
+  style={{ width: '100%', alignItems: 'center' }}
+  onPress={() => setShowStatusModal(true)}
+>
+  {user?.status ? (
+    <Text style={localStyles.statusText}>{user.status}</Text>
+  ) : (
+    <Text style={localStyles.placeholderText}>點擊選擇你的狀態</Text>
+  )}
+</Pressable>
                   )}
                 </View>
 
@@ -620,6 +721,57 @@ const handleSaveBio = async () => {
             </TouchableOpacity>
           </View>
         </Modal>
+
+        <Modal
+  isVisible={showStatusModal}
+  onBackdropPress={() => setShowStatusModal(false)}
+  backdropOpacity={0.4}
+  animationIn="fadeInUp"
+  animationOut="fadeOutDown"
+  style={{ justifyContent: 'flex-end', margin: 0 }}
+>
+  <View style={{
+    backgroundColor: '#fffaf5',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  }}>
+    <Text style={{ fontSize: 20, fontWeight: '700', color: '#5c4033', marginBottom: 20, textAlign: 'center' }}>
+      現在的心情是？
+    </Text>
+
+    {STATUS_OPTIONS.map(option => (
+      <TouchableOpacity
+        key={option.id || 'clear'}
+        style={{
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(244,199,171,0.3)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}
+        onPress={async () => {
+          const newStatus = option.isClear ? '' : option.label;
+          // 這裡呼叫 API 更新
+          await handleUpdateStatus(newStatus);
+          setShowStatusModal(false);
+        }}
+      >
+        {option.emoji && <Text style={{ fontSize: 22 }}>{option.emoji}</Text>}
+        <Text style={{
+          fontSize: 16,
+          color: '#5c4033',
+          flex: 1,
+        }}>
+          {option.label}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+</Modal>
 
       </SafeAreaView>
     </LinearGradient>
