@@ -983,8 +983,8 @@ export default function Dashboard() {
         <View style={styles.bottomTabContainer}>
           <View style={styles.bottomTab}>
             <TouchableOpacity style={styles.tabItem}>
-              <MaterialCommunityIcons name="home" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>首頁</Text>
+              <MaterialCommunityIcons name="home" size={28} color="#f4c7ab" />
+              <Text style={[styles.tabLabel, { color: '#f4c7ab', fontWeight: '700' }]}>首頁</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
               <MaterialCommunityIcons name="heart-multiple" size={28} color="#5c4033" />
