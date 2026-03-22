@@ -251,5 +251,36 @@ router.get('/pending-friend-requests', authMiddleware(JWT_SECRET), (req, res) =>
   );
 });
 
+// routes/friends.js 或 friendRoutes.js
+router.get('/friendship/status/:targetId', authMiddleware(JWT_SECRET), (req, res) => {
+  const targetId = req.params.targetId;
+  const myId = req.user.id;
+
+  // 可以寫成一個比較完整的查詢，或分段查
+  connection.query(
+    `SELECT 
+      CASE 
+        WHEN EXISTS (
+          SELECT 1 FROM friendships 
+          WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+        ) THEN 'friends'
+        WHEN EXISTS (
+          SELECT 1 FROM friend_requests 
+          WHERE from_user_id = ? AND to_user_id = ? AND status = 'pending'
+        ) THEN 'pending_sent'
+        WHEN EXISTS (
+          SELECT 1 FROM friend_requests 
+          WHERE from_user_id = ? AND to_user_id = ? AND status = 'pending'
+        ) THEN 'pending_received'
+        ELSE 'not_friend'
+      END as status`,
+    [myId, targetId, targetId, myId, myId, targetId, targetId, myId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ success: false, error: '查詢失敗' });
+      res.json({ success: true, status: rows[0]?.status || 'not_friend' });
+    }
+  );
+});
+
   return router;
 };

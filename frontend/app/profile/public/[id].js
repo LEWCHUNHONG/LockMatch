@@ -26,6 +26,8 @@ export default function PublicProfile() {
   const [posts, setPosts] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  const [relationshipStatus, setRelationshipStatus] = useState('unknown'); // unknown / not_friend / pending_sent / pending_received / friends
+  const [isSelf, setIsSelf] = useState(false);
 
   const handleLikeToggle = async (postId, currentlyLiked) => {
     try {
@@ -50,58 +52,78 @@ export default function PublicProfile() {
     router.push(`/discuss/${postId}`);
   };
 
-  useEffect(() => {
-    if (!id) return;
+  const handleAddFriend = async () => {
+  if (relationshipStatus === 'pending_received') {
+    // 未來可導向到好友請求列表，或直接呼叫 accept
+    Alert.alert('提示', '請至好友請求頁面回應');
+    return;
+  }
 
-    const fetchProfile = async () => {
-      try {
-        setLoadingProfile(true);
-        const res = await api.get(`/api/user/${id}`);
+  if (relationshipStatus !== 'not_friend') return;
 
-        if (!res.data?.success) {
-          throw new Error(res.data?.error || '無法載入資料');
-        }
+  try {
+    await api.post('/api/friend-request', { toUserId: id });
+    setRelationshipStatus('pending_sent');
+    Alert.alert('成功', '好友請求已送出！');
+  } catch (err) {
+    console.error(err);
+    const msg = err.response?.data?.error || '發送失敗，請稍後再試';
+    Alert.alert('錯誤', msg);
+  }
+};
 
-        setProfile(res.data.user);
-      } catch (err) {
-        console.error('載入公開個人資料失敗:', err);
-        Alert.alert('提示', '無法查看此用戶資料，可能已設為隱私或不存在');
-        router.back();
-      } finally {
-        setLoadingProfile(false);
+useEffect(() => {
+  if (!id) return;
+
+  const loadAll = async () => {
+    try {
+      setLoadingProfile(true);
+      setLoadingPosts(true);
+
+      // ── 載入個人資料 ──
+      const profileRes = await api.get(`/api/user/${id}`);
+      if (!profileRes.data?.success) throw new Error('無法載入資料');
+      setProfile(profileRes.data.user);
+
+      // ── 檢查自己 ──
+      const selfRes = await api.get('/api/me');
+      const currentUserId = selfRes.data.user?.id;
+      const isMe = currentUserId === Number(id);
+      setIsSelf(isMe);
+
+      if (!isMe) {
+        const relationRes = await api.get(`/api/friendship/status/${id}`);
+        setRelationshipStatus(relationRes.data.status || 'not_friend');
+      } else {
+        setRelationshipStatus('self');
       }
-    };
 
-    const fetchRecentPosts = async () => {
-      try {
-        setLoadingPosts(true);
-        const res = await api.get('/api/user-posts', {
-          params: {
-            user_id: id,
-            limit: 5,
-            offset: 0,
-          },
-        });
+      // ── 載入貼文 ──
+      const postsRes = await api.get('/api/user-posts', {
+        params: { user_id: id, limit: 5, offset: 0 },
+      });
 
-        let fetchedPosts = res.data.posts || [];
+      let fetchedPosts = postsRes.data.posts || [];
+      fetchedPosts = fetchedPosts.map(post => ({
+        ...post,
+        media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
+        media_types: safeParseMedia(post.media_types, 'media_types', post.id),
+      }));
+      setPosts(fetchedPosts);
 
-        fetchedPosts = fetchedPosts.map(post => ({
-          ...post,
-          media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
-          media_types: safeParseMedia(post.media_types, 'media_types', post.id),
-        }));
+    } catch (err) {
+      console.error('載入失敗:', err);
+      Alert.alert('提示', '部分資料載入失敗');
+      // 如果個人資料失敗才 back，貼文失敗可以容忍
+      if (!profile) router.back();
+    } finally {
+      setLoadingProfile(false);
+      setLoadingPosts(false);
+    }
+  };
 
-        setPosts(fetchedPosts);
-      } catch (err) {
-        console.error('載入用戶最近貼文失敗:', err);
-      } finally {
-        setLoadingPosts(false);
-      }
-    };
-
-    fetchProfile();
-    fetchRecentPosts();
-  }, [id]);
+  loadAll();
+}, [id]);
 
   const safeParseMedia = (value, fieldName, postId) => {
     if (Array.isArray(value)) return value;
@@ -199,6 +221,25 @@ export default function PublicProfile() {
     <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
     <Text style={styles.mbtiPlaceholderText}>尚未設置 MBTI</Text>
   </View>
+)}
+
+{!isSelf && (
+  <TouchableOpacity
+    style={[
+      styles.addFriendButton,
+      relationshipStatus === 'friends' && styles.friendButton,
+      relationshipStatus === 'pending_sent' && styles.pendingButton,
+    ]}
+    onPress={handleAddFriend}
+    disabled={relationshipStatus === 'friends' || relationshipStatus === 'pending_sent'}
+  >
+    <Text style={styles.addFriendText}>
+      {relationshipStatus === 'friends'     ? '已是好友' :
+       relationshipStatus === 'pending_sent' ? '已送出請求' :
+       relationshipStatus === 'pending_received' ? '回應好友請求' :
+       '添加好友'}
+    </Text>
+  </TouchableOpacity>
 )}
 
             {/* 目前狀態 + 個人簡介 兩個小卡片 */}
@@ -426,5 +467,24 @@ mbtiPlaceholderText: {
   fontSize: 15,
   fontWeight: '600',
   letterSpacing: 0.3,
+},
+addFriendButton: {
+  backgroundColor: '#f39c12',
+  paddingVertical: 12,
+  paddingHorizontal: 32,
+  borderRadius: 30,
+  alignItems: 'center',
+  width: '80%',
+},
+friendButton: {
+  backgroundColor: '#2ecc71',
+},
+pendingButton: {
+  backgroundColor: '#95a5a6',
+},
+addFriendText: {
+  color: 'white',
+  fontSize: 16,
+  fontWeight: '700',
 },
 });
