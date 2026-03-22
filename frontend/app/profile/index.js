@@ -11,6 +11,7 @@ import {
   Alert,
   Animated,
   Pressable,
+  TextInput,
 } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -43,32 +44,36 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
+  // 新增：狀態與簡介編輯相關
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [tempStatus, setTempStatus] = useState('');
+  const [tempBio, setTempBio] = useState('');
+  const [saving, setSaving] = useState(false);
+
   useFocusEffect(
-  useCallback(() => {
-    const onBackPress = () => {
-      router.replace('/dashboard');
-      return true;
-    };
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/dashboard');
+        return true;
+      };
 
-    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
 
-    return () => subscription.remove();
-  }, [router])
-);
+      return () => subscription.remove();
+    }, [router])
+  );
 
-  // 新增：控制 MBTI 說明 Modal
   const [showMbtiInfoModal, setShowMbtiInfoModal] = useState(false);
 
   const baseURL = api.defaults.baseURL;
 
-  // 點擊「我的」回到頂部
   const scrollToTop = () => {
     if (flashListRef.current) {
       flashListRef.current.scrollToOffset({ offset: 0, animated: true });
     }
   };
 
-  // MBTI 顏色映射
   const getMbtiColor = (mbti) => {
     if (!mbti) return '#f4c7ab';
     
@@ -82,7 +87,6 @@ export default function Profile() {
     return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
   };
 
-  // 附近按鈕動畫
   const handleNearbyPressIn = () => {
     Animated.parallel([
       Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
@@ -97,27 +101,34 @@ export default function Profile() {
     ]).start();
   };
 
-  const loadUser = useCallback(async () => {
-    try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const storedToken = await AsyncStorage.getItem('token');
+const loadUser = useCallback(async () => {
+  try {
+    const storedToken = await AsyncStorage.getItem('token');
+    const storedUser = await AsyncStorage.getItem('user');
 
-      if (!storedToken) {
-        Alert.alert('提示', '請先登入');
-        router.replace('/');
-        return;
-      }
 
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        setCurrentUserId(parsed.id);
-      }
-    } catch (err) {
-      console.error('載入使用者資料失敗:', err);
-      setError('無法載入個人資訊');
+
+    if (!storedToken) {
+      Alert.alert('提示', '請先登入');
+      router.replace('/');
+      return;
     }
-  }, [router]);
+
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+
+      setUser(parsed);
+      setCurrentUserId(parsed.id);
+      setTempStatus(parsed.status || '');
+      setTempBio(parsed.bio || '');
+    } else {
+      console.log('AsyncStorage 沒有 user 資料');
+    }
+  } catch (err) {
+    console.error('載入使用者資料失敗:', err);
+    setError('無法載入個人資訊');
+  }
+}, [router]);
 
   const fetchPosts = useCallback(async (isRefresh = false) => {
     if (loading && !isRefresh) return;
@@ -239,6 +250,66 @@ export default function Profile() {
     setPosts(prev => prev.filter(p => p.id !== deletedId));
   };
 
+  // 儲存 status
+  const handleSaveStatus = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await api.put('/api/update-profile', {
+        status: tempStatus.trim() || undefined,
+      });
+
+      if (res.data.success) {
+        const newStatus = res.data.user?.status ?? tempStatus.trim();
+        setUser(prev => ({ ...prev, status: newStatus }));
+
+        // 更新 AsyncStorage
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          parsed.status = newStatus;
+          await AsyncStorage.setItem('user', JSON.stringify(parsed));
+        }
+
+        setIsEditingStatus(false);
+      }
+    } catch (err) {
+      Alert.alert('錯誤', err.response?.data?.error || '更新狀態失敗');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+// 儲存 bio 的函式
+const handleSaveBio = async () => {
+  if (saving) return;
+  setSaving(true);
+  try {
+    const payload = { bio: tempBio.trim() };  // 故意傳空字串也行，後端會處理成 null
+
+    const res = await api.put('/api/update-profile', payload);
+
+    if (res.data.success) {
+      const newBio = res.data.user?.bio ?? tempBio.trim();  // 優先用後端回傳
+
+      setUser(prev => {
+        const updated = { ...prev, bio: newBio };
+        // 同步 AsyncStorage
+        AsyncStorage.setItem('user', JSON.stringify(updated))
+          .catch(e => console.error('AsyncStorage 更新 bio 失敗', e));
+        return updated;
+      });
+
+      setIsEditingBio(false);
+    }
+  } catch (err) {
+    console.error('更新 bio 失敗:', err);
+    Alert.alert('錯誤', err.response?.data?.error || '更新簡介失敗，請稍後再試');
+  } finally {
+    setSaving(false);
+  }
+};
+
   if (loading && !posts.length) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -275,7 +346,7 @@ export default function Profile() {
     >
       <SafeAreaView style={styles.safeArea}>
 
-        {/* 頂部導航欄 */}
+        {/* 頂部導航 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.replace('/dashboard')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
@@ -290,7 +361,6 @@ export default function Profile() {
           <View style={styles.headerRight} />
         </View>
 
-        {/* FlashList */}
         <FlashList
           ref={flashListRef}
           data={posts}
@@ -325,7 +395,7 @@ export default function Profile() {
                 
                 <Text style={styles.username}>{user?.username || '使用者'}</Text>
 
-                {/* MBTI 標籤 - 可點擊開啟說明 Modal */}
+                {/* MBTI */}
                 <View style={styles.mbtiWrapper}>
                   {user?.mbti ? (
                     <TouchableOpacity
@@ -348,9 +418,101 @@ export default function Profile() {
                   )}
                 </View>
 
+                {/* Status 編輯區塊 */}
+                <View style={{ width: '100%', alignItems: 'center', marginVertical: 16 }}>
+                  {isEditingStatus ? (
+                    <View style={{ width: '90%', alignItems: 'center' }}>
+                      <TextInput
+                        style={localStyles.input}
+                        value={tempStatus}
+                        onChangeText={setTempStatus}
+                        placeholder="一句話介紹自己（最多255字）"
+                        maxLength={255}
+                        autoFocus
+                      />
+                      <View style={localStyles.buttonRow}>
+                        <TouchableOpacity
+                          style={localStyles.cancelBtn}
+                          onPress={() => {
+                            setIsEditingStatus(false);
+                            setTempStatus(user?.status || '');
+                          }}
+                        >
+                          <Text style={localStyles.btnText}>取消</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
+                          onPress={handleSaveStatus}
+                          disabled={saving}
+                        >
+                          <Text style={localStyles.btnTextSave}>
+                            {saving ? '儲存中...' : '儲存'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <Pressable
+                      style={{ width: '100%', alignItems: 'center' }}
+                      onPress={() => setIsEditingStatus(true)}
+                    >
+                      {user?.status ? (
+                        <Text style={localStyles.statusText}>{user.status}</Text>
+                      ) : (
+                        <Text style={localStyles.placeholderText}>點擊設定一句話狀態</Text>
+                      )}
+                    </Pressable>
+                  )}
+                </View>
+
+                {/* Bio 編輯區塊 */}
+                <View style={{ width: '100%', paddingHorizontal: 8, marginBottom: 32 }}>
+                  {isEditingBio ? (
+                    <View style={{ width: '100%' }}>
+                      <TextInput
+                        style={[localStyles.input, { minHeight: 100, textAlignVertical: 'top' }]}
+                        value={tempBio}
+                        onChangeText={setTempBio}
+                        placeholder="分享更多關於你的興趣、個性、故事..."
+                        multiline
+                        maxLength={500}
+                        autoFocus
+                      />
+                      <View style={localStyles.buttonRow}>
+                        <TouchableOpacity
+                          style={localStyles.cancelBtn}
+                          onPress={() => {
+                            setIsEditingBio(false);
+                            setTempBio(user?.bio || '');
+                          }}
+                        >
+                          <Text style={localStyles.btnText}>取消</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
+                          onPress={handleSaveBio}
+                          disabled={saving}
+                        >
+                          <Text style={localStyles.btnTextSave}>
+                            {saving ? '儲存中...' : '儲存'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+<Pressable onPress={() => setIsEditingBio(true)}>
+    {user?.bio ? (   // 只要有內容（非空字串、非 null、非 undefined）
+      <Text style={localStyles.bioText}>{user.bio}</Text>
+    ) : (
+      <Text style={localStyles.placeholderText}>點擊新增個人簡介</Text>
+    )}
+  </Pressable>
+                  )}
+                </View>
+
                 <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
                   <MaterialCommunityIcons name="pencil" size={20} color="#5c4033" />
-                  <Text style={styles.editBtnText}>編輯資料</Text>
+                  <Text style={styles.editBtnText}>編輯其他資料</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -360,13 +522,13 @@ export default function Profile() {
             <View style={styles.empty}>
               <MaterialCommunityIcons name="comment-text-multiple-outline" size={80} color="#f4c7ab" />
               <Text style={styles.emptyText}>你還沒有發佈任何貼文</Text>
-<TouchableOpacity 
-  style={styles.createContainer}
-  onPress={() => router.push('/discuss/create')}
->
-  <MaterialCommunityIcons name="plus-circle" size={20} color="#8b5e3c" />
-  <Text style={styles.createText}>立即發佈</Text>
-</TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.createContainer}
+                onPress={() => router.push('/discuss/create')}
+              >
+                <MaterialCommunityIcons name="plus-circle" size={20} color="#8b5e3c" />
+                <Text style={styles.createText}>立即發佈</Text>
+              </TouchableOpacity>
             </View>
           }
           contentContainerStyle={{
@@ -376,7 +538,7 @@ export default function Profile() {
           }}
         />
 
-        {/* 底部導航欄 */}
+        {/* 底部導航 */}
         <View style={styles.bottomTabContainer}>
           <View style={styles.bottomTab}>
             <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/dashboard')}>
@@ -429,7 +591,7 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* MBTI 資訊 Modal（與 edit.js 內容完全一致） */}
+        {/* MBTI 說明 Modal */}
         <Modal
           isVisible={showMbtiInfoModal}
           onBackdropPress={() => setShowMbtiInfoModal(false)}
@@ -521,39 +683,39 @@ const styles = StyleSheet.create({
   editBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4c7ab', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 30, gap: 8 },
   editBtnText: { color: '#5c4033', fontWeight: '600', fontSize: 16 },
 
-empty: { 
-  flex: 1, 
-  justifyContent: 'center', 
-  alignItems: 'center', 
-  padding: 40, 
-  marginTop: 40 
-},
-emptyText: { 
-  fontSize: 18, 
-  color: '#8b5e3c', 
-  marginBottom: 24,
-  marginTop: 20,
-  textAlign: 'center'
-},
+  empty: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 40, 
+    marginTop: 40 
+  },
+  emptyText: { 
+    fontSize: 18, 
+    color: '#8b5e3c', 
+    marginBottom: 24,
+    marginTop: 20,
+    textAlign: 'center'
+  },
 
-createContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#fffaf7',
-  paddingHorizontal: 20,
-  paddingVertical: 12,
-  borderRadius: 25,
-  borderWidth: 1.5,
-  borderColor: '#f4c7ab',
-  marginTop: 10,
-},
+  createContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffaf7',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
+    marginTop: 10,
+  },
 
-createText: {
-  color: '#8b5e3c',
-  fontSize: 16,
-  fontWeight: '700',
-  marginLeft: 8,
-},
+  createText: {
+    color: '#8b5e3c',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
 
   mbtiWrapper: {
     marginBottom: 20,
@@ -677,5 +839,68 @@ const modalStyles = StyleSheet.create({
     color: '#5c4033', 
     fontSize: 17, 
     fontWeight: '700' 
+  },
+});
+
+// 新增的編輯相關樣式
+const localStyles = StyleSheet.create({
+  input: {
+    width: '100%',
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    color: '#5c4033',
+    backgroundColor: '#fffaf7',
+    marginBottom: 12,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    backgroundColor: '#e0e0e0',
+  },
+  saveBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 20,
+    backgroundColor: '#f4c7ab',
+  },
+  btnText: {
+    color: '#5c4033',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  btnTextSave: {
+    color: '#5c4033',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  statusText: {
+    fontSize: 15,
+    color: '#8b5e3c',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    lineHeight: 22,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#6b4e31',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#c47c5e',
+    opacity: 0.75,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });

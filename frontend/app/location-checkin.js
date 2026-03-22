@@ -33,10 +33,22 @@ export default function LocationCheckin() {
   const FORCE_UPLOAD_INTERVAL_MS = 300000;     // 5分鐘強制上傳
   const MIN_DISTANCE_THRESHOLD = 80;
 
-  // Modal 狀態
-  const [inviteModalVisible, setInviteModalVisible] = useState(false);
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null); // { id, username }
+  // 預覽 Modal 相關狀態
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [previewUser, setPreviewUser] = useState(null);
+
+  const getMbtiColor = (mbti) => {
+  if (!mbti) return '#f4c7ab';
+  
+  const mbtiColors = {
+    ISTJ: '#3498db', ISFJ: '#2ecc71', INFJ: '#9b59b6', INTJ: '#1abc9c',
+    ISTP: '#e74c3c', ISFP: '#f39c12', INFP: '#d35400', INTP: '#34495e',
+    ESTP: '#e67e22', ESFP: '#f1c40f', ENFP: '#2ecc71', ENTP: '#9b59b6',
+    ESTJ: '#3498db', ESFJ: '#1abc9c', ENFJ: '#e74c3c', ENTJ: '#f39c12',
+  };
+  
+  return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
+};
 
   const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
@@ -129,13 +141,8 @@ export default function LocationCheckin() {
         },
       });
 
-      console.log('附近用戶 API 完整回應：', nearbyRes.data);
-
       if (nearbyRes.data.success) {
         const users = nearbyRes.data.users || [];
-        console.log('收到附近用戶數量：', users.length);
-        console.log('附近用戶資料（前2筆）：', users.slice(0, 2));
-
         const validUsers = users
           .filter(user => {
             const lat = Number(user.latitude);
@@ -172,18 +179,15 @@ export default function LocationCheckin() {
 
       const normalInterval = setInterval(() => {
         getCurrentLocationAndNearby(false, false);
-        console.log(`普通檢查 @ ${new Date().toLocaleTimeString()}`);
       }, AUTO_UPDATE_INTERVAL_MS);
 
       const forceInterval = setInterval(() => {
         getCurrentLocationAndNearby(false, true);
-        console.log(`強制上傳 @ ${new Date().toLocaleTimeString()}`);
       }, FORCE_UPLOAD_INTERVAL_MS);
 
       return () => {
         clearInterval(normalInterval);
         clearInterval(forceInterval);
-        console.log('離開頁面 → 停止所有自動更新');
       };
     }, [])
   );
@@ -202,7 +206,11 @@ export default function LocationCheckin() {
           latitude: user.latitude,
           longitude: user.longitude,
         }}
-        onPress={() => sendTempChatInvite(user.id, user.username)}
+        onPress={() => {
+          console.log('點擊用戶:', user.id, user.username); // debug 用
+          setPreviewUser(user);
+          setPreviewModalVisible(true);
+        }}
         tracksViewChanges={true}
         anchor={{ x: 0.5, y: 0.6 }}
       >
@@ -221,37 +229,6 @@ export default function LocationCheckin() {
         </View>
       </Marker>
     );
-  };
-
-  const sendTempChatInvite = (targetUserId, targetUsername) => {
-    setSelectedUser({ id: targetUserId, username: targetUsername || '該用戶' });
-    setInviteModalVisible(true);
-  };
-
-  const confirmAndSendInvite = async () => {
-    if (!selectedUser) return;
-
-    setInviteModalVisible(false);
-
-    try {
-      console.log('🔘 發送邀請給用戶 ID:', selectedUser.id);
-      const response = await api.post('/api/temp-chat/invite', {
-        targetUserId: selectedUser.id,
-      });
-
-      console.log('📥 邀請回應:', response.data);
-
-      if (response.data.success) {
-        setSuccessModalVisible(true);
-      } else {
-        Alert.alert('❌ 錯誤', response.data.error || '發送失敗');
-      }
-    } catch (err) {
-      console.error('❌ 發送邀請錯誤:', err);
-      Alert.alert('錯誤', '發送失敗，請稍後再試');
-    } finally {
-      setSelectedUser(null);
-    }
   };
 
   if (initialLoading) {
@@ -275,192 +252,206 @@ export default function LocationCheckin() {
   return (
     <SafeAreaView style={styles.container}>
 
-            {/* 邀請確認 Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={inviteModalVisible}
-        onRequestClose={() => setInviteModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={modalStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setInviteModalVisible(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={modalStyles.modalContainer}
-            onPress={() => {}}
-          >
-            <Text style={modalStyles.modalTitle}>發送聊天邀請</Text>
-
-            <Text style={modalStyles.modalMessage}>
-              確定要向{' '}
-              <Text style={{ fontWeight: 'bold', color: '#5c4033' }}>
-                {selectedUser?.username}
-              </Text>{' '}
-              發送臨時聊天邀請嗎？
-            </Text>
-
-            <View style={modalStyles.buttonRow}>
-              <TouchableOpacity
-                style={[modalStyles.button, modalStyles.cancelButton]}
-                onPress={() => {
-                  setInviteModalVisible(false);
-                  setSelectedUser(null);
-                }}
-              >
-                <Text style={modalStyles.cancelText}>取消</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[modalStyles.button, modalStyles.confirmButton]}
-                onPress={confirmAndSendInvite}
-              >
-                <Text style={modalStyles.confirmText}>發送</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* 邀請成功 Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={successModalVisible}
-        onRequestClose={() => setSuccessModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={modalStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setSuccessModalVisible(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={modalStyles.modalContainer}
-            onPress={() => {}}
-          >
-            <MaterialCommunityIcons
-              name="check-circle"
-              size={64}
-              color="#4CAF50"
-              style={{ marginBottom: 16 }}
-            />
-
-            <Text style={[modalStyles.modalTitle, { marginBottom: 12 }]}>
-              邀請已發送
-            </Text>
-
-            <Text style={[modalStyles.modalMessage, { marginBottom: 32 }]}>
-              等待對方接受囉～
-            </Text>
-
-<TouchableOpacity
-onPress={() => setSuccessModalVisible(false)}
-  style={{
-    backgroundColor: '#f4c7ab',         
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    minHeight: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
-  }}
->
-  <Text style={{
-    color: '#3d2a1f',
-    fontSize: 18,
-    fontWeight: '700',
-  }}>
-    知道了
-  </Text>
-</TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal
+      {/* 所有 Modal 統一放在這裡，同級 */}
+      
+      {/* 預覽用戶 Modal */}
+<Modal
   animationType="fade"
   transparent={true}
-  visible={infoModalVisible}
-  onRequestClose={() => setInfoModalVisible(false)}
+  visible={previewModalVisible}
+  onRequestClose={() => setPreviewModalVisible(false)}
 >
   <TouchableOpacity
     style={modalStyles.modalOverlay}
     activeOpacity={1}
-    onPress={() => setInfoModalVisible(false)}
+    onPress={() => setPreviewModalVisible(false)}
   >
     <TouchableOpacity
       activeOpacity={1}
-      style={[modalStyles.modalContainer, { maxHeight: '70%' }]}
+      style={[modalStyles.modalContainer, { paddingVertical: 40, paddingHorizontal: 28 }]}
       onPress={() => {}}
     >
-      <Text style={modalStyles.modalTitle}>使用說明</Text>
+      {/* 頭像 */}
+      <View style={{ marginBottom: 16 }}>
+        {previewUser?.avatar ? (
+          <Image
+            source={{
+              uri: previewUser.avatar.startsWith('http')
+                ? previewUser.avatar
+                : `${api.defaults.baseURL}${previewUser.avatar}`,
+            }}
+            style={{
+              width: 110,
+              height: 110,
+              borderRadius: 55,
+              borderWidth: 4,
+              borderColor: '#f4c7ab',
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 110,
+              height: 110,
+              borderRadius: 55,
+              backgroundColor: '#f4c7ab',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: 4,
+              borderColor: '#f4c7ab',
+            }}
+          >
+            <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#5c4033' }}>
+              {previewUser?.username?.charAt(0)?.toUpperCase() || '?'}
+            </Text>
+          </View>
+        )}
+      </View>
 
-<Text style={[modalStyles.modalMessage, { textAlign: 'left', lineHeight: 24 }]}>
-  • 每 15 秒自動檢查位置，移動 80m 時上傳{'\n\n'}
-  • 每 5 分鐘強制更新一次{'\n\n'}
-  • 顯示 1 公里內的用戶（紅色圓圈）{'\n\n'}
-  • 點大頭針可發送聊天邀請{'\n\n'}
-</Text>
+      {/* 用戶名 */}
+      <Text style={[modalStyles.modalTitle, { marginBottom: 12 }]}>
+        {previewUser?.username || '用戶'}
+      </Text>
 
+      {/* 新增：MBTI 顯示 */}
+      {previewUser?.mbti ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: getMbtiColor(previewUser.mbti),
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 20,
+            gap: 8,
+            marginBottom: 24,
+          }}
+        >
+          <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+            {previewUser.mbti} 型
+          </Text>
+        </View>
+      ) : (
+        <Text style={{ color: '#8b5e3c', fontSize: 14, marginBottom: 24, opacity: 0.7 }}>
+          未設定 MBTI
+        </Text>
+      )}
+
+      {/* 查看個人卡片按鈕 */}
       <TouchableOpacity
-        onPress={() => setInfoModalVisible(false)}
         style={{
           backgroundColor: '#f4c7ab',
-          paddingVertical: 14,
+          paddingVertical: 16,
           paddingHorizontal: 40,
-          borderRadius: 12,
-          marginTop: 24,
+          borderRadius: 30,
+          width: '80%',
+          alignItems: 'center',
+          marginBottom: 16,
+        }}
+        onPress={() => {
+          setPreviewModalVisible(false);
+          if (previewUser?.id) {
+            router.push(`/profile/public/${previewUser.id}`);
+          } else {
+            Alert.alert('提示', '無法獲取用戶 ID');
+          }
         }}
       >
-        <Text style={{
-          color: '#3d2a1f',
-          fontSize: 17,
-          fontWeight: '700',
-        }}>
-          知道了
+        <Text style={{ color: '#5c4033', fontSize: 17, fontWeight: '700' }}>
+          查看個人卡片
+        </Text>
+      </TouchableOpacity>
+
+      {/* 關閉按鈕 */}
+      <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
+        <Text style={{ color: '#8b5e3c', fontSize: 15, fontWeight: '500' }}>
+          關閉
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   </TouchableOpacity>
 </Modal>
-      
-<View style={styles.header}>
-  {/* 左邊返回按鈕*/}
-  <TouchableOpacity 
-    onPress={() => router.back()} 
-    style={[styles.backButton, { zIndex: 10 }]}  // 加 zIndex
-  >
-    <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
-  </TouchableOpacity>
 
-  {/* 中間標題 */}
-  <Text 
-    style={[
-      styles.headerTitle, 
-      { 
-        position: 'absolute', 
-        left: 0, 
-        right: 0, 
-        textAlign: 'center',
-        pointerEvents: 'none'
-      }
-    ]}
-  >
-    附近的人
-  </Text>
+      {/* 使用說明 Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={infoModalVisible}
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={modalStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setInfoModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[modalStyles.modalContainer, { maxHeight: '70%' }]}
+            onPress={() => {}}
+          >
+            <Text style={modalStyles.modalTitle}>使用說明</Text>
 
-  {/* 右邊說明按鈕*/}
-  <TouchableOpacity 
-    onPress={() => setInfoModalVisible(true)}
-    style={[styles.infoButton, { zIndex: 10 }]}
-  >
-    <MaterialCommunityIcons name="information" size={28} color="#5c4033" />
-  </TouchableOpacity>
-</View>
+            <Text style={[modalStyles.modalMessage, { textAlign: 'left', lineHeight: 24 }]}>
+              • 每 15 秒自動檢查位置，移動 80m 時上傳{'\n\n'}
+              • 每 5 分鐘強制更新一次{'\n\n'}
+              • 顯示 1 公里內的用戶（紅色圓圈）{'\n\n'}
+              • 點大頭針可查看用戶資訊{'\n\n'}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setInfoModalVisible(false)}
+              style={{
+                backgroundColor: '#f4c7ab',
+                paddingVertical: 14,
+                paddingHorizontal: 40,
+                borderRadius: 12,
+                marginTop: 24,
+              }}
+            >
+              <Text style={{
+                color: '#3d2a1f',
+                fontSize: 17,
+                fontWeight: '700',
+              }}>
+                知道了
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 頁面主要內容 */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={[styles.backButton, { zIndex: 10 }]}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
+        </TouchableOpacity>
+
+        <Text 
+          style={[
+            styles.headerTitle, 
+            { 
+              position: 'absolute', 
+              left: 0, 
+              right: 0, 
+              textAlign: 'center',
+              pointerEvents: 'none'
+            }
+          ]}
+        >
+          附近的人
+        </Text>
+
+        <TouchableOpacity 
+          onPress={() => setInfoModalVisible(true)}
+          style={[styles.infoButton, { zIndex: 10 }]}
+        >
+          <MaterialCommunityIcons name="information" size={28} color="#5c4033" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.mapContainer}>
         {location ? (
@@ -509,15 +500,15 @@ onPress={() => setSuccessModalVisible(false)}
         </TouchableOpacity>
 
         <Text style={styles.note}>
-          附近有 {nearbyUsers.length} 位用戶，點擊大頭針可聊天
+          附近有 {nearbyUsers.length} 位用戶，點擊大頭針查看資訊
         </Text>
       </View>
-
 
     </SafeAreaView>
   );
 }
 
+// styles 與 modalStyles 保持不變（你原本的就很好）
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
@@ -663,40 +654,9 @@ const modalStyles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 32,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#f0e9e2',
-    borderWidth: 1.5,
-    borderColor: '#d9c2ad',
-  },
-  confirmButton: {
-    backgroundColor: '#f4c7ab',
-  },
-  cancelText: {
-    color: '#8b5e3c',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  confirmText: {
-    color: '#5c4033',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   infoButton: {
-  padding: 8,
-  borderRadius: 20,
-  backgroundColor: 'rgba(244,199,171,0.25)',
-},
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(244,199,171,0.25)',
+  },
 });

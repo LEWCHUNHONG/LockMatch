@@ -103,7 +103,7 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, JWT_SECRET) => {
   // 獲取目前使用者資訊
   router.get('/me', authMiddleware(JWT_SECRET), (req, res) => {
     connection.query(
-      `SELECT id, username, email, avatar, mbti, points, status, last_active
+      `SELECT id, username, email, avatar, mbti, points, status, bio, last_active
        FROM users WHERE id = ?`,
       [req.user.id],
       (err, rows) => {
@@ -137,7 +137,8 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, JWT_SECRET) => {
             points: user.points || 0,
             status: user.status || 'active',
             last_active: user.last_active,
-            is_online: isOnline
+            is_online: isOnline,
+            bio: user.bio || null
           }
         });
       }

@@ -108,9 +108,9 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
   //  PUT /api/update-profile
   // =============================================
   router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
-    const { username, email, status } = req.body;
+    const { username, email, status, bio } = req.body;
 
-    if (!username && !email && !status) {
+    if (!username && !email && !status && bio === undefined) {
       return res.status(400).json({ error: '請提供至少一項更新資訊' });
     }
 
@@ -125,10 +125,16 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
       updates.push('email = ?');
       params.push(email);
     }
-    if (status) {
-      updates.push('status = ?');
-      params.push(status);
-    }
+    if (status !== undefined) {
+    updates.push('status = ?');
+    params.push(status ? status.trim().slice(0, 255) : null); // 限制長度 + 處理空字串
+  }
+  if (bio !== undefined) {
+    // 明確允許 bio 為空字串或 null → 清空
+    const trimmedBio = bio ? bio.trim() : null;
+    updates.push('bio = ?');
+    params.push(trimmedBio);  // 如果前端傳 "" 或 null，都存成 null
+  }
 
     params.push(req.user.id);
 
