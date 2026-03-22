@@ -105,6 +105,89 @@ exports.acceptFriendRequest = (req, res) => {
     );
 };
 
+// 直接用兩個 user id 接受請求（不用傳 requestId）
+exports.acceptByUsers = (req, res) => {
+  const myId = req.user.id;              // 接受者（目前登入者）
+  const { fromUserId } = req.body;       // 發送請求的那一方
+
+  if (!fromUserId || fromUserId == myId) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '無效的請求對象' 
+    });
+  }
+
+  // Step 1: 找出待處理的請求
+  db.query(
+    `SELECT id FROM friend_requests 
+     WHERE from_user_id = ? 
+       AND to_user_id = ? 
+       AND status = 'pending'
+     LIMIT 1`,
+    [fromUserId, myId],
+    (err, rows) => {
+      if (err) {
+        console.error('查詢待接受請求失敗:', err);
+        return res.status(500).json({ success: false, error: '伺服器錯誤' });
+      }
+
+      if (rows.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: '沒有待您接受的好友請求，或請求已處理' 
+        });
+      }
+
+      const requestId = rows[0].id;
+
+      // Step 2: 更新請求狀態為 accepted
+      db.query(
+        'UPDATE friend_requests SET status = "accepted" WHERE id = ?',
+        [requestId],
+        (err) => {
+          if (err) {
+            console.error('更新請求狀態失敗:', err);
+            return res.status(500).json({ success: false, error: '接受失敗' });
+          }
+
+          // Step 3: 建立好友關係（避免重複）
+          db.query(
+            `INSERT INTO friendships (user1_id, user2_id, status) 
+             SELECT ?, ?, 'accepted' FROM DUAL
+             WHERE NOT EXISTS (
+               SELECT 1 FROM friendships 
+               WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)
+             )`,
+            [fromUserId, myId, fromUserId, myId, myId, fromUserId],
+            (err, insertResult) => {
+              if (err) {
+                console.error('建立好友關係失敗:', err);
+                return res.status(500).json({ success: false, error: '建立好友失敗' });
+              }
+
+              // 可選：發送 socket 通知給對方（已接受）
+              const io = req.app.get('io');
+              if (io) {
+                io.to(`user_${fromUserId}`).emit('friend-request-accepted', {
+                  byUserId: myId,
+                  byUsername: req.user.username || '某用戶',
+                  timestamp: new Date()
+                });
+              }
+
+              // 回應成功（不再回傳 roomId）
+              res.json({ 
+                success: true, 
+                message: '已接受好友請求'
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+};
+
 // 拒絕好友請求
 exports.declineFriendRequest = (req, res) => {
     const { requestId } = req.body;

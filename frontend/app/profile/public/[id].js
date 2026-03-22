@@ -52,13 +52,38 @@ export default function PublicProfile() {
     router.push(`/discuss/${postId}`);
   };
 
-  const handleAddFriend = async () => {
-  if (relationshipStatus === 'pending_received') {
-    // 未來可導向到好友請求列表，或直接呼叫 accept
-    Alert.alert('提示', '請至好友請求頁面回應');
+const handleAddFriend = async () => {
+  // ──────────────────────────────
+  // 情況 1：已經是好友 → 什麼都不做
+  if (relationshipStatus === 'friends') return;
+
+  // 情況 2：我發出的請求還在等待 → 提示已送出
+  if (relationshipStatus === 'pending_sent') {
+    Alert.alert('提示', '好友請求已送出，等待對方回應');
     return;
   }
 
+  // 情況 3：收到對方的請求（pending_received）→ 直接接受
+if (relationshipStatus === 'pending_received') {
+  try {
+    const res = await api.post('/api/friend-request/accept-by-users', {
+      fromUserId: Number(id),
+    });
+
+    if (res.data.success) {
+      setRelationshipStatus('friends');
+      Alert.alert('成功', '已接受好友請求，你們現在是好友囉！');
+      // 不再需要處理 roomId 或跳轉聊天室
+    }
+  } catch (err) {
+    console.error('接受好友請求失敗:', err);
+    const msg = err.response?.data?.error || '操作失敗，請稍後再試';
+    Alert.alert('錯誤', msg);
+  }
+  return;
+}
+
+  // 情況 4：不是好友 → 發送請求（原本邏輯）
   if (relationshipStatus !== 'not_friend') return;
 
   try {
