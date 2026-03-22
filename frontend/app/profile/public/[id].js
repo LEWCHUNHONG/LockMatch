@@ -8,32 +8,66 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import Modal from 'react-native-modal';
 
 import api from '../../../utils/api';
 import PostCard from '../../discuss/components/PostCard';
 
 export default function PublicProfile() {
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const id = params?.id ? String(params.id) : null;
+
   const router = useRouter();
+
+  if (!id) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#f4c7ab" />
+            <Text style={styles.loadingText}>載入用戶資料中...</Text>
+            <TouchableOpacity
+              style={[styles.backBtn, { marginTop: 20 }]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.backText}>返回</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingPosts, setLoadingPosts] = useState(true);
-  const [relationshipStatus, setRelationshipStatus] = useState('unknown'); // unknown / not_friend / pending_sent / pending_received / friends
+  const [relationshipStatus, setRelationshipStatus] = useState('unknown');
   const [isSelf, setIsSelf] = useState(false);
+
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmType, setConfirmType] = useState(null); // 'send' | 'accept'
+
+  const [resultModalVisible, setResultModalVisible] = useState(false);
+  const [resultMessage, setResultMessage] = useState('');
+  const [isSuccess, setIsSuccess] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    console.log('[PublicProfile] params:', params);
+    console.log('[PublicProfile] id:', id);
+  }, [params, id]);
 
   const handleLikeToggle = async (postId, currentlyLiked) => {
     try {
       await api.post(`/api/posts/${postId}/like`);
-      setPosts(prev =>
-        prev.map(p =>
+      setPosts((prev) =>
+        prev.map((p) =>
           p.id === postId
             ? {
                 ...p,
@@ -48,107 +82,116 @@ export default function PublicProfile() {
     }
   };
 
-  const handlePressComment = postId => {
+  const handlePressComment = (postId) => {
     router.push(`/discuss/${postId}`);
   };
 
-const handleAddFriend = async () => {
-  // ──────────────────────────────
-  // 情況 1：已經是好友 → 什麼都不做
-  if (relationshipStatus === 'friends') return;
+  const handleAddFriend = () => {
+    if (relationshipStatus === 'friends') return;
 
-  // 情況 2：我發出的請求還在等待 → 提示已送出
-  if (relationshipStatus === 'pending_sent') {
-    Alert.alert('提示', '好友請求已送出，等待對方回應');
-    return;
-  }
-
-  // 情況 3：收到對方的請求（pending_received）→ 直接接受
-if (relationshipStatus === 'pending_received') {
-  try {
-    const res = await api.post('/api/friend-request/accept-by-users', {
-      fromUserId: Number(id),
-    });
-
-    if (res.data.success) {
-      setRelationshipStatus('friends');
-      Alert.alert('成功', '已接受好友請求，你們現在是好友囉！');
-      // 不再需要處理 roomId 或跳轉聊天室
+    if (relationshipStatus === 'pending_sent') {
+      setResultMessage('好友請求已送出，等待對方回應');
+      setIsSuccess(true);
+      setResultModalVisible(true);
+      return;
     }
-  } catch (err) {
-    console.error('接受好友請求失敗:', err);
-    const msg = err.response?.data?.error || '操作失敗，請稍後再試';
-    Alert.alert('錯誤', msg);
-  }
-  return;
-}
 
-  // 情況 4：不是好友 → 發送請求（原本邏輯）
-  if (relationshipStatus !== 'not_friend') return;
+    if (relationshipStatus === 'pending_received') {
+      setConfirmType('accept');
+    } else if (relationshipStatus === 'not_friend') {
+      setConfirmType('send');
+    }
 
-  try {
-    await api.post('/api/friend-request', { toUserId: id });
-    setRelationshipStatus('pending_sent');
-    Alert.alert('成功', '好友請求已送出！');
-  } catch (err) {
-    console.error(err);
-    const msg = err.response?.data?.error || '發送失敗，請稍後再試';
-    Alert.alert('錯誤', msg);
-  }
-};
-
-useEffect(() => {
-  if (!id) return;
-
-  const loadAll = async () => {
-    try {
-      setLoadingProfile(true);
-      setLoadingPosts(true);
-
-      // ── 載入個人資料 ──
-      const profileRes = await api.get(`/api/user/${id}`);
-      if (!profileRes.data?.success) throw new Error('無法載入資料');
-      setProfile(profileRes.data.user);
-
-      // ── 檢查自己 ──
-      const selfRes = await api.get('/api/me');
-      const currentUserId = selfRes.data.user?.id;
-      const isMe = currentUserId === Number(id);
-      setIsSelf(isMe);
-
-      if (!isMe) {
-        const relationRes = await api.get(`/api/friendship/status/${id}`);
-        setRelationshipStatus(relationRes.data.status || 'not_friend');
-      } else {
-        setRelationshipStatus('self');
-      }
-
-      // ── 載入貼文 ──
-      const postsRes = await api.get('/api/user-posts', {
-        params: { user_id: id, limit: 5, offset: 0 },
-      });
-
-      let fetchedPosts = postsRes.data.posts || [];
-      fetchedPosts = fetchedPosts.map(post => ({
-        ...post,
-        media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
-        media_types: safeParseMedia(post.media_types, 'media_types', post.id),
-      }));
-      setPosts(fetchedPosts);
-
-    } catch (err) {
-      console.error('載入失敗:', err);
-      Alert.alert('提示', '部分資料載入失敗');
-      // 如果個人資料失敗才 back，貼文失敗可以容忍
-      if (!profile) router.back();
-    } finally {
-      setLoadingProfile(false);
-      setLoadingPosts(false);
+    if (confirmType) {
+      setConfirmModalVisible(true);
     }
   };
 
-  loadAll();
-}, [id]);
+  const handleConfirmAction = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setConfirmModalVisible(false);
+
+    try {
+      let message = '';
+      if (confirmType === 'send') {
+        await api.post('/api/friend-request', { toUserId: id });
+        setRelationshipStatus('pending_sent');
+        message = '好友請求已成功送出！';
+      } else if (confirmType === 'accept') {
+        const res = await api.post('/api/friend-request/accept-by-users', {
+          fromUserId: Number(id),
+        });
+        if (res.data?.success) {
+          setRelationshipStatus('friends');
+          message = '已成功接受好友請求，你們現在是好友囉！';
+        } else {
+          throw new Error('接受失敗');
+        }
+      }
+
+      setResultMessage(message);
+      setIsSuccess(true);
+      setResultModalVisible(true);
+    } catch (err) {
+      console.error('好友操作失敗:', err);
+      const msg = err.response?.data?.error || '操作失敗，請稍後再試';
+      setResultMessage(msg);
+      setIsSuccess(false);
+      setResultModalVisible(true);
+    } finally {
+      setIsSubmitting(false);
+      setConfirmType(null);
+    }
+  };
+
+  useEffect(() => {
+    const loadAll = async () => {
+      try {
+        setLoadingProfile(true);
+        setLoadingPosts(true);
+
+        const profileRes = await api.get(`/api/user/${id}`);
+        if (!profileRes.data?.success) throw new Error('無法載入資料');
+        setProfile(profileRes.data.user);
+
+        const selfRes = await api.get('/api/me');
+        const currentUserId = selfRes.data.user?.id;
+        const isMe = currentUserId === Number(id);
+        setIsSelf(isMe);
+
+        if (!isMe) {
+          const relationRes = await api.get(`/api/friendship/status/${id}`);
+          setRelationshipStatus(relationRes.data.status || 'not_friend');
+        } else {
+          setRelationshipStatus('self');
+        }
+
+        const postsRes = await api.get('/api/user-posts', {
+          params: { user_id: id, limit: 5, offset: 0 },
+        });
+
+        let fetchedPosts = postsRes.data.posts || [];
+        fetchedPosts = fetchedPosts.map((post) => ({
+          ...post,
+          media_urls: safeParseMedia(post.media_urls, 'media_urls', post.id),
+          media_types: safeParseMedia(post.media_types, 'media_types', post.id),
+        }));
+        setPosts(fetchedPosts);
+      } catch (err) {
+        console.error('載入失敗:', err);
+        setResultMessage('部分資料載入失敗，請稍後再試');
+        setIsSuccess(false);
+        setResultModalVisible(true);
+        if (!profile) router.back();
+      } finally {
+        setLoadingProfile(false);
+        setLoadingPosts(false);
+      }
+    };
+
+    loadAll();
+  }, [id]);
 
   const safeParseMedia = (value, fieldName, postId) => {
     if (Array.isArray(value)) return value;
@@ -172,10 +215,22 @@ useEffect(() => {
   const getMbtiColor = (mbti) => {
     if (!mbti) return '#f4c7ab';
     const colors = {
-      ISTJ: '#3498db', ISFJ: '#2ecc71', INFJ: '#9b59b6', INTJ: '#1abc9c',
-      ISTP: '#e74c3c', ISFP: '#f39c12', INFP: '#d35400', INTP: '#34495e',
-      ESTP: '#e67e22', ESFP: '#f1c40f', ENFP: '#2ecc71', ENTP: '#9b59b6',
-      ESTJ: '#3498db', ESFJ: '#1abc9c', ENFJ: '#e74c3c', ENTJ: '#f39c12',
+      ISTJ: '#3498db',
+      ISFJ: '#2ecc71',
+      INFJ: '#9b59b6',
+      INTJ: '#1abc9c',
+      ISTP: '#e74c3c',
+      ISFP: '#f39c12',
+      INFP: '#d35400',
+      INTP: '#34495e',
+      ESTP: '#e67e22',
+      ESFP: '#f1c40f',
+      ENFP: '#2ecc71',
+      ENTP: '#9b59b6',
+      ESTJ: '#3498db',
+      ESFJ: '#1abc9c',
+      ENFJ: '#e74c3c',
+      ENTJ: '#f39c12',
     };
     return colors[mbti.toUpperCase()] || '#f4c7ab';
   };
@@ -208,6 +263,8 @@ useEffect(() => {
     );
   }
 
+  const displayName = profile.username || '匿名用戶';
+
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
@@ -228,62 +285,56 @@ useEffect(() => {
                     ? profile.avatar
                     : profile.avatar
                     ? `${api.defaults.baseURL}${profile.avatar}`
-                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&size=128&background=f4c7ab&color=5c4033`,
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&size=128&background=f4c7ab&color=5c4033`,
               }}
               style={styles.avatar}
             />
 
-            <Text style={styles.username}>{profile.username || '匿名用戶'}</Text>
+            <Text style={styles.username}>{displayName}</Text>
 
-{/* MBTI 顯示區域 */}
-{profile.mbti ? (
-  <View style={[styles.mbtiTag, { backgroundColor: getMbtiColor(profile.mbti) }]}>
-    <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
-    <Text style={styles.mbtiText}>{profile.mbti} 型</Text>
-  </View>
-) : (
-  <View style={styles.mbtiPlaceholder}>
-    <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
-    <Text style={styles.mbtiPlaceholderText}>尚未設置 MBTI</Text>
-  </View>
-)}
+            {profile.mbti ? (
+              <View style={[styles.mbtiTag, { backgroundColor: getMbtiColor(profile.mbti) }]}>
+                <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
+                <Text style={styles.mbtiText}>{profile.mbti} 型</Text>
+              </View>
+            ) : (
+              <View style={styles.mbtiPlaceholder}>
+                <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
+                <Text style={styles.mbtiPlaceholderText}>尚未設置 MBTI</Text>
+              </View>
+            )}
 
-{!isSelf && (
-  <TouchableOpacity
-    style={[
-      styles.addFriendButton,
-      relationshipStatus === 'friends' && styles.friendButton,
-      relationshipStatus === 'pending_sent' && styles.pendingButton,
-    ]}
-    onPress={handleAddFriend}
-    disabled={relationshipStatus === 'friends' || relationshipStatus === 'pending_sent'}
-  >
-    <Text style={styles.addFriendText}>
-      {relationshipStatus === 'friends'     ? '已是好友' :
-       relationshipStatus === 'pending_sent' ? '已送出請求' :
-       relationshipStatus === 'pending_received' ? '回應好友請求' :
-       '添加好友'}
-    </Text>
-  </TouchableOpacity>
-)}
+            {!isSelf && (
+              <TouchableOpacity
+                style={[
+                  styles.addFriendButton,
+                  relationshipStatus === 'friends' && styles.friendButton,
+                  relationshipStatus === 'pending_sent' && styles.pendingButton,
+                ]}
+                onPress={handleAddFriend}
+                disabled={relationshipStatus === 'friends' || relationshipStatus === 'pending_sent'}
+              >
+                <Text style={styles.addFriendText}>
+                  {relationshipStatus === 'friends'
+                    ? '已是好友'
+                    : relationshipStatus === 'pending_sent'
+                    ? '已送出請求'
+                    : relationshipStatus === 'pending_received'
+                    ? '回應好友請求'
+                    : '添加好友'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
-            {/* 目前狀態 + 個人簡介 兩個小卡片 */}
             <View style={styles.extraInfoContainer}>
-              {/* 目前心情卡片 */}
               <View style={styles.extraInfoCard}>
                 <Text style={styles.cardTitle}>
-                  <MaterialCommunityIcons name="emoticon-outline" size={18} color="#f39c12" />{' '}
-                  目前心情
+                  <MaterialCommunityIcons name="emoticon-outline" size={18} color="#f39c12" /> 目前心情
                 </Text>
                 <Text style={styles.cardContent}>
                   {profile.status ? (
                     <>
-                      <MaterialCommunityIcons 
-                        name="circle" 
-                        size={14} 
-                        color="#2ecc71" 
-                      />{' '}
-                      {profile.status}
+                      <MaterialCommunityIcons name="circle" size={14} color="#2ecc71" /> {profile.status}
                     </>
                   ) : (
                     '尚未設置心情～'
@@ -291,38 +342,27 @@ useEffect(() => {
                 </Text>
               </View>
 
-              {/* 關於我卡片（有內容才顯示） */}
-              {profile.bio ? (
-                <View style={styles.extraInfoCard}>
-                  <Text style={styles.cardTitle}>
-                    <MaterialCommunityIcons name="card-text-outline" size={18} color="#9b59b6" />{' '}
-                    關於我
-                  </Text>
-                  <Text style={styles.cardContent}>{profile.bio}</Text>
-                </View>
-              ) : null}
+              <View style={styles.extraInfoCard}>
+                <Text style={styles.cardTitle}>
+                  <MaterialCommunityIcons name="card-text-outline" size={18} color="#9b59b6" /> 關於我
+                </Text>
+                <Text style={styles.cardContent}>{profile.bio || '尚未設置個人簡介～'}</Text>
+              </View>
             </View>
           </View>
 
-          {/* 最近貼文區塊 */}
           <View style={styles.postsSection}>
             <Text style={styles.sectionTitle}>最近 5 篇貼文</Text>
 
             {loadingPosts ? (
-  <ActivityIndicator size="small" color="#f4c7ab" style={{ marginTop: 20 }} />
-) : posts.length === 0 ? (
-  <View style={styles.emptyPostsContainer}>
-    <MaterialCommunityIcons 
-      name="comment-text-multiple-outline" 
-      size={80} 
-      color="#f4c7ab" 
-    />
-    <Text style={styles.noPostsText}>
-      該用戶尚未發布任何貼文
-    </Text>
-  </View>
-) : (
-              posts.map(post => (
+              <ActivityIndicator size="small" color="#f4c7ab" style={{ marginTop: 20 }} />
+            ) : posts.length === 0 ? (
+              <View style={styles.emptyPostsContainer}>
+                <MaterialCommunityIcons name="comment-text-multiple-outline" size={80} color="#f4c7ab" />
+                <Text style={styles.noPostsText}>該用戶尚未發布任何貼文</Text>
+              </View>
+            ) : (
+              posts.map((post) => (
                 <PostCard
                   key={post.id}
                   post={post}
@@ -333,10 +373,161 @@ useEffect(() => {
             )}
           </View>
         </ScrollView>
+
+        {/* 確認 modal */}
+        <Modal
+          isVisible={confirmModalVisible}
+          onBackdropPress={() => !isSubmitting && setConfirmModalVisible(false)}
+          backdropOpacity={0.5}
+          animationIn="fadeInUp"
+          animationOut="fadeOutDown"
+          style={{ justifyContent: 'center', margin: 0 }}
+        >
+          <View
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 24,
+              padding: 28,
+              marginHorizontal: 24,
+              alignItems: 'center',
+              shadowColor: '#8b5e3c',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25,
+              shadowRadius: 16,
+              elevation: 12,
+            }}
+          >
+            <Text style={{ fontSize: 22, fontWeight: '700', color: '#5c4033', marginBottom: 16 }}>
+              {confirmType === 'send' ? '發送好友請求' : '回應好友請求'}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 16,
+                color: '#6b4e3a',
+                textAlign: 'center',
+                lineHeight: 24,
+                marginBottom: 32,
+              }}
+            >
+              {confirmType === 'send'
+                ? `確定要向 ${displayName} 發送好友請求嗎？`
+                : `${displayName} 想加你為好友，\n確定要接受嗎？`}
+            </Text>
+
+            <View style={{ flexDirection: 'row', width: '100%', gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  backgroundColor: '#f0e9e2',
+                  borderRadius: 16,
+                  alignItems: 'center',
+                }}
+                onPress={() => !isSubmitting && setConfirmModalVisible(false)}
+                disabled={isSubmitting}
+              >
+                <Text style={{ color: '#5c4033', fontSize: 16, fontWeight: '600' }}>取消</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  backgroundColor: confirmType === 'send' ? '#f39c12' : '#2ecc71',
+                  borderRadius: 16,
+                  alignItems: 'center',
+                  opacity: isSubmitting ? 0.7 : 1,
+                }}
+                disabled={isSubmitting}
+                onPress={handleConfirmAction}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
+                    {confirmType === 'send' ? '送出請求' : '接受'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* 結果 modal（成功 / 失敗共用） */}
+        <Modal
+          isVisible={resultModalVisible}
+          onBackdropPress={() => setResultModalVisible(false)}
+          backdropOpacity={0.5}
+          animationIn="zoomIn"
+          animationOut="zoomOut"
+          style={{ justifyContent: 'center', margin: 0 }}
+        >
+          <View
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 24,
+              padding: 32,
+              marginHorizontal: 24,
+              alignItems: 'center',
+              shadowColor: '#8b5e3c',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.25,
+              shadowRadius: 16,
+              elevation: 12,
+            }}
+          >
+            <MaterialCommunityIcons
+              name={isSuccess ? 'check-circle-outline' : 'alert-circle-outline'}
+              size={64}
+              color={isSuccess ? '#2ecc71' : '#e74c3c'}
+              style={{ marginBottom: 16 }}
+            />
+
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: '700',
+                color: '#5c4033',
+                marginBottom: 12,
+                textAlign: 'center',
+              }}
+            >
+              {isSuccess ? '操作成功' : '操作失敗'}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 16,
+                color: '#6b4e3a',
+                textAlign: 'center',
+                lineHeight: 24,
+                marginBottom: 28,
+              }}
+            >
+              {resultMessage}
+            </Text>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 14,
+                paddingHorizontal: 48,
+                backgroundColor: isSuccess ? '#2ecc71' : '#e74c3c',
+                borderRadius: 16,
+              }}
+              onPress={() => setResultModalVisible(false)}
+            >
+              <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
+                知道了
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
@@ -373,27 +564,27 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(244,199,171,0.3)',
   },
   avatar: {
-    width: 120,
-    height: 120,
+    width: 100,
+    height: 100,
     borderRadius: 70,
-    marginBottom: 20,
-    borderWidth: 5,
+    marginBottom: 16,
+    borderWidth: 4,
     borderColor: '#fffaf5',
   },
   username: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#5c4033',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   mbtiTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 30,
     gap: 8,
-    marginBottom: 16, // 與下方卡片拉開距離
+    marginBottom: 12, // 與下方卡片拉開距離
   },
   mbtiText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 
@@ -415,16 +606,16 @@ noPostsText: {
 // 兩個小卡片也壓縮一點
   extraInfoContainer: {
     width: '100%',
-    marginTop: 12,                     // ← 從 16 降到 12
-    marginBottom: 4,
-    gap: 12,                           // ← 從 16 降到 12
+    marginTop: 8,                     // ← 從 16 降到 12
+    marginBottom: 0,
+    gap: 10,                           // ← 從 16 降到 12
   },
 
   extraInfoCard: {
     backgroundColor: 'rgba(255, 245, 237, 1)',
-    borderRadius: 16,                  // ← 圓角小一點
-    paddingVertical: 12,               // ← 從 16 降到 12
-    paddingHorizontal: 16,             // ← 從 20 降到 16
+    borderRadius: 14,                  // ← 圓角小一點
+    paddingVertical: 10,               // ← 從 16 降到 12
+    paddingHorizontal: 14,             // ← 從 20 降到 16
     borderWidth: 1,
     borderColor: 'rgba(244, 199, 171, 0.5)',
     shadowColor: '#8b5e3c',
@@ -436,10 +627,10 @@ noPostsText: {
   },
 
   cardTitle: {
-    fontSize: 14,                      // ← 從 15 降到 14，更精簡
+    fontSize: 13,                      // ← 從 15 降到 14，更精簡
     fontWeight: '700',
     color: '#6b4e3a',
-    marginBottom: 6,                   // ← 從 10 降到 6
+    marginBottom: 4,                   // ← 從 10 降到 6
     letterSpacing: 0.3,
     flexDirection: 'row',
     alignItems: 'center',
@@ -447,8 +638,8 @@ noPostsText: {
   },
 
   cardContent: {
-    fontSize: 15,                      // ← 從 15.5 降到 15
-    lineHeight: 22,                    // ← 行高也稍微壓縮
+    fontSize: 14,                      // ← 從 15.5 降到 15
+    lineHeight: 20,                    // ← 行高也稍微壓縮
     color: '#4a2c1f',
     textAlign: 'center',
     letterSpacing: 0.2,
@@ -495,8 +686,8 @@ mbtiPlaceholderText: {
 },
 addFriendButton: {
   backgroundColor: '#f39c12',
-  paddingVertical: 12,
-  paddingHorizontal: 32,
+  paddingVertical: 10,
+  paddingHorizontal: 28,
   borderRadius: 30,
   alignItems: 'center',
   width: '80%',
