@@ -520,10 +520,10 @@ const handleUpdateStatus = async (newStatus) => {
                 </View>
 
 {/* Status 編輯區塊 */}
-<View style={{ width: '100%', alignItems: 'center', marginVertical: 20 }}>
+<View style={{ width: '100%', alignItems: 'center', marginVertical: 14 }}>
   <View style={{
-    width: '92%',
-    paddingVertical: 14,
+    width: '50%',
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 16,
     backgroundColor: 'rgba(244,199,171,0.08)',
@@ -585,7 +585,7 @@ const handleUpdateStatus = async (newStatus) => {
         ) : (
           <>
             <Text style={localStyles.placeholderText}>
-              點擊選擇現在的心情狀態（例如：咖啡續命☕）
+              點擊選擇現在的心情狀態
             </Text>
             <MaterialCommunityIcons 
               name="pencil" 
@@ -601,10 +601,10 @@ const handleUpdateStatus = async (newStatus) => {
 </View>
 
 {/* Bio 編輯區塊 */}
-<View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 36 }}>
+<View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 24 }}>
   <View style={{
     width: '100%',
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     backgroundColor: 'rgba(244,199,171,0.06)',
     borderWidth: 1,
@@ -674,7 +674,7 @@ const handleUpdateStatus = async (newStatus) => {
 </View>
 
                 <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
-                  <MaterialCommunityIcons name="pencil" size={20} color="#5c4033" />
+                  <MaterialCommunityIcons name="pencil" size={18} color="#5c4033" />
                   <Text style={styles.editBtnText}>編輯資料</Text>
                 </TouchableOpacity>
               </View>
@@ -878,11 +878,11 @@ const styles = StyleSheet.create({
 
   profileCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 32,
-    padding: 32,
+    borderRadius: 28,
+    padding: 20,
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 28,
+    marginBottom: 20,
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 6 },
@@ -892,8 +892,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(244, 199, 171, 0.35)',
   },
-  avatar: { width: 110, height: 110, borderRadius: 55, marginBottom: 18, borderWidth: 5, borderColor: '#fffaf5' },
-  username: { fontSize: 24, fontWeight: '700', color: '#5c4033', marginBottom: 16 },
+  avatar: { width: 96, height: 96, borderRadius: 55, marginBottom: 18, borderWidth: 5, borderColor: '#fffaf5' },
+  username: { fontSize: 22, fontWeight: '700', color: '#5c4033', marginBottom: 16 },
   editBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4c7ab', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 30, gap: 8 },
   editBtnText: { color: '#5c4033', fontWeight: '600', fontSize: 16 },
 
@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   },
 
   mbtiWrapper: {
-    marginBottom: 20,
+    marginBottom: 12,
     alignItems: 'center',
   },
 
