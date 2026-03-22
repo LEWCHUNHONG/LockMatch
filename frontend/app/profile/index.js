@@ -519,101 +519,163 @@ const handleUpdateStatus = async (newStatus) => {
                   )}
                 </View>
 
-                {/* Status 編輯區塊 */}
-                <View style={{ width: '100%', alignItems: 'center', marginVertical: 16 }}>
-                  {isEditingStatus ? (
-                    <View style={{ width: '90%', alignItems: 'center' }}>
-                      <TextInput
-                        style={localStyles.input}
-                        value={tempStatus}
-                        onChangeText={setTempStatus}
-                        placeholder="一句話介紹自己（最多255字）"
-                        maxLength={255}
-                        autoFocus
-                      />
-                      <View style={localStyles.buttonRow}>
-                        <TouchableOpacity
-                          style={localStyles.cancelBtn}
-                          onPress={() => {
-                            setIsEditingStatus(false);
-                            setTempStatus(user?.status || '');
-                          }}
-                        >
-                          <Text style={localStyles.btnText}>取消</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
-                          onPress={handleSaveStatus}
-                          disabled={saving}
-                        >
-                          <Text style={localStyles.btnTextSave}>
-                            {saving ? '儲存中...' : '儲存'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-<Pressable
-  style={{ width: '100%', alignItems: 'center' }}
-  onPress={() => setShowStatusModal(true)}
->
-  {user?.status ? (
-    <Text style={localStyles.statusText}>{user.status}</Text>
-  ) : (
-    <Text style={localStyles.placeholderText}>點擊選擇你的狀態</Text>
-  )}
-</Pressable>
-                  )}
-                </View>
-
-                {/* Bio 編輯區塊 */}
-                <View style={{ width: '100%', paddingHorizontal: 8, marginBottom: 32 }}>
-                  {isEditingBio ? (
-                    <View style={{ width: '100%' }}>
-                      <TextInput
-                        style={[localStyles.input, { minHeight: 100, textAlignVertical: 'top' }]}
-                        value={tempBio}
-                        onChangeText={setTempBio}
-                        placeholder="分享更多關於你的興趣、個性、故事..."
-                        multiline
-                        maxLength={500}
-                        autoFocus
-                      />
-                      <View style={localStyles.buttonRow}>
-                        <TouchableOpacity
-                          style={localStyles.cancelBtn}
-                          onPress={() => {
-                            setIsEditingBio(false);
-                            setTempBio(user?.bio || '');
-                          }}
-                        >
-                          <Text style={localStyles.btnText}>取消</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
-                          onPress={handleSaveBio}
-                          disabled={saving}
-                        >
-                          <Text style={localStyles.btnTextSave}>
-                            {saving ? '儲存中...' : '儲存'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-<Pressable onPress={() => setIsEditingBio(true)}>
-    {user?.bio ? (   // 只要有內容（非空字串、非 null、非 undefined）
-      <Text style={localStyles.bioText}>{user.bio}</Text>
+{/* Status 編輯區塊 */}
+<View style={{ width: '100%', alignItems: 'center', marginVertical: 20 }}>
+  <View style={{
+    width: '92%',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(244,199,171,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(244,199,171,0.35)',
+  }}>
+    {isEditingStatus ? (
+      <View style={{ width: '100%', alignItems: 'center' }}>
+        <TextInput
+          style={localStyles.input}
+          value={tempStatus}
+          onChangeText={setTempStatus}
+          placeholder="一句話描述現在的心情（最多255字）"
+          maxLength={255}
+          autoFocus
+        />
+        <View style={localStyles.buttonRow}>
+          <TouchableOpacity
+            style={localStyles.cancelBtn}
+            onPress={() => {
+              setIsEditingStatus(false);
+              setTempStatus(user?.status || '');
+            }}
+          >
+            <Text style={localStyles.btnText}>取消</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
+            onPress={handleSaveStatus}
+            disabled={saving}
+          >
+            <Text style={localStyles.btnTextSave}>
+              {saving ? '儲存中...' : '儲存'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     ) : (
-      <Text style={localStyles.placeholderText}>點擊新增個人簡介</Text>
+      <Pressable
+        style={{
+          width: '100%',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+        }}
+        onPress={() => setShowStatusModal(true)}
+      >
+        {user?.status ? (
+          <>
+            <Text style={localStyles.statusText}>{user.status}</Text>
+            <MaterialCommunityIcons 
+              name="pencil" 
+              size={18} 
+              color="#c47c5e" 
+              style={{ opacity: 0.75 }}
+            />
+          </>
+        ) : (
+          <>
+            <Text style={localStyles.placeholderText}>
+              點擊選擇現在的心情狀態（例如：咖啡續命☕）
+            </Text>
+            <MaterialCommunityIcons 
+              name="pencil" 
+              size={18} 
+              color="#c47c5e" 
+              style={{ opacity: 0.75 }}
+            />
+          </>
+        )}
+      </Pressable>
     )}
-  </Pressable>
-                  )}
-                </View>
+  </View>
+</View>
+
+{/* Bio 編輯區塊 */}
+<View style={{ width: '100%', paddingHorizontal: 12, marginBottom: 36 }}>
+  <View style={{
+    width: '100%',
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(244,199,171,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(244,199,171,0.3)',
+  }}>
+    {isEditingBio ? (
+      <View style={{ width: '100%' }}>
+        <TextInput
+          style={[localStyles.input, { minHeight: 110, textAlignVertical: 'top' }]}
+          value={tempBio}
+          onChangeText={setTempBio}
+          placeholder="分享更多關於你的興趣、個性、喜歡的事物、人生故事...（最多500字）"
+          multiline
+          maxLength={500}
+          autoFocus
+        />
+        <View style={localStyles.buttonRow}>
+          <TouchableOpacity
+            style={localStyles.cancelBtn}
+            onPress={() => {
+              setIsEditingBio(false);
+              setTempBio(user?.bio || '');
+            }}
+          >
+            <Text style={localStyles.btnText}>取消</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[localStyles.saveBtn, saving && { opacity: 0.6 }]}
+            onPress={handleSaveBio}
+            disabled={saving}
+          >
+            <Text style={localStyles.btnTextSave}>
+              {saving ? '儲存中...' : '儲存'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    ) : (
+      <Pressable
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+        onPress={() => setIsEditingBio(true)}
+      >
+        <View style={{ flex: 1 }}>
+          {user?.bio ? (
+            <Text style={localStyles.bioText}>{user.bio}</Text>
+          ) : (
+            <Text style={localStyles.placeholderText}>
+              點擊這裡新增或編輯個人簡介，讓別人更認識你～
+            </Text>
+          )}
+        </View>
+
+        <MaterialCommunityIcons 
+          name="pencil" 
+          size={20} 
+          color="#c47c5e" 
+          style={{ marginTop: 3, opacity: 0.8 }}
+        />
+      </Pressable>
+    )}
+  </View>
+</View>
 
                 <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile/edit')}>
                   <MaterialCommunityIcons name="pencil" size={20} color="#5c4033" />
-                  <Text style={styles.editBtnText}>編輯其他資料</Text>
+                  <Text style={styles.editBtnText}>編輯資料</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1039,7 +1101,6 @@ const localStyles = StyleSheet.create({
     fontSize: 15,
     color: '#8b5e3c',
     textAlign: 'center',
-    fontStyle: 'italic',
     lineHeight: 22,
   },
   bioText: {
