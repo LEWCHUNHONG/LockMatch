@@ -135,7 +135,7 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, JWT_SECRET) => {
             avatar: avatarUrl,
             mbti: user.mbti || null,
             points: user.points || 0,
-            status: user.status || 'active',
+            status: user.status,
             last_active: user.last_active,
             is_online: isOnline,
             bio: user.bio || null
