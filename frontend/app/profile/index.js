@@ -333,21 +333,16 @@ const handleUpdateStatus = async (newStatus) => {
     // 處理清除狀態的情況（null 或空字串都視為清空）
     if (newStatus === null || newStatus === '' || (typeof newStatus === 'string' && newStatus.trim() === '')) {
       payload.status = null;  // 建議傳 null，讓後端明確存為 NULL
-      console.log('[handleUpdateStatus] 準備清空狀態，傳送 payload:', payload);
     } else {
       // 正常狀態更新，trim 並限制長度
       const trimmedStatus = newStatus.trim().slice(0, 255);
       payload.status = trimmedStatus;
-      console.log('[handleUpdateStatus] 準備更新狀態，傳送 payload:', payload);
     }
 
     // 發送請求
     const res = await api.put('/api/update-profile', payload, {
       timeout: 10000,  // 避免卡住太久
     });
-
-    console.log('[handleUpdateStatus] API 回應狀態碼:', res.status);
-    console.log('[handleUpdateStatus] API 回應資料:', res.data);
 
     if (res.data.success) {
       // 優先使用後端回傳的 user.status（如果有），否則用我們計算的值
@@ -373,11 +368,8 @@ const handleUpdateStatus = async (newStatus) => {
           await AsyncStorage.setItem('user', JSON.stringify(parsed));
         }
       } catch (storageErr) {
-        console.warn('[handleUpdateStatus] AsyncStorage 更新失敗:', storageErr);
       }
 
-      // 可選：成功後給使用者一點反饋
-      // Alert.alert('成功', '狀態已更新');
     } else {
       // 後端明確說 success: false
       throw new Error(res.data.error || res.data.message || '後端回應失敗');
