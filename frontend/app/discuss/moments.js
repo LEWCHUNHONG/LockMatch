@@ -233,84 +233,6 @@ export default function Moments() {
           contentContainerStyle={styles.listContent}
         />
 
-        {/* 底部導航欄 */}
-        <View style={styles.bottomTabContainer}>
-          <View style={styles.bottomTab}>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/dashboard')}>
-              <MaterialCommunityIcons 
-                name="home" 
-                size={28} 
-                color={pathname === '/dashboard' ? '#f4c7ab' : '#5c4033'} 
-              />
-              <Text style={[styles.tabLabel, pathname === '/dashboard' && { color: '#f4c7ab', fontWeight: '700' }]}>
-                首頁
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
-              <MaterialCommunityIcons 
-                name="heart-multiple" 
-                size={28} 
-                color={pathname.startsWith('/chat') ? '#f4c7ab' : '#5c4033'} 
-              />
-              <Text style={[styles.tabLabel, pathname.startsWith('/chat') && { color: '#f4c7ab', fontWeight: '700' }]}>
-                匹配
-              </Text>
-            </TouchableOpacity>
-
-            <Pressable
-              style={[styles.tabItem, styles.centerTab]}
-              onPressIn={handleNearbyPressIn}
-              onPressOut={handleNearbyPressOut}
-              onPress={() => router.push('/location-checkin')}
-            >
-              <Animated.View style={[styles.centerIconWrapper, { transform: [{ scale: nearbyScale }] }]}>
-                <Animated.View
-                  style={{
-                    ...StyleSheet.absoluteFillObject,
-                    backgroundColor: '#ffffff',
-                    borderRadius: 34,
-                    opacity: nearbyBackgroundOpacity.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 0.3],
-                    }),
-                  }}
-                />
-                <MaterialCommunityIcons name="map-marker-radius-outline" size={32} color="#5c4033" />
-              </Animated.View>
-              <Text style={styles.centerLabel}>附近</Text>
-            </Pressable>
-
-            {/* 討論區 - 高亮（包含 moments 頁面） */}
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/discuss')}>
-              <MaterialCommunityIcons 
-                name="forum" 
-                size={28} 
-                color={pathname.startsWith('/discuss') ? '#f4c7ab' : '#5c4033'} 
-              />
-              <Text style={[
-                styles.tabLabel, 
-                pathname.startsWith('/discuss') && { color: '#f4c7ab', fontWeight: '700' }
-              ]}>
-                討論區
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/profile')}>
-              <MaterialCommunityIcons 
-                name="account" 
-                size={28} 
-                color={pathname === '/profile' ? '#f4c7ab' : '#5c4033'} 
-              />
-              <Text style={[
-                styles.tabLabel, 
-                pathname === '/profile' && { color: '#f4c7ab', fontWeight: '700' }
-              ]}>
-                我的
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* FAB - 發文按鈕 */}
         <TouchableOpacity
@@ -434,7 +356,7 @@ const styles = StyleSheet.create({
 
   fab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 50,
     right: 20,
     width: 60,
     height: 60,
@@ -449,66 +371,5 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderWidth: 2,
     borderColor: '#fffaf5',
-  },
-
-  bottomTabContainer: {
-    position: 'absolute',
-    bottom: 15,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  bottomTab: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 36,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 12,
-    width: '100%',
-    maxWidth: 440,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(244, 199, 171, 0.4)',
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-  },
-  centerTab: {
-    marginTop: -36,
-  },
-  centerIconWrapper: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#c47c5e',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
-    marginBottom: 4,
-    overflow: 'hidden',
-  },
-  centerLabel: {
-    color: '#8b5e3c',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  tabLabel: {
-    color: '#8b5e3c',
-    fontSize: 12,
-    fontWeight: '500',
   },
 });

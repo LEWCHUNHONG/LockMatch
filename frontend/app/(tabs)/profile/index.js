@@ -708,59 +708,6 @@ const handleUpdateStatus = async (newStatus) => {
           }}
         />
 
-        {/* 底部導航 */}
-        <View style={styles.bottomTabContainer}>
-          <View style={styles.bottomTab}>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/dashboard')}>
-              <MaterialCommunityIcons name="home" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>首頁</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
-              <MaterialCommunityIcons name="heart-multiple" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>匹配</Text>
-            </TouchableOpacity>
-
-            <Pressable
-              style={[styles.tabItem, styles.centerTab]}
-              onPressIn={handleNearbyPressIn}
-              onPressOut={handleNearbyPressOut}
-              onPress={() => router.push('/location-checkin')}
-            >
-              <Animated.View style={{ transform: [{ scale: nearbyScale }] }}>
-                <View style={styles.centerIconWrapper}>
-                  <Animated.View
-                    style={{
-                      ...StyleSheet.absoluteFillObject,
-                      backgroundColor: '#ffffff',
-                      borderRadius: 34,
-                      opacity: nearbyBackgroundOpacity,
-                    }}
-                  />
-                  <MaterialCommunityIcons name="map-marker-radius-outline" size={36} color="#5c4033" />
-                </View>
-              </Animated.View>
-              <Text style={styles.centerLabel}>附近</Text>
-            </Pressable>
-
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/discuss')}>
-              <MaterialCommunityIcons name="forum" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>討論區</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.tabItem}>
-              <MaterialCommunityIcons 
-                name="account" 
-                size={28} 
-                color={pathname === '/profile' ? '#f4c7ab' : '#5c4033'} 
-              />
-              <Text style={[styles.tabLabel, pathname === '/profile' && { color: '#f4c7ab', fontWeight: '700' }]}>
-                我的
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* MBTI 說明 Modal */}
         <Modal
           isVisible={showMbtiInfoModal}
@@ -975,52 +922,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-
-  bottomTabContainer: {
-    position: 'absolute',
-    bottom: 15,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  bottomTab: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    borderRadius: 36,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 12,
-    width: '100%',
-    maxWidth: 440,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(244, 199, 171, 0.4)',
-  },
-  tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
-  centerTab: { marginTop: -36 },
-  centerIconWrapper: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#c47c5e',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
-    marginBottom: 4,
-    overflow: 'hidden',
-  },
-  centerLabel: { color: '#8b5e3c', fontWeight: '600', fontSize: 13 },
-  tabLabel: { color: '#8b5e3c', fontSize: 12, fontWeight: '500' },
 });
 
 const modalStyles = StyleSheet.create({

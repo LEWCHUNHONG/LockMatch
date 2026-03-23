@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
-  RefreshControl,           // 新增
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,23 +19,28 @@ import { chatAPI, fixImageUrl } from '../../../utils/api';
 
 export default function SearchScreen() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);              // 用於 RefreshControl 的下拉刷新狀態
+  const [isFullScreenLoading, setIsFullScreenLoading] = useState(true); // 控制全屏載入
   const [sendingRequest, setSendingRequest] = useState(null);
   const router = useRouter();
 
-  // 每次這個頁面被 focus 時自動刷新
+  // 每次這個畫面被 focus 時（包含從 tab 切換進來），強制顯示全屏 loading 並刷新資料
   useFocusEffect(
     useCallback(() => {
+      // 強制顯示全屏 spinner
+      setIsFullScreenLoading(true);
+      setLoading(true);
+
       fetchMatches();
+
       return () => {
-        // 可選 cleanup，例如取消正在進行的請求
+        // 可選：cleanup，例如取消請求（如果有使用 axios cancel token 等）
       };
     }, [])
   );
 
   const fetchMatches = async () => {
     try {
-      setLoading(true);
       const response = await chatAPI.mbtiMatching();
       if (response.data.success) {
         setUsers(response.data.users || []);
@@ -46,12 +51,17 @@ export default function SearchScreen() {
       console.error('獲取匹配用戶失敗:', error);
     } finally {
       setLoading(false);
+      // 讓全屏至少顯示一小段時間，避免閃太快（可調整秒數）
+      setTimeout(() => {
+        setIsFullScreenLoading(false);
+      }, 400); // 至少顯示 0.4 秒
     }
   };
 
-  // 下拉刷新觸發的函數（與自動刷新共用同一個 fetch 邏輯）
+  // 下拉刷新
   const onRefresh = () => {
-    fetchMatches();
+    setLoading(true);
+    fetchMatches(); // 下拉只觸發小 spinner，不強制全屏
   };
 
   const handleSendRequest = async (userId) => {
@@ -109,13 +119,14 @@ export default function SearchScreen() {
     </View>
   );
 
-  // 初次載入且還沒有資料時顯示全屏 loading
-  if (loading && users.length === 0) {
+  // 當全屏載入狀態為 true 時，顯示全屏 spinner
+  if (isFullScreenLoading) {
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#f4c7ab" />
+            <Text style={styles.loadingText}>正在載入匹配推薦...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -144,16 +155,17 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderUserItem}
             contentContainerStyle={styles.listContent}
-            // 下拉刷新控制
+            bounces={!loading} // 幫助 iOS RefreshControl spinner 更容易顯示
             refreshControl={
               <RefreshControl
                 refreshing={loading}
                 onRefresh={onRefresh}
-                colors={['#f4c7ab', '#e8b88a']}         // 轉圈顏色漸層（可自訂）
                 tintColor="#f4c7ab"
-                title="正在更新匹配列表..."             // Android 顯示文字
+                title="正在更新匹配列表..."
                 titleColor="#8b5e3c"
-                progressBackgroundColor="#fffaf5"        // 背景色（可選）
+                // colors 主要給 Android
+                colors={['#f4c7ab', '#e8b88a']}
+                progressBackgroundColor="#fffaf5"
               />
             }
           />
@@ -191,6 +203,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#8b5e3c',
   },
   emptyContainer: {
     flex: 1,
