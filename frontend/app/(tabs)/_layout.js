@@ -32,7 +32,7 @@ tabBarStyle: {
   left: 24,                 // ← 從 8 加大到 24（左右各留更多空間）
   right: 24,
   height: 82,
-  backgroundColor: 'rgba(255, 255, 255, 0.90)',  // 透明度微調，可試 0.92 或 0.85
+  backgroundColor: 'rgba(255, 255, 255, 0.85)',
   borderRadius: 36,
   borderWidth: 0.5,
   borderColor: 'rgba(244, 199, 171, 0.3)',
