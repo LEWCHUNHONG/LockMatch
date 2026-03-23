@@ -675,7 +675,7 @@ noPostsText: {
   borderWidth: 1,
   borderColor: 'rgba(244, 199, 171, 0.3)',
   gap: 8,
-  marginBottom: 16,
+  marginBottom: 6,
 },
 
 mbtiPlaceholderText: {
