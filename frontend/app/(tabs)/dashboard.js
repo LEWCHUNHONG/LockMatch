@@ -977,43 +977,7 @@ export default function Dashboard() {
           </View>
         </ScrollView>
 
-        {/* 底部導航欄 */}
-        <View style={styles.bottomTabContainer}>
-          <View style={styles.bottomTab}>
-            <TouchableOpacity style={styles.tabItem}>
-              <MaterialCommunityIcons name="home" size={28} color="#f4c7ab" />
-              <Text style={[styles.tabLabel, { color: '#f4c7ab', fontWeight: '700' }]}>首頁</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/chat/search')}>
-              <MaterialCommunityIcons name="heart-multiple" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>匹配</Text>
-            </TouchableOpacity>
-            <Pressable
-              style={[styles.tabItem, styles.centerTab]}
-              onPressIn={handleNearbyPressIn}
-              onPressOut={handleNearbyPressOut}
-              android_ripple={{ color: 'transparent' }}
-              onPress={() => router.push('/location-checkin')}
-            >
-              <Animated.View style={{ transform: [{ scale: nearbyScale }] }}>
-                <View style={styles.centerIconWrapper}>
-                  <View style={StyleSheet.absoluteFillObject} />
-                  <Animated.View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#ffffff', borderRadius: 34, opacity: nearbyBackgroundOpacity }} />
-                  <MaterialCommunityIcons name="map-marker-radius-outline" size={36} color="#5c4033" />
-                </View>
-              </Animated.View>
-              <Text style={styles.centerLabel}>附近</Text>
-            </Pressable>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/discuss')}>
-              <MaterialCommunityIcons name="forum" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>討論區</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => router.push('/profile')}>
-              <MaterialCommunityIcons name="account" size={28} color="#5c4033" />
-              <Text style={styles.tabLabel}>我的</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
       
       </SafeAreaView>
 
