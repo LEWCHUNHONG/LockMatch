@@ -24,8 +24,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Modal from 'react-native-modal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import api from '../utils/api';
-import { socketAPI } from '../utils/api';
+import api from '../../utils/api';
+import { socketAPI } from '../../utils/api';
 
 
 import * as Location from 'expo-location';

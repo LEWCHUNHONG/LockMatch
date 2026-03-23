@@ -2,7 +2,7 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet, Alert } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { socketAPI } from '../utils/api';
@@ -119,10 +119,16 @@ export default function Layout() {
     };
   }, []);
 
-  return (
+return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={styles.container}>
-        <Stack screenOptions={{ headerShown: false }} />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* 其他非 tab 頁面，例如登入、臨時聊天等 */}
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="temp-chat-invites" options={{ headerShown: true, title: '邀請' }} />
+          {/* ... 其他頁面 */}
+        </Stack>
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

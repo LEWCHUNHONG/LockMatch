@@ -18,12 +18,13 @@ import { useFocusEffect } from 'expo-router';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { usePreventRemove } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import { BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../../utils/api';
-import PostCard from './components/PostCard';
+import api from '../../../utils/api';
+import PostCard from '../../../app/discuss/components/PostCard';
 
 const { width } = Dimensions.get('window');
 
@@ -42,21 +43,7 @@ export default function Discuss() {
   const nearbyScale = useRef(new Animated.Value(1)).current;
   const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
 
-  useFocusEffect(
-  useCallback(() => {
-    const onBackPress = () => {
-      router.replace('/dashboard');
-      return true;
-    };
 
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress',
-      onBackPress
-    );
-
-    return () => subscription.remove();
-  }, [router])
-);
 
   // 獲取當前用戶 ID
   const loadCurrentUser = useCallback(async () => {
@@ -196,7 +183,7 @@ export default function Discuss() {
 onPress={() => router.push('/discuss/moments')}
 >
     <Image
-      source={require('../../assets/icons/group.png')}
+      source={require('../../../assets/icons/group.png')}
       style={styles.iconImage}
     />
   </TouchableOpacity>

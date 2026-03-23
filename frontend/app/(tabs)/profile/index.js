@@ -23,8 +23,8 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from 'react-native-modal';
 
-import api from '../../utils/api';
-import PostCard from '../../app/discuss/components/PostCard';
+import api from '../../../utils/api';
+import PostCard from '../../../app/discuss/components/PostCard';
 
 export default function Profile() {
   const router = useRouter();

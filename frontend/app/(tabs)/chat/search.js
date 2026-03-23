@@ -1,5 +1,5 @@
-// app/chat/search.js
-import React, { useState, useEffect } from 'react';
+// app/(tabs)/chat/search.js
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,12 +8,14 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  RefreshControl,           // 新增
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { chatAPI, fixImageUrl } from '../../utils/api';
+import { chatAPI, fixImageUrl } from '../../../utils/api';
 
 export default function SearchScreen() {
   const [users, setUsers] = useState([]);
@@ -21,23 +23,35 @@ export default function SearchScreen() {
   const [sendingRequest, setSendingRequest] = useState(null);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchMatches();
-  }, []);
+  // 每次這個頁面被 focus 時自動刷新
+  useFocusEffect(
+    useCallback(() => {
+      fetchMatches();
+      return () => {
+        // 可選 cleanup，例如取消正在進行的請求
+      };
+    }, [])
+  );
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      // 呼叫後端的 MBTI 匹配 API
-      const response = await chatAPI.mbtiMatching(); // 請確認此方法存在
+      const response = await chatAPI.mbtiMatching();
       if (response.data.success) {
         setUsers(response.data.users || []);
+      } else {
+        console.warn('API 返回不成功:', response.data);
       }
     } catch (error) {
       console.error('獲取匹配用戶失敗:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 下拉刷新觸發的函數（與自動刷新共用同一個 fetch 邏輯）
+  const onRefresh = () => {
+    fetchMatches();
   };
 
   const handleSendRequest = async (userId) => {
@@ -53,17 +67,13 @@ export default function SearchScreen() {
       }
     } catch (error) {
       console.error('發送好友請求失敗:', error);
-      // 嘗試獲取後端返回的錯誤訊息
       let errorMsg = '發送失敗，請稍後再試';
       if (error.response) {
-        // 後端有回應，但狀態碼不是 2xx
         console.log('後端錯誤回應:', error.response.data);
         errorMsg = error.response.data?.error || error.response.data?.message || `錯誤 ${error.response.status}`;
       } else if (error.request) {
-        // 請求已發送但冇收到回應
         errorMsg = '網絡連接失敗，請檢查網絡';
       } else {
-        // 其他錯誤
         errorMsg = error.message;
       }
       alert(`發送失敗: ${errorMsg}`);
@@ -99,7 +109,8 @@ export default function SearchScreen() {
     </View>
   );
 
-  if (loading) {
+  // 初次載入且還沒有資料時顯示全屏 loading
+  if (loading && users.length === 0) {
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
@@ -133,6 +144,18 @@ export default function SearchScreen() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderUserItem}
             contentContainerStyle={styles.listContent}
+            // 下拉刷新控制
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={onRefresh}
+                colors={['#f4c7ab', '#e8b88a']}         // 轉圈顏色漸層（可自訂）
+                tintColor="#f4c7ab"
+                title="正在更新匹配列表..."             // Android 顯示文字
+                titleColor="#8b5e3c"
+                progressBackgroundColor="#fffaf5"        // 背景色（可選）
+              />
+            }
           />
         )}
       </SafeAreaView>
