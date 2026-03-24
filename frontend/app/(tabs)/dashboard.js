@@ -1,4 +1,4 @@
-// app/dashboard.js
+// app/(tabs)/dashboard.js
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,

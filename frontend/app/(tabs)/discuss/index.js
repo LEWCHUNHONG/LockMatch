@@ -1,4 +1,4 @@
-// app/discuss/index.js
+// app/(tabs)/discuss/index.js
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View,

@@ -1,4 +1,4 @@
-// app/profile/index.js
+// app/(tabs)/profile/index.js
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,

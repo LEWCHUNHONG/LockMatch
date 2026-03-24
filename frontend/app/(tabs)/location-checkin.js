@@ -1,3 +1,5 @@
+// app/(tabs)/location-checkin.js
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
