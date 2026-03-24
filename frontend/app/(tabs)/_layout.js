@@ -42,7 +42,7 @@ tabBarStyle: {
   shadowOpacity: 0.18,
   shadowRadius: 16,
   elevation: 12,
-  paddingHorizontal: 16,    // 內部間距加大，避免 icon 太擠
+  paddingHorizontal: 10,    // 內部間距加大，避免 icon 太擠
 },
         tabBarActiveTintColor: '#f4c7ab',
         tabBarInactiveTintColor: '#5c4033',
