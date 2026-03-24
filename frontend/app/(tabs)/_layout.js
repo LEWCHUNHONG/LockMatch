@@ -29,8 +29,8 @@ export default function TabLayout() {
 tabBarStyle: {
   position: 'absolute',
   marginHorizontal: 15,
-  bottom: 20,               // 稍微再抬高，增加懸浮感
-  left: 24,                 // ← 從 8 加大到 24（左右各留更多空間）
+  bottom: 18,
+  left: 24,
   right: 24,
   height: 82,
   backgroundColor: 'rgba(255, 255, 255, 0.85)',
@@ -42,15 +42,15 @@ tabBarStyle: {
   shadowOpacity: 0.18,
   shadowRadius: 16,
   elevation: 12,
-  paddingHorizontal: 10,    // 內部間距加大，避免 icon 太擠
+  paddingHorizontal: 10,
 },
         tabBarActiveTintColor: '#f4c7ab',
         tabBarInactiveTintColor: '#5c4033',
         tabBarShowLabel: true,
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
-            paddingTop: 34,          // 讓文字稍微離 icon 遠一點
-            fontSize: 13,           // 可選：字小一點，避免太擠
+            paddingTop: 34,
+            fontSize: 13,
             marginTop: -2,
             fontStyle: 'bold',
 },
@@ -119,7 +119,6 @@ tabBarStyle: {
       </Pressable>
     ),
 
-    // ── 新增這段：隱藏這個頁面的 tab bar ──
     tabBarStyle: { display: 'none' },
   }}
   

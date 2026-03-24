@@ -405,7 +405,7 @@ const handleUpdateStatus = async (newStatus) => {
 
   if (loading && !posts.length) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#f4c7ab" />
@@ -418,7 +418,7 @@ const handleUpdateStatus = async (newStatus) => {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
           <View style={styles.center}>
             <MaterialCommunityIcons name="alert-circle-outline" size={60} color="#e74c3c" />
@@ -437,7 +437,7 @@ const handleUpdateStatus = async (newStatus) => {
       colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} 
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
 
         {/* 頂部導航 */}
         <View style={styles.header}>
