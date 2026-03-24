@@ -33,7 +33,7 @@ export default function LocationCheckin() {
 
   const AUTO_UPDATE_INTERVAL_MS = 15000;       // 15秒檢查一次
   const FORCE_UPLOAD_INTERVAL_MS = 300000;     // 5分鐘強制上傳
-  const MIN_DISTANCE_THRESHOLD = 80;
+  const MIN_DISTANCE_THRESHOLD = 20;
 
   // 預覽 Modal 相關狀態
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
