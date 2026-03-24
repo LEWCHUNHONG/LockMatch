@@ -28,6 +28,7 @@ export default function TabLayout() {
         headerShown: false,
 tabBarStyle: {
   position: 'absolute',
+  marginHorizontal: 15,
   bottom: 20,               // 稍微再抬高，增加懸浮感
   left: 24,                 // ← 從 8 加大到 24（左右各留更多空間）
   right: 24,
