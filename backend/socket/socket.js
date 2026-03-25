@@ -27,13 +27,20 @@ const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
   io.on('connection', (socket) => {
     console.log(`🔌 用戶連接: ${socket.userId} (${socket.username})`);
     socket.join(`user_${socket.userId}`);
-
     // 更新在線狀態
     connection.query(
       'UPDATE users SET last_active = NOW() WHERE id = ?',
       [socket.userId],
       (err) => { if (err) console.error('更新在線狀態失敗:', err); }
     );
+
+
+    socket.on('instant-chat-message', ({ roomId, message }) => {
+      console.log(`📩 收到 instant-chat-message: room=${roomId}, sender=${socket.userId}, content=${message.content}`);
+      // 強制將 senderId 設置為當前用戶的 ID
+      message.senderId = socket.userId;
+      socket.to(roomId).emit('instant-chat-message', message);
+    });
 
     // 檢查是否有待通知的已接受邀請（作為發送方）
     (async () => {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../utils/api';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function InvitesScreen() {
     const [invites, setInvites] = useState([]);
@@ -10,6 +12,8 @@ export default function InvitesScreen() {
 
     useEffect(() => {
         loadInvites();
+        const interval = setInterval(loadInvites, 15000);
+        return () => clearInterval(interval);
     }, []);
 
     const loadInvites = async () => {
@@ -46,43 +50,86 @@ export default function InvitesScreen() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <View style={styles.center}>
                 <ActivityIndicator size="large" color="#f4c7ab" />
             </View>
         );
     }
 
     return (
-        <View style={{ flex: 1, padding: 20 }}>
-            <Text style={{ fontSize: 18, marginBottom: 10 }}>待處理邀請</Text>
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>劇本邀請</Text>
+                <View style={{ width: 28 }} />
+            </View>
+
             {invites.length === 0 ? (
-                <Text>暫無邀請</Text>
+                <View style={styles.emptyState}>
+                    <MaterialCommunityIcons name="bell-off" size={60} color="#f4c7ab" />
+                    <Text style={styles.emptyText}>暫無邀請</Text>
+                </View>
             ) : (
                 <FlatList
                     data={invites}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
-                        <View style={{ padding: 15, backgroundColor: '#fff', marginBottom: 10, borderRadius: 10 }}>
-                            <Text style={{ fontWeight: 'bold' }}>{item.from_username}</Text>
-                            <Text>劇本：{item.scenario_data.title}</Text>
-                            <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                                <TouchableOpacity
-                                    style={{ backgroundColor: '#2ecc71', padding: 10, borderRadius: 5, marginRight: 10 }}
-                                    onPress={() => acceptInvite(item.id)}
-                                >
-                                    <Text style={{ color: '#fff' }}>接受</Text>
+                        <View style={styles.inviteCard}>
+                            <Text style={styles.inviteTitle}>來自 {item.from_username}</Text>
+                            <Text style={styles.inviteDesc}>劇本：{item.scenario_data.title}</Text>
+                            <View style={styles.buttonRow}>
+                                <TouchableOpacity style={styles.acceptButton} onPress={() => acceptInvite(item.id)}>
+                                    <Text style={styles.buttonText}>接受</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={{ backgroundColor: '#e74c3c', padding: 10, borderRadius: 5 }}
-                                    onPress={() => rejectInvite(item.id)}
-                                >
-                                    <Text style={{ color: '#fff' }}>拒絕</Text>
+                                <TouchableOpacity style={styles.rejectButton} onPress={() => rejectInvite(item.id)}>
+                                    <Text style={styles.buttonText}>拒絕</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                     )}
+                    contentContainerStyle={styles.list}
                 />
             )}
-        </View>
+        </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#fffaf5' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 12,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    backButton: { padding: 8 },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: '#5c4033' },
+    list: { padding: 16 },
+    inviteCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#8b5e3c',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    inviteTitle: { fontSize: 18, fontWeight: '700', color: '#5c4033', marginBottom: 4 },
+    inviteDesc: { fontSize: 14, color: '#8b5e3c', marginBottom: 12 },
+    buttonRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+    acceptButton: { backgroundColor: '#2ecc71', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, marginRight: 10 },
+    rejectButton: { backgroundColor: '#e74c3c', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 },
+    buttonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    emptyText: { fontSize: 16, color: '#8b5e3c', marginTop: 10 },
+});

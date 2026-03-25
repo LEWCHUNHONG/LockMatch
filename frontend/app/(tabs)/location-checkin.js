@@ -29,6 +29,12 @@ export default function LocationCheckin() {
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const mapRef = useRef(null);
 
+
+
+  const [activeChat, setActiveChat] = useState(null);
+
+
+
   const lastUploadedLocationRef = useRef(null);
 
   const AUTO_UPDATE_INTERVAL_MS = 15000;       // 15秒檢查一次
@@ -40,17 +46,17 @@ export default function LocationCheckin() {
   const [previewUser, setPreviewUser] = useState(null);
 
   const getMbtiColor = (mbti) => {
-  if (!mbti) return '#f4c7ab';
-  
-  const mbtiColors = {
-    ISTJ: '#3498db', ISFJ: '#2ecc71', INFJ: '#9b59b6', INTJ: '#1abc9c',
-    ISTP: '#e74c3c', ISFP: '#f39c12', INFP: '#d35400', INTP: '#34495e',
-    ESTP: '#e67e22', ESFP: '#f1c40f', ENFP: '#2ecc71', ENTP: '#9b59b6',
-    ESTJ: '#3498db', ESFJ: '#1abc9c', ENFJ: '#e74c3c', ENTJ: '#f39c12',
+    if (!mbti) return '#f4c7ab';
+
+    const mbtiColors = {
+      ISTJ: '#3498db', ISFJ: '#2ecc71', INFJ: '#9b59b6', INTJ: '#1abc9c',
+      ISTP: '#e74c3c', ISFP: '#f39c12', INFP: '#d35400', INTP: '#34495e',
+      ESTP: '#e67e22', ESFP: '#f1c40f', ENFP: '#2ecc71', ENTP: '#9b59b6',
+      ESTJ: '#3498db', ESFJ: '#1abc9c', ENFJ: '#e74c3c', ENTJ: '#f39c12',
+    };
+
+    return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
   };
-  
-  return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
-};
 
   const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
@@ -63,6 +69,21 @@ export default function LocationCheckin() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
+
+
+
+
+  const sendInstantChatInvite = async (targetUserId) => {
+    try {
+      const res = await api.post('/api/instant-chat/invite', { targetUserId });
+      if (res.data.success) {
+        Alert.alert('邀請已發送', '等待對方接受');
+      }
+    } catch (error) {
+      Alert.alert('錯誤', error.response?.data?.error || '發送失敗');
+    }
+  };
+
 
   const getCurrentLocationAndNearby = async (showLoading = true, isForceUpload = false) => {
     try {
@@ -175,9 +196,26 @@ export default function LocationCheckin() {
     }
   };
 
+
+  const loadActiveChat = async () => {
+    try {
+      const res = await api.get('/api/instant-chat/active');
+      if (res.data.success && res.data.hasActive) {
+        setActiveChat({ roomId: res.data.roomId, otherUserId: res.data.otherUserId });
+      } else {
+        setActiveChat(null);
+      }
+    } catch (error) {
+      console.error('載入即時聊天失敗', error);
+    }
+  };
+
+
+
   useFocusEffect(
     useCallback(() => {
       getCurrentLocationAndNearby(true, false);
+      loadActiveChat();
 
       const normalInterval = setInterval(() => {
         getCurrentLocationAndNearby(false, false);
@@ -194,6 +232,8 @@ export default function LocationCheckin() {
     }, [])
   );
 
+
+
   const renderAvatarMarker = (user) => {
     const avatarUri = user.avatar
       ? user.avatar.startsWith('http')
@@ -209,7 +249,7 @@ export default function LocationCheckin() {
           longitude: user.longitude,
         }}
         onPress={() => {
-          console.log('點擊用戶:', user.id, user.username); // debug 用
+          console.log('點擊用戶:', user.id, user.username);
           setPreviewUser(user);
           setPreviewModalVisible(true);
         }}
@@ -236,13 +276,31 @@ export default function LocationCheckin() {
   if (initialLoading) {
     return (
       <SafeAreaView style={styles.container}>
+
+
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
           </TouchableOpacity>
+
           <Text style={styles.headerTitle}>附近的人</Text>
-          <View style={{ width: 28 }} />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {activeChat && (
+              <TouchableOpacity
+                onPress={() => router.push(`/instant-chat/${activeChat.roomId}?otherUserId=${activeChat.otherUserId}`)}
+                style={styles.chatButton}
+              >
+                <MaterialCommunityIcons name="chat" size={28} color="#5c4033" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setInfoModalVisible(true)} style={styles.infoButton}>
+              <MaterialCommunityIcons name="information" size={28} color="#5c4033" />
+            </TouchableOpacity>
+          </View>
         </View>
+
+
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f4c7ab" />
           <Text style={styles.loadingText}>獲取位置及附近用戶中...</Text>
@@ -255,148 +313,168 @@ export default function LocationCheckin() {
     <SafeAreaView style={styles.container}>
 
       {/* 所有 Modal 統一放在這裡，同級 */}
-      
+
       {/* 預覽用戶 Modal */}
-<Modal
-  animationType="fade"
-  transparent={true}
-  visible={previewModalVisible}
-  onRequestClose={() => setPreviewModalVisible(false)}
->
-  <TouchableOpacity
-    style={modalStyles.modalOverlay}
-    activeOpacity={1}
-    onPress={() => setPreviewModalVisible(false)}
-  >
-    <TouchableOpacity
-      activeOpacity={1}
-      style={[modalStyles.modalContainer, { paddingVertical: 40, paddingHorizontal: 28 }]}
-      onPress={() => {}}
-    >
-      {/* 頭像 */}
-      <View style={{ marginBottom: 16 }}>
-        {previewUser?.avatar ? (
-          <Image
-            source={{
-              uri: previewUser.avatar.startsWith('http')
-                ? previewUser.avatar
-                : `${api.defaults.baseURL}${previewUser.avatar}`,
-            }}
-            style={{
-              width: 110,
-              height: 110,
-              borderRadius: 55,
-              borderWidth: 4,
-              borderColor: '#f4c7ab',
-            }}
-          />
-        ) : (
-          <View
-            style={{
-              width: 110,
-              height: 110,
-              borderRadius: 55,
-              backgroundColor: '#f4c7ab',
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderWidth: 4,
-              borderColor: '#f4c7ab',
-            }}
-          >
-            <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#5c4033' }}>
-              {previewUser?.username?.charAt(0)?.toUpperCase() || '?'}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* 用戶名 */}
-      <Text style={[modalStyles.modalTitle, { marginBottom: 12 }]}>
-        {previewUser?.username || '用戶'}
-      </Text>
-
-{previewUser?.mbti ? (
-  <View
-    style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: getMbtiColor(previewUser.mbti),
-      paddingHorizontal: 18,
-      paddingVertical: 8,
-      borderRadius: 30,
-      gap: 8,
-      marginBottom: 24,
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.3)', // 輕微白色邊框增加質感
-    }}
-  >
-    <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
-    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-      {previewUser.mbti} 型
-    </Text>
-  </View>
-) : (
-  <View
-    style={{
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 18,
-      paddingVertical: 8,
-      borderRadius: 30,
-      backgroundColor: 'rgba(244, 199, 171, 0.15)', // 跟公開頁面一致的極淡暖灰
-      borderWidth: 1,
-      borderColor: 'rgba(244, 199, 171, 0.3)',
-      gap: 8,
-      marginBottom: 24,
-    }}
-  >
-    <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
-    <Text
-      style={{
-        color: '#a68a7c',
-        fontSize: 15,
-        fontWeight: '600',
-        letterSpacing: 0.3,
-      }}
-    >
-      尚未設置 MBTI
-    </Text>
-  </View>
-)}
-      {/* 查看個人卡片按鈕 */}
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#f4c7ab',
-          paddingVertical: 16,
-          paddingHorizontal: 40,
-          borderRadius: 30,
-          width: '80%',
-          alignItems: 'center',
-          marginBottom: 16,
-        }}
-        onPress={() => {
-          setPreviewModalVisible(false);
-          if (previewUser?.id) {
-            router.push(`/profile/public/${previewUser.id}`);
-          } else {
-            Alert.alert('提示', '無法獲取用戶 ID');
-          }
-        }}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={previewModalVisible}
+        onRequestClose={() => setPreviewModalVisible(false)}
       >
-        <Text style={{ color: '#5c4033', fontSize: 17, fontWeight: '700' }}>
-          查看個人卡片
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={modalStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPreviewModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[modalStyles.modalContainer, { paddingVertical: 40, paddingHorizontal: 28 }]}
+            onPress={() => { }}
+          >
+            {/* 頭像 */}
+            <View style={{ marginBottom: 16 }}>
+              {previewUser?.avatar ? (
+                <Image
+                  source={{
+                    uri: previewUser.avatar.startsWith('http')
+                      ? previewUser.avatar
+                      : `${api.defaults.baseURL}${previewUser.avatar}`,
+                  }}
+                  style={{
+                    width: 110,
+                    height: 110,
+                    borderRadius: 55,
+                    borderWidth: 4,
+                    borderColor: '#f4c7ab',
+                  }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 110,
+                    height: 110,
+                    borderRadius: 55,
+                    backgroundColor: '#f4c7ab',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 4,
+                    borderColor: '#f4c7ab',
+                  }}
+                >
+                  <Text style={{ fontSize: 48, fontWeight: 'bold', color: '#5c4033' }}>
+                    {previewUser?.username?.charAt(0)?.toUpperCase() || '?'}
+                  </Text>
+                </View>
+              )}
+            </View>
 
-      {/* 關閉按鈕 */}
-      <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
-        <Text style={{ color: '#8b5e3c', fontSize: 15, fontWeight: '500' }}>
-          關閉
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  </TouchableOpacity>
-</Modal>
+            {/* 用戶名 */}
+            <Text style={[modalStyles.modalTitle, { marginBottom: 12 }]}>
+              {previewUser?.username || '用戶'}
+            </Text>
+
+            {previewUser?.mbti ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: getMbtiColor(previewUser.mbti),
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  borderRadius: 30,
+                  gap: 8,
+                  marginBottom: 24,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.3)', // 輕微白色邊框增加質感
+                }}
+              >
+                <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                  {previewUser.mbti} 型
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 18,
+                  paddingVertical: 8,
+                  borderRadius: 30,
+                  backgroundColor: 'rgba(244, 199, 171, 0.15)', // 跟公開頁面一致的極淡暖灰
+                  borderWidth: 1,
+                  borderColor: 'rgba(244, 199, 171, 0.3)',
+                  gap: 8,
+                  marginBottom: 24,
+                }}
+              >
+                <MaterialCommunityIcons name="account-question-outline" size={18} color="#a68a7c" />
+                <Text
+                  style={{
+                    color: '#a68a7c',
+                    fontSize: 15,
+                    fontWeight: '600',
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  尚未設置 MBTI
+                </Text>
+              </View>
+            )}
+            {/* 查看個人卡片按鈕 */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#f4c7ab',
+                paddingVertical: 16,
+                paddingHorizontal: 40,
+                borderRadius: 30,
+                width: '80%',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}
+              onPress={() => {
+                setPreviewModalVisible(false);
+                if (previewUser?.id) {
+                  router.push(`/profile/public/${previewUser.id}`);
+                } else {
+                  Alert.alert('提示', '無法獲取用戶 ID');
+                }
+              }}
+            >
+              <Text style={{ color: '#5c4033', fontSize: 17, fontWeight: '700' }}>
+                查看個人卡片
+              </Text>
+            </TouchableOpacity>
+
+            {<TouchableOpacity
+              style={{
+                backgroundColor: '#f4c7ab',
+                paddingVertical: 16,
+                paddingHorizontal: 40,
+                borderRadius: 30,
+                width: '80%',
+                alignItems: 'center',
+                marginBottom: 16,
+              }}
+              onPress={() => {
+                setPreviewModalVisible(false);
+                sendInstantChatInvite(previewUser.id);
+              }}
+            >
+              <Text style={{ color: '#5c4033', fontSize: 17, fontWeight: '700' }}>
+                立刻即時聊天
+              </Text>
+            </TouchableOpacity>}
+
+            {/* 關閉按鈕 */}
+            <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
+              <Text style={{ color: '#8b5e3c', fontSize: 15, fontWeight: '500' }}>
+                關閉
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* 使用說明 Modal */}
       <Modal
@@ -413,7 +491,7 @@ export default function LocationCheckin() {
           <TouchableOpacity
             activeOpacity={1}
             style={[modalStyles.modalContainer, { maxHeight: '70%' }]}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <Text style={modalStyles.modalTitle}>使用說明</Text>
 
@@ -448,20 +526,20 @@ export default function LocationCheckin() {
 
       {/* 頁面主要內容 */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
+        <TouchableOpacity
+          onPress={() => router.back()}
           style={[styles.backButton, { zIndex: 10 }]}
         >
           <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
         </TouchableOpacity>
 
-        <Text 
+        <Text
           style={[
-            styles.headerTitle, 
-            { 
-              position: 'absolute', 
-              left: 0, 
-              right: 0, 
+            styles.headerTitle,
+            {
+              position: 'absolute',
+              left: 0,
+              right: 0,
               textAlign: 'center',
               pointerEvents: 'none'
             }
@@ -470,7 +548,7 @@ export default function LocationCheckin() {
           附近的人
         </Text>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => setInfoModalVisible(true)}
           style={[styles.infoButton, { zIndex: 10 }]}
         >
@@ -613,6 +691,12 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.6,
+  },
+  chatButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(244,199,171,0.25)',
+    marginRight: 8,
   },
   markerContainer: {
     width: 38,

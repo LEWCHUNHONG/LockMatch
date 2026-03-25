@@ -151,105 +151,105 @@ export default function Dashboard() {
   };
 
 
- /* const fetchPendingInvites = useCallback(async () => {
-    try {
-      setLoadingInvites(true);
-      const res = await api.get('/api/temp-chat/pending');
-      console.log('📥 獲取邀請回應:', res.data); // 加入日誌
-      if (res.data.success) {
-        setPendingInvites(res.data.invites || []);
-      } else {
-        console.error('獲取邀請失敗:', res.data.error);
-        Alert.alert('錯誤', res.data.error || '獲取邀請失敗');
-      }
-    } catch (error) {
-      console.error('❌ 獲取邀請錯誤:', error);
-      if (error.response) {
-        Alert.alert('錯誤', `伺服器錯誤 (${error.response.status}): ${error.response.data.error || '未知錯誤'}`);
-      } else if (error.request) {
-        Alert.alert('網絡錯誤', '無法連接到伺服器，請檢查網絡');
-      } else {
-        Alert.alert('錯誤', error.message);
-      }
-    } finally {
-      setLoadingInvites(false);
-    }
-    const fetchPendingInvites = async () => {
-      try {
-        const res = await api.get('/api/temp-chat/pending');
-        if (res.data.success) {
-          setPendingInvitesCount(res.data.invites.length);
-        }
-      } catch (error) {
-        console.error('獲取邀請數量失敗:', error);
-      }
-    };
-  }, []);
-
-  // 接受邀請
-  const handleAcceptInvite = async (inviteId) => {
-    try {
-      const res = await api.post('/api/temp-chat/accept', { inviteId });
-      if (res.data.success) {
-        Alert.alert('成功', '已接受邀請');
-        router.push(`/chat/${res.data.roomId}`);
-        fetchPendingInvites(); // 刷新列表
-      }
-    } catch (error) {
-      Alert.alert('錯誤', error.response?.data?.error || '接受失敗');
-    }
-  };
-
-  // 拒絕邀請
-  const handleRejectInvite = async (inviteId) => {
-    try {
-      await api.post('/api/temp-chat/reject', { inviteId });
-      fetchPendingInvites();
-    } catch (error) {
-      Alert.alert('錯誤', error.response?.data?.error || '拒絕失敗');
-    }
-  };
-
-
-
-  useEffect(() => {
-    const socket = socketAPI.getSocket();
-    if (!socket) return;
-
-    const handleNewInvite = (data) => {
-      console.log('📩 收到 temp-chat-invite 事件:', data);
-      Alert.alert(
-        '新臨時聊天邀請',
-        `${data.fromUsername} 邀請你進行臨時聊天`,
-        [
-          { text: '稍後', style: 'cancel' },
-          { text: '查看', onPress: () => router.push('/temp-chat-invites') }
-        ]
-      );
-      // 刷新邀請列表和紅點
-      fetchPendingInvites();
-    };
-
-    socket.on('temp-chat-invite', handleNewInvite);
-
-    return () => {
-      socket.off('temp-chat-invite', handleNewInvite);
-    };
-  }, [router, fetchPendingInvites]); // 注意依賴
-
-  const testPushToken = async () => {
-    try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('需要推播權限', '請允許接收通知');
-        return;
-      }
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      Alert.alert('推播 Token', token);
-    } catch (error) {
-      Alert.alert('錯誤', error.message);
-    }
-  }; */
+  /* const fetchPendingInvites = useCallback(async () => {
+     try {
+       setLoadingInvites(true);
+       const res = await api.get('/api/temp-chat/pending');
+       console.log('📥 獲取邀請回應:', res.data); // 加入日誌
+       if (res.data.success) {
+         setPendingInvites(res.data.invites || []);
+       } else {
+         console.error('獲取邀請失敗:', res.data.error);
+         Alert.alert('錯誤', res.data.error || '獲取邀請失敗');
+       }
+     } catch (error) {
+       console.error('❌ 獲取邀請錯誤:', error);
+       if (error.response) {
+         Alert.alert('錯誤', `伺服器錯誤 (${error.response.status}): ${error.response.data.error || '未知錯誤'}`);
+       } else if (error.request) {
+         Alert.alert('網絡錯誤', '無法連接到伺服器，請檢查網絡');
+       } else {
+         Alert.alert('錯誤', error.message);
+       }
+     } finally {
+       setLoadingInvites(false);
+     }
+     const fetchPendingInvites = async () => {
+       try {
+         const res = await api.get('/api/temp-chat/pending');
+         if (res.data.success) {
+           setPendingInvitesCount(res.data.invites.length);
+         }
+       } catch (error) {
+         console.error('獲取邀請數量失敗:', error);
+       }
+     };
+   }, []);
+ 
+   // 接受邀請
+   const handleAcceptInvite = async (inviteId) => {
+     try {
+       const res = await api.post('/api/temp-chat/accept', { inviteId });
+       if (res.data.success) {
+         Alert.alert('成功', '已接受邀請');
+         router.push(`/chat/${res.data.roomId}`);
+         fetchPendingInvites(); // 刷新列表
+       }
+     } catch (error) {
+       Alert.alert('錯誤', error.response?.data?.error || '接受失敗');
+     }
+   };
+ 
+   // 拒絕邀請
+   const handleRejectInvite = async (inviteId) => {
+     try {
+       await api.post('/api/temp-chat/reject', { inviteId });
+       fetchPendingInvites();
+     } catch (error) {
+       Alert.alert('錯誤', error.response?.data?.error || '拒絕失敗');
+     }
+   };
+ 
+ 
+ 
+   useEffect(() => {
+     const socket = socketAPI.getSocket();
+     if (!socket) return;
+ 
+     const handleNewInvite = (data) => {
+       console.log('📩 收到 temp-chat-invite 事件:', data);
+       Alert.alert(
+         '新臨時聊天邀請',
+         `${data.fromUsername} 邀請你進行臨時聊天`,
+         [
+           { text: '稍後', style: 'cancel' },
+           { text: '查看', onPress: () => router.push('/temp-chat-invites') }
+         ]
+       );
+       // 刷新邀請列表和紅點
+       fetchPendingInvites();
+     };
+ 
+     socket.on('temp-chat-invite', handleNewInvite);
+ 
+     return () => {
+       socket.off('temp-chat-invite', handleNewInvite);
+     };
+   }, [router, fetchPendingInvites]); // 注意依賴
+ 
+   const testPushToken = async () => {
+     try {
+       const { status } = await Notifications.requestPermissionsAsync();
+       if (status !== 'granted') {
+         Alert.alert('需要推播權限', '請允許接收通知');
+         return;
+       }
+       const token = (await Notifications.getExpoPushTokenAsync()).data;
+       Alert.alert('推播 Token', token);
+     } catch (error) {
+       Alert.alert('錯誤', error.message);
+     }
+   }; */
 
   // 從後端獲取最新用戶信息
   const fetchLatestUser = async () => {
@@ -700,6 +700,10 @@ export default function Dashboard() {
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/scenario')}>
+            <MaterialCommunityIcons name="drama-masks" size={28} color="#5c4033" />
+          </TouchableOpacity>
+
           <Text style={styles.logo}>LockMATCH</Text>
 
           <TouchableOpacity
@@ -720,190 +724,190 @@ export default function Dashboard() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#f4c7ab']} tintColor="#f4c7ab" />}
         >
           {/* 歡迎卡片 */}
-<View style={styles.welcomeCard}>
-  {/* 頂部：頭像 + 問候 + MBTI狀態/測試按鈕 + 積分 */}
-  <View style={{
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  }}>
-    <View style={[styles.avatarCircle, { width: 80, height: 80, borderRadius: 40 }]}>
-      {user?.avatar ? (
-        <Image 
-          source={{ uri: user.avatar }} 
-          style={styles.avatarImage} 
-        />
-      ) : (
-        <Text style={styles.avatarNumber}>{user?.id || '?'}</Text>
-      )}
-    </View>
+          <View style={styles.welcomeCard}>
+            {/* 頂部：頭像 + 問候 + MBTI狀態/測試按鈕 + 積分 */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              marginBottom: 20,
+            }}>
+              <View style={[styles.avatarCircle, { width: 80, height: 80, borderRadius: 40 }]}>
+                {user?.avatar ? (
+                  <Image
+                    source={{ uri: user.avatar }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Text style={styles.avatarNumber}>{user?.id || '?'}</Text>
+                )}
+              </View>
 
-    <View style={{ marginLeft: 16, flex: 1 }}>
-      <Text style={[styles.welcomeText, { fontSize: 22, marginBottom: 8 }]}>
-        嗨，{user?.username || '使用者'}！
-      </Text>
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <Text style={[styles.welcomeText, { fontSize: 22, marginBottom: 8 }]}>
+                  嗨，{user?.username || '使用者'}！
+                </Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        {/* MBTI 狀態或開始測試按鈕 */}
-        {user?.mbti ? (
-          <View style={[styles.statusTag, { 
-            backgroundColor: getMbtiColor?.(user.mbti) || '#f4c7ab', 
-            paddingHorizontal: 12, 
-            paddingVertical: 6 
-          }]}>
-            <MaterialCommunityIcons name="account-check" size={14} color="#fff" />
-            <Text style={[styles.statusTagText, { color: '#fff', fontSize: 13 }]}>
-              {user.mbti} 型
-            </Text>
-          </View>
-        ) : (
-          <TouchableOpacity 
-            style={[styles.statusTag, { 
-              backgroundColor: '#f4c7ab', 
-              paddingHorizontal: 12, 
-              paddingVertical: 6 
-            }]} 
-            onPress={() => router.push('/mbti-test')}
-          >
-            <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
-            <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
-              開始 MBTI 遊戲測試
-            </Text>
-          </TouchableOpacity>
-        )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  {/* MBTI 狀態或開始測試按鈕 */}
+                  {user?.mbti ? (
+                    <View style={[styles.statusTag, {
+                      backgroundColor: getMbtiColor?.(user.mbti) || '#f4c7ab',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6
+                    }]}>
+                      <MaterialCommunityIcons name="account-check" size={14} color="#fff" />
+                      <Text style={[styles.statusTagText, { color: '#fff', fontSize: 13 }]}>
+                        {user.mbti} 型
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.statusTag, {
+                        backgroundColor: '#f4c7ab',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6
+                      }]}
+                      onPress={() => router.push('/mbti-test')}
+                    >
+                      <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
+                      <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
+                        開始 MBTI 遊戲測試
+                      </Text>
+                    </TouchableOpacity>
+                  )}
 
-        {/* 積分 */}
-        <TouchableOpacity onPress={() => router.push('/rewards')}>
-          <Text style={[styles.points, { fontSize: 15, fontWeight: '700' }]}>
-            ★ {userPoints.points} 積分 →
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </View>
+                  {/* 積分 */}
+                  <TouchableOpacity onPress={() => router.push('/rewards')}>
+                    <Text style={[styles.points, { fontSize: 15, fontWeight: '700' }]}>
+                      ★ {userPoints.points} 積分 →
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
 
-  {/* 每日簽到 - 大按鈕 */}
-  <TouchableOpacity
-    style={[
-      styles.checkinButton,
-      {
-        width: '100%',
-        paddingVertical: 18,
-        marginBottom: 16,
-        borderRadius: 20,
-        shadowColor: '#c47c5e',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        elevation: 6,
-      },
-      (checkinStatus.checked_in_today || isCheckingIn) && {
-        backgroundColor: '#d9b8a3',
-        opacity: 0.85,
-      },
-    ]}
-    onPress={handleDailyCheckin}
-    disabled={checkinStatus.checked_in_today || isCheckingIn}
-    activeOpacity={0.85}
-  >
-    {isCheckingIn ? (
-      <ActivityIndicator size="small" color="#fff" />
-    ) : (
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-        <MaterialCommunityIcons
-          name={checkinStatus.checked_in_today ? 'check-circle' : 'calendar-check'}
-          size={22}
-          color="#fff"
-        />
-        <Text style={[styles.checkinButtonText, { fontSize: 16, fontWeight: '700' }]}>
-          {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到領積分'}
-        </Text>
-      </View>
-    )}
-  </TouchableOpacity>
+            {/* 每日簽到 - 大按鈕 */}
+            <TouchableOpacity
+              style={[
+                styles.checkinButton,
+                {
+                  width: '100%',
+                  paddingVertical: 18,
+                  marginBottom: 16,
+                  borderRadius: 20,
+                  shadowColor: '#c47c5e',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 8,
+                  elevation: 6,
+                },
+                (checkinStatus.checked_in_today || isCheckingIn) && {
+                  backgroundColor: '#d9b8a3',
+                  opacity: 0.85,
+                },
+              ]}
+              onPress={handleDailyCheckin}
+              disabled={checkinStatus.checked_in_today || isCheckingIn}
+              activeOpacity={0.85}
+            >
+              {isCheckingIn ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                  <MaterialCommunityIcons
+                    name={checkinStatus.checked_in_today ? 'check-circle' : 'calendar-check'}
+                    size={22}
+                    color="#fff"
+                  />
+                  <Text style={[styles.checkinButtonText, { fontSize: 16, fontWeight: '700' }]}>
+                    {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到領積分'}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-{/* 2×2 格 */}
-<View style={{
-  width: '100%',
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  justifyContent: 'space-between',
-  gap: 12,
-  marginTop: 8,
-}}>
+            {/* 2×2 格 */}
+            <View style={{
+              width: '100%',
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginTop: 8,
+            }}>
 
-  {/* MBTI 重新測試 / 開始測試 */}
-  <TouchableOpacity
-  style={styles.smallToolItem}
-  onPress={() => router.push('/mbti-test')}
-  >
-    <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
-    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
-    </Text>
-  </TouchableOpacity>
+              {/* MBTI 重新測試 / 開始測試 */}
+              <TouchableOpacity
+                style={styles.smallToolItem}
+                onPress={() => router.push('/mbti-test')}
+              >
+                <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
+                <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+                  {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
+                </Text>
+              </TouchableOpacity>
 
-  {/* 朋友列表 */}
-  <TouchableOpacity
-  style={styles.smallToolItem}
-  onPress={() => router.push('/chat/friends')}
-  >
-    <View style={{ position: 'relative' }}>
-      <MaterialCommunityIcons name="account-multiple-outline" size={26} color="#5c4033" />
-      {pendingInvitesCount > 0 && (
-        <View style={[styles.badge, { top: -8, right: -12 }]}>
-          <Text style={styles.badgeText}>{pendingInvitesCount}</Text>
-        </View>
-      )}
-    </View>
-    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      朋友列表
-    </Text>
-  </TouchableOpacity>
-  
-  {/* AI 聊天 */}
-  <TouchableOpacity
-  style={styles.smallToolItem}
-  onPress={() => router.push('/chat/ai-chat')}
-  >
-    <MaterialCommunityIcons name="robot-happy-outline" size={26} color="#9b59b6" />
-    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      AI 聊天
-    </Text>
-  </TouchableOpacity>
+              {/* 朋友列表 */}
+              <TouchableOpacity
+                style={styles.smallToolItem}
+                onPress={() => router.push('/chat/friends')}
+              >
+                <View style={{ position: 'relative' }}>
+                  <MaterialCommunityIcons name="account-multiple-outline" size={26} color="#5c4033" />
+                  {pendingInvitesCount > 0 && (
+                    <View style={[styles.badge, { top: -8, right: -12 }]}>
+                      <Text style={styles.badgeText}>{pendingInvitesCount}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+                  朋友列表
+                </Text>
+              </TouchableOpacity>
 
-  {/* 性格分析 */}
-  <TouchableOpacity
-  style={styles.smallToolItem}
-  onPress={() => router.push('/insights')}
-  >
-    <MaterialCommunityIcons name="file-chart-outline" size={26} color="#9b59b6" />
-    <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-      性格分析
-    </Text>
-  </TouchableOpacity>
-</View>
-</View>
+              {/* AI 聊天 */}
+              <TouchableOpacity
+                style={styles.smallToolItem}
+                onPress={() => router.push('/chat/ai-chat')}
+              >
+                <MaterialCommunityIcons name="robot-happy-outline" size={26} color="#9b59b6" />
+                <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+                  AI 聊天
+                </Text>
+              </TouchableOpacity>
 
-{/* ────────────── 探索 LockMATCH 標題區 ────────────── */}
-        <View style>
-          <View style={styles.firstsectionHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <MaterialCommunityIcons 
-                name="compass" 
-                size={26} 
-                color="#5c4033" 
-              />
-              <Text style={styles.firstsectionTitle}>探索 LockMATCH</Text>
+              {/* 性格分析 */}
+              <TouchableOpacity
+                style={styles.smallToolItem}
+                onPress={() => router.push('/insights')}
+              >
+                <MaterialCommunityIcons name="file-chart-outline" size={26} color="#9b59b6" />
+                <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
+                  性格分析
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </View>
-    
+
+          {/* ────────────── 探索 LockMATCH 標題區 ────────────── */}
+          <View style>
+            <View style={styles.firstsectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <MaterialCommunityIcons
+                  name="compass"
+                  size={26}
+                  color="#5c4033"
+                />
+                <Text style={styles.firstsectionTitle}>探索 LockMATCH</Text>
+              </View>
+            </View>
+          </View>
+
           {/* 功能卡片網格 */}
           <View style={styles.cardsGrid}>
             <AnimatedCard icon="chat-outline" title="開始聊天" desc="和附近的人即時聊天、分享心情或找活動夥伴" buttonText="開啟聊天" onPress={() => router.push('/chat')} cardWidth={cardWidth} />
             <AnimatedCard icon="heart-multiple" title="智能匹配" desc="基於 MBTI 找到最適合的學習夥伴、運動搭檔" buttonText="尋找匹配" onPress={() => router.push('/chat/search')} cardWidth={cardWidth} />
-            <AnimatedCard icon="drama-masks" title="劇本對決" desc="兩人 PK 劇情任務，完成挑戰、搶高分！" buttonText="開始對決" /* onPress={() => router.push('/scenario')} */  cardWidth={cardWidth}/>
+            <AnimatedCard icon="drama-masks" title="劇本對決" desc="兩人 PK 劇情任務，完成挑戰、搶高分！" buttonText="開始對決" /* onPress={() => router.push('/scenario')} */ cardWidth={cardWidth} />
             <AnimatedCard icon="star-circle" title="獎勵任務" desc="完成任務賺積分，兌換優惠券、電影票等獎勵！" buttonText="查看任務" onPress={() => router.push('/rewards')} cardWidth={cardWidth} />
           </View>
 
@@ -978,7 +982,7 @@ export default function Dashboard() {
         </ScrollView>
 
 
-      
+
       </SafeAreaView>
 
       {/* 登出確認 Modal */}
@@ -1017,29 +1021,29 @@ export default function Dashboard() {
 
 const styles = StyleSheet.create({
   firstsectionHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 16,
-},
-firstsectionTitle: {
-  fontSize: 20,
-  fontWeight: '700',
-  color: '#5c4033',
-},
-smallToolItem: {
-      flexBasis: '47%',
-      maxWidth: '47%',
-      backgroundColor: '#fffaf5',
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(244,199,171,0.5)',
-      paddingVertical: 12,
-      paddingHorizontal: 8,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-},
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  firstsectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#5c4033',
+  },
+  smallToolItem: {
+    flexBasis: '47%',
+    maxWidth: '47%',
+    backgroundColor: '#fffaf5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(244,199,171,0.5)',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   gradient: { flex: 1 },
   safeArea: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

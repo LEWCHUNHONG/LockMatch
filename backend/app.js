@@ -21,6 +21,9 @@ const insightsRouter = require('./routes/insights');
 
 const tempChatRoutes = require('./routes/tempChatRoutes');
 
+const scenarioRoutes = require('./routes/scenario');
+
+const instantChatRoutes = require('./routes/instantChat');
 
 
 const healthRoutes = require('./routes/health');
@@ -44,6 +47,7 @@ const availableIPs = [];
 const httpServer = createServer(app);
 const { io, broadcastNewMessage } = initSocket(httpServer, connection, BASE_URL, JWT_SECRET);
 app.set('io', io);
+
 app.set('broadcastNewMessage', broadcastNewMessage);
 
 Object.keys(networkInterfaces).forEach((ifname) => {
@@ -155,6 +159,11 @@ app.use('/api', discussRoutes(connection, authMiddleware, JWT_SECRET, buildAvata
 app.use('/api', healthRoutes(connection));
 
 app.use('/api/temp-chat', tempChatRoutes);
+
+app.use('/api/scenario', scenarioRoutes);
+
+app.use('/api/instant-chat', instantChatRoutes);
+
 
 app.use('/api/user/location', require('./routes/location'));
 app.use('/api/nearby-users', require('./routes/nearby'));
