@@ -206,7 +206,7 @@ export default function LoginScreen() {
 </View>
 
 <Text style={styles.comingSoonText}>
-  更多登入方式正在開發中，敬請期待 ✨
+  更多方便的登入方式即將推出 ✨
 </Text>
 
                 </View>

@@ -223,13 +223,13 @@ export default function RegisterScreen() {
 <View style={styles.socialHintContainer}>
   <View style={styles.orLine} />
   <Text style={styles.socialHintText}>
-    即將支援 Google / Facebook 快速登入
+    即將支援 Google / Facebook 快速註冊
   </Text>
   <View style={styles.orLine} />
 </View>
 
 <Text style={styles.comingSoonText}>
-  更多登入方式正在開發中，敬請期待 ✨
+  更多方便的註冊方式即將推出 ✨
 </Text>
 
 
