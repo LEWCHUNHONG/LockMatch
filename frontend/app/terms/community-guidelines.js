@@ -3,10 +3,25 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { BackHandler } from 'react-native';
+import { useCallback } from 'react';
 
 export default function CommunityGuidelinesScreen() {
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/');
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [router])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -47,7 +62,7 @@ export default function CommunityGuidelinesScreen() {
         </Text>
 
         <Text style={styles.paragraph}>
-          感謝您一起維護 LockMATCH 這個溫暖的 MBTI 社群！{'\n'}如果您發現任何違規行為，歡迎隨時檢舉，我們會盡快處理。
+          感謝您一起維護 LockMATCH 這個溫暖的 MBTI 社群！{'\n'}如果您發現任何違規行為，歡迎隨時檢舉，我們會盡快處理。{'\n'}
         </Text>
       </ScrollView>
     </SafeAreaView>

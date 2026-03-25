@@ -3,10 +3,25 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { BackHandler } from 'react-native';
+import { useCallback } from 'react';
 
 export default function TermsScreen() {
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/');
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [router])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -60,7 +75,7 @@ export default function TermsScreen() {
           我們保留隨時修改本條款的權利，修改後將於 App 內公告。繼續使用即視為同意新條款。
         </Text>
 
-        <Text style={styles.paragraph}>如有任何問題，歡迎聯絡我們。</Text>
+        <Text style={styles.paragraph}>如有任何問題，歡迎聯絡我們。 {'\n'}</Text>
       </ScrollView>
     </SafeAreaView>
   );

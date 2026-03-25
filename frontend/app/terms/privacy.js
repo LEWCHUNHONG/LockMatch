@@ -3,10 +3,24 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { BackHandler } from 'react-native';
+import { useCallback } from 'react';
 
 export default function PrivacyScreen() {
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.back();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -57,7 +71,7 @@ export default function PrivacyScreen() {
           我們採用合理的安全措施保護您的資料，但無法保證絕對安全。
         </Text>
 
-        <Text style={styles.paragraph}>如有隱私相關問題，請聯絡我們。</Text>
+        <Text style={styles.paragraph}>如有隱私相關問題，請聯絡我們。 {'\n'}</Text> 
       </ScrollView>
     </SafeAreaView>
   );

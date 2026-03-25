@@ -22,17 +22,12 @@ export default function WelcomeScreen() {
 
     const backHandler = () => {
       BackHandler.exitApp();
-      return true;           // 告訴系統我們已經處理了這個事件
+      return true;
     };
 
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress', 
-      backHandler
-    );
-
-    // 清理（非常重要，避免記憶體問題或重複註冊）
+    const subscription = BackHandler.addEventListener('hardwareBackPress', backHandler);
     return () => subscription.remove();
-  }, []); // 空依賴 → 只在組件 mount 時註冊一次
+  }, []);
 
   return (
     <LinearGradient
@@ -83,12 +78,42 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
           </View>
 
-<Text style={styles.agreementText}>
-  註冊即表示同意{' '}
-  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/terms')}>服務條款</Text>、{' '}
-  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/privacy')}>隱私政策</Text> 與{'\n'}
-  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/community-guidelines')}>社群規範</Text>
-</Text>
+          {/* 協議文字 - 大幅改善點擊體驗 */}
+          <View style={styles.agreementContainer}>
+            <Text style={styles.agreementText}>
+              註冊即表示同意
+            </Text>
+
+            <View style={styles.linksRow}>
+              <TouchableOpacity 
+                onPress={() => router.push('terms/terms')}
+                activeOpacity={0.6}
+                style={styles.linkButton}
+              >
+                <Text style={styles.linkText}>服務條款</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.agreementText}>、</Text>
+
+              <TouchableOpacity 
+                onPress={() => router.push('terms/privacy')}
+                activeOpacity={0.6}
+                style={styles.linkButton}
+              >
+                <Text style={styles.linkText}>隱私政策</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.agreementText}>與</Text>
+
+              <TouchableOpacity 
+                onPress={() => router.push('terms/community-guidelines')}
+                activeOpacity={0.6}
+                style={styles.linkButton}
+              >
+                <Text style={styles.linkText}>社群規範</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -135,11 +160,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-  },
-  // 關鍵調整：從 -28 改成 -18，讓鎖頭剛好靠在 Lock 旁邊，不壓到 L
-  lockIcon: {
-    marginRight: -18,
-    zIndex: 2,
   },
   avatar: {
     fontSize: 60,
@@ -209,16 +229,34 @@ const styles = StyleSheet.create({
   },
   buttonIcon: { marginLeft: 8 },
   buttonIconLeft: { marginRight: 12 },
+
+  // ====================== 協議文字優化 ======================
+  agreementContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
   agreementText: {
-    fontSize: 13.5,
+    fontSize: 15,
     color: '#a0785e',
     textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  linksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  linkButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,        // 增加垂直熱區，讓手指更好點擊
   },
   linkText: {
     color: '#c47c5e',
+    fontSize: 16.5,            // 加大字體
+    fontWeight: '600',
     textDecorationLine: 'underline',
-    fontWeight: '500',
   },
 });
