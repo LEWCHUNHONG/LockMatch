@@ -83,12 +83,12 @@ export default function WelcomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.agreementText}>
-            註冊即表示同意{' '}
-            <Text style={styles.linkText}>服務條款</Text>、{' '}
-            <Text style={styles.linkText}>隱私政策</Text> 與{'\n'}
-            <Text style={styles.linkText}>社群規範</Text>
-          </Text>
+<Text style={styles.agreementText}>
+  註冊即表示同意{' '}
+  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/terms')}>服務條款</Text>、{' '}
+  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/privacy')}>隱私政策</Text> 與{'\n'}
+  <Text style={[styles.linkText, {textDecorationLine: 'underline'}]} onPress={() => router.push('terms/community-guidelines')}>社群規範</Text>
+</Text>
         </View>
       </SafeAreaView>
     </LinearGradient>
