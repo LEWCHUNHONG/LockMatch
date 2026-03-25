@@ -175,7 +175,8 @@ export default function LoginScreen() {
                     </Text>
                   </TouchableOpacity>
 
-                  {/* 其他方式登入 */}
+{/*
+                 
                   <View style={styles.orContainer}>
                     <View style={styles.orLine} />
                     <Text style={styles.orText}>或其他方式登入</Text>
@@ -193,6 +194,21 @@ export default function LoginScreen() {
                       <Text style={styles.socialLabel}>Facebook</Text>
                     </TouchableOpacity>
                   </View>
+                  */}
+
+                  {/* 社群登入提示（暫時停用） */}
+<View style={styles.socialHintContainer}>
+  <View style={styles.orLine} />
+  <Text style={styles.socialHintText}>
+    即將支援 Google / Facebook 快速登入
+  </Text>
+  <View style={styles.orLine} />
+</View>
+
+<Text style={styles.comingSoonText}>
+  更多登入方式正在開發中，敬請期待 ✨
+</Text>
+
                 </View>
               </View>
             </ScrollView>
@@ -376,6 +392,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  socialHintContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginVertical: 24,
+},
+socialHintText: {
+  color: '#a0785e',
+  fontSize: 14,
+  paddingHorizontal: 16,
+  fontWeight: '500',
+},
+comingSoonText: {
+  textAlign: 'center',
+  color: '#c47c5e',
+  fontSize: 13.5,
+  marginTop: 8,
+  fontStyle: 'italic',
+},
 });
 
 const modalStyles = StyleSheet.create({
