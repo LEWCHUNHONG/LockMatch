@@ -3,8 +3,8 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api, { socketAPI } from '../../utils/api';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // 放在頂部
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ScenarioDetail() {
     const { id } = useLocalSearchParams();
     const [scenario, setScenario] = useState(null);
@@ -281,78 +281,82 @@ export default function ScenarioDetail() {
     };
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
-                </TouchableOpacity>
-                <Text style={styles.title}>{scenario.title}</Text>
-                <TouchableOpacity onPress={leaveScenario} style={styles.leaveButton}>
-                    <MaterialCommunityIcons name="exit-run" size={28} color="#e74c3c" />
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.timerContainer}>
-                <MaterialCommunityIcons name="timer-outline" size={24} color="#5c4033" />
-                <Text style={styles.timerText}>剩餘時間: {timeLeft !== null ? formatTime(timeLeft) : '--:--'}</Text>
-            </View>
-
-            <View style={styles.content}>
-                <Text style={styles.backstory}>{scenario.backstory}</Text>
-                <View style={styles.roles}>
-                    <Text style={styles.roleLabel}>你的角色：</Text>
-                    <Text style={styles.roleText}>{scenario.roles?.A}</Text>
-                    <Text style={styles.roleLabel}>對方角色：</Text>
-                    <Text style={styles.roleText}>{scenario.roles?.B}</Text>
+        <SafeAreaView style={styles.safeArea}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
+                    </TouchableOpacity>
+                    <Text style={styles.title}>{scenario.title}</Text>
+                    <TouchableOpacity onPress={leaveScenario} style={styles.leaveButton}>
+                        <MaterialCommunityIcons name="exit-run" size={28} color="#e74c3c" />
+                    </TouchableOpacity>
                 </View>
 
-                <Text style={styles.sectionTitle}>關鍵字清單</Text>
-                <Text style={styles.sectionSubtitle}>請留意對方說出以下關鍵字並標記</Text>
-                {myKeywords.map((kw, idx) => {
-                    const originalIndex = keywords.findIndex(k => k.word === kw.word);
-                    return (
-                        <View key={originalIndex} style={styles.keywordCard}>
-                            <Text style={styles.keywordText}>{kw.word}</Text>
-                            {!kw.completed ? (
-                                <TouchableOpacity style={styles.markButton} onPress={() => markKeyword(originalIndex)}>
-                                    <Text style={styles.markButtonText}>標記完成</Text>
-                                </TouchableOpacity>
-                            ) : (
-                                <View style={styles.completedBadge}>
-                                    <MaterialCommunityIcons name="check-circle" size={20} color="#2ecc71" />
-                                    <Text style={styles.completedText}>已完成</Text>
-                                </View>
-                            )}
-                        </View>
-                    );
-                })}
+                <View style={styles.timerContainer}>
+                    <MaterialCommunityIcons name="timer-outline" size={24} color="#5c4033" />
+                    <Text style={styles.timerText}>剩餘時間: {timeLeft !== null ? formatTime(timeLeft) : '--:--'}</Text>
+                </View>
 
-                {opponentKeywords.length > 0 && (
-                    <>
-                        <Text style={styles.sectionSubtitle}>對方需要監聽的關鍵字</Text>
-                        <View style={styles.opponentList}>
-                            {opponentKeywords.map((kw, idx) => (
-                                <Text key={idx} style={styles.opponentKeyword}>
-                                    {kw.word} {kw.completed ? '✓' : '○'}
-                                </Text>
-                            ))}
-                        </View>
-                    </>
+                <View style={styles.content}>
+                    <Text style={styles.backstory}>{scenario.backstory}</Text>
+                    <View style={styles.roles}>
+                        <Text style={styles.roleLabel}>你的角色：</Text>
+                        <Text style={styles.roleText}>{scenario.roles?.A}</Text>
+                        <Text style={styles.roleLabel}>對方角色：</Text>
+                        <Text style={styles.roleText}>{scenario.roles?.B}</Text>
+                    </View>
+
+                    <Text style={styles.sectionTitle}>關鍵字清單</Text>
+                    <Text style={styles.sectionSubtitle}>請留意對方說出以下關鍵字並標記</Text>
+                    {myKeywords.map((kw, idx) => {
+                        const originalIndex = keywords.findIndex(k => k.word === kw.word);
+                        return (
+                            <View key={originalIndex} style={styles.keywordCard}>
+                                <Text style={styles.keywordText}>{kw.word}</Text>
+                                {!kw.completed ? (
+                                    <TouchableOpacity style={styles.markButton} onPress={() => markKeyword(originalIndex)}>
+                                        <Text style={styles.markButtonText}>標記完成</Text>
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={styles.completedBadge}>
+                                        <MaterialCommunityIcons name="check-circle" size={20} color="#2ecc71" />
+                                        <Text style={styles.completedText}>已完成</Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
+
+                    {opponentKeywords.length > 0 && (
+                        <>
+                            <Text style={styles.sectionSubtitle}>對方需要監聽的關鍵字</Text>
+                            <View style={styles.opponentList}>
+                                {opponentKeywords.map((kw, idx) => (
+                                    <Text key={idx} style={styles.opponentKeyword}>
+                                        {kw.word} {kw.completed ? '✓' : '○'}
+                                    </Text>
+                                ))}
+                            </View>
+                        </>
+                    )}
+                </View>
+
+                {allCompleted && (
+                    <TouchableOpacity style={styles.submitButton} onPress={() => completeScenario()}>
+                        <Text style={styles.submitButtonText}>提交結果</Text>
+                    </TouchableOpacity>
                 )}
-            </View>
 
-            {/* 提交結果（僅在全部完成時顯示） */}
-            {allCompleted && (
-                <TouchableOpacity style={styles.submitButton} onPress={() => completeScenario()}>
-                    <Text style={styles.submitButtonText}>提交結果</Text>
+                <TouchableOpacity style={styles.earlySubmitButton} onPress={endScenario}>
+                    <Text style={styles.earlySubmitButtonText}>提前提交</Text>
                 </TouchableOpacity>
-            )}
-
-            {/* 提前提交（始終顯示） */}
-            <TouchableOpacity style={styles.earlySubmitButton} onPress={endScenario}>
-                <Text style={styles.earlySubmitButtonText}>提前提交</Text>
-            </TouchableOpacity>
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
@@ -369,6 +373,18 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
+    },
+
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#fffaf5',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        paddingBottom: 20,
     },
 
     earlySubmitButton: {
@@ -427,4 +443,5 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+
 });
