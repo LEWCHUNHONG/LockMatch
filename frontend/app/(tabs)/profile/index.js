@@ -31,10 +31,6 @@ export default function Profile() {
   const pathname = usePathname();
   const flashListRef = useRef(null);
 
-  // 附近按鈕動畫
-  const nearbyScale = useRef(new Animated.Value(1)).current;
-  const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
-
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
@@ -98,20 +94,6 @@ export default function Profile() {
     };
     
     return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
-  };
-
-  const handleNearbyPressIn = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleNearbyPressOut = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 1, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
   };
 
 const loadUser = useCallback(async () => {

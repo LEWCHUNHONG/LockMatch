@@ -38,12 +38,8 @@ export default function Discuss() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
-
-  // 附近按鈕動畫
-  const nearbyScale = useRef(new Animated.Value(1)).current;
-  const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
-
-
+  const [isRefreshingSilently, setIsRefreshingSilently] = useState(false);
+  const flashListRef = useRef(null);
 
   // 獲取當前用戶 ID
   const loadCurrentUser = useCallback(async () => {
@@ -60,61 +56,72 @@ export default function Discuss() {
     }
   }, []);
 
-  const fetchPosts = useCallback(async (isRefresh = false) => {
-    // 防止重複請求
-    if (!isRefresh && (!hasMore || loading)) return;
+const fetchPosts = useCallback(async (isRefresh = false) => {
+  // 防止重複請求
+  if (!isRefresh && (!hasMore || loading)) return;
 
+  if (isRefresh) {
+    setIsRefreshingSilently(true);
+  } else {
     setLoading(true);
-    if (isRefresh) setRefreshing(true);
+  }
 
-    const currentPage = isRefresh ? 0 : page;
+  const currentPage = isRefresh ? 0 : page;
 
-    try {
-      //console.log(`[Discuss] 開始載入貼文 page=${currentPage}`);
+  try {
+    const res = await api.get('/api/posts', {
+      params: { limit: 15, offset: currentPage * 15 },
+      timeout: 12000,
+    });
 
-      const res = await api.get('/api/posts', {
-        params: { limit: 15, offset: currentPage * 15 },
-        timeout: 12000, // 建議加上 timeout 避免卡死
-      });
+    const newPosts = res.data.posts || [];
 
-      const newPosts = res.data.posts || [];
-
-      if (isRefresh) {
-        setPosts(newPosts);
-        setPage(1);
-      } else {
-        setPosts(prev => [...prev, ...newPosts]);
-        setPage(currentPage + 1);
-      }
-
+    if (isRefresh) {
+      setPosts(newPosts);        // 直接替換成最新資料
+      setPage(1);
       setHasMore(newPosts.length >= 15);
-    } catch (err) {
-      console.error('載入討論區失敗:', err);
-      // 發生錯誤時顯示提示，並視為沒有更多資料
-      Alert.alert('載入失敗', '無法載入討論區內容，請檢查網路後再試');
-      setHasMore(false);
-      // 如果是第一次載入失敗，也讓它顯示「還沒有貼文」
-      if (isRefresh) {
-        setPosts([]);
-      }
-    } finally {
-      //console.log('[Discuss] 載入結束');
-      setLoading(false);
-      setRefreshing(false);
+
+      // 資料更新後自動滾動到最頂端
+      setTimeout(() => {
+        flashListRef.current?.scrollToOffset({ 
+          offset: 0, 
+          animated: true 
+        });
+      }, 80);
+    } else {
+      setPosts(prev => [...prev, ...newPosts]);
+      setPage(currentPage + 1);
+      setHasMore(newPosts.length >= 15);
     }
-  }, [page, hasMore]);
+  } catch (err) {
+    console.error('載入討論區失敗:', err);
+    Alert.alert('載入失敗', '無法載入討論區內容，請檢查網路後再試');
+    if (isRefresh) {
+      setPosts([]);
+    }
+    setHasMore(false);
+  } finally {
+    setLoading(false);
+    setIsRefreshingSilently(false);
+    setRefreshing(false);
+  }
+}, [page, hasMore, loading]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadCurrentUser();
-      fetchPosts(true);
-    }, [loadCurrentUser, fetchPosts])
-  );
-
-  const onRefresh = () => {
-    setHasMore(true);
+useFocusEffect(
+  useCallback(() => {
+    loadCurrentUser();
+    
+    // 每次切回討論區都自動刷新（靜默）
     fetchPosts(true);
-  };
+    
+  }, [loadCurrentUser, fetchPosts])
+);
+
+const onRefresh = () => {
+  setHasMore(true);
+  setRefreshing(true);        // 只有用戶主動下拉時才顯示動畫
+  fetchPosts(true);
+};
 
   const filteredPosts = posts.filter(post =>
     post.content?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -145,20 +152,6 @@ export default function Discuss() {
 
   const handleDeletePost = (deletedId) => {
     setPosts(prev => prev.filter(p => p.id !== deletedId));
-  };
-
-  const handleNearbyPressIn = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleNearbyPressOut = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 1, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
   };
 
   return (
@@ -209,6 +202,7 @@ onPress={() => router.push('/discuss/moments')}
 
         {/* 貼文列表 */}
         <FlashList
+          ref={flashListRef}
           data={filteredPosts}
           keyExtractor={item => item.id.toString()}
           renderItem={({ item }) => (

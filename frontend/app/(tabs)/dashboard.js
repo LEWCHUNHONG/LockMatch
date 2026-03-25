@@ -122,10 +122,6 @@ export default function Dashboard() {
   // 登出按鈕動畫
   const logoutScale = useRef(new Animated.Value(1)).current;
 
-  // 附近按鈕動畫
-  const nearbyScale = useRef(new Animated.Value(1)).current;
-  const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
-
   const router = useRouter();
   const pathname = usePathname();
 
@@ -149,107 +145,6 @@ export default function Dashboard() {
       Alert.alert('錯誤', error.message);
     }
   };
-
-
-  /* const fetchPendingInvites = useCallback(async () => {
-     try {
-       setLoadingInvites(true);
-       const res = await api.get('/api/temp-chat/pending');
-       console.log('📥 獲取邀請回應:', res.data); // 加入日誌
-       if (res.data.success) {
-         setPendingInvites(res.data.invites || []);
-       } else {
-         console.error('獲取邀請失敗:', res.data.error);
-         Alert.alert('錯誤', res.data.error || '獲取邀請失敗');
-       }
-     } catch (error) {
-       console.error('❌ 獲取邀請錯誤:', error);
-       if (error.response) {
-         Alert.alert('錯誤', `伺服器錯誤 (${error.response.status}): ${error.response.data.error || '未知錯誤'}`);
-       } else if (error.request) {
-         Alert.alert('網絡錯誤', '無法連接到伺服器，請檢查網絡');
-       } else {
-         Alert.alert('錯誤', error.message);
-       }
-     } finally {
-       setLoadingInvites(false);
-     }
-     const fetchPendingInvites = async () => {
-       try {
-         const res = await api.get('/api/temp-chat/pending');
-         if (res.data.success) {
-           setPendingInvitesCount(res.data.invites.length);
-         }
-       } catch (error) {
-         console.error('獲取邀請數量失敗:', error);
-       }
-     };
-   }, []);
- 
-   // 接受邀請
-   const handleAcceptInvite = async (inviteId) => {
-     try {
-       const res = await api.post('/api/temp-chat/accept', { inviteId });
-       if (res.data.success) {
-         Alert.alert('成功', '已接受邀請');
-         router.push(`/chat/${res.data.roomId}`);
-         fetchPendingInvites(); // 刷新列表
-       }
-     } catch (error) {
-       Alert.alert('錯誤', error.response?.data?.error || '接受失敗');
-     }
-   };
- 
-   // 拒絕邀請
-   const handleRejectInvite = async (inviteId) => {
-     try {
-       await api.post('/api/temp-chat/reject', { inviteId });
-       fetchPendingInvites();
-     } catch (error) {
-       Alert.alert('錯誤', error.response?.data?.error || '拒絕失敗');
-     }
-   };
- 
- 
- 
-   useEffect(() => {
-     const socket = socketAPI.getSocket();
-     if (!socket) return;
- 
-     const handleNewInvite = (data) => {
-       console.log('📩 收到 temp-chat-invite 事件:', data);
-       Alert.alert(
-         '新臨時聊天邀請',
-         `${data.fromUsername} 邀請你進行臨時聊天`,
-         [
-           { text: '稍後', style: 'cancel' },
-           { text: '查看', onPress: () => router.push('/temp-chat-invites') }
-         ]
-       );
-       // 刷新邀請列表和紅點
-       fetchPendingInvites();
-     };
- 
-     socket.on('temp-chat-invite', handleNewInvite);
- 
-     return () => {
-       socket.off('temp-chat-invite', handleNewInvite);
-     };
-   }, [router, fetchPendingInvites]); // 注意依賴
- 
-   const testPushToken = async () => {
-     try {
-       const { status } = await Notifications.requestPermissionsAsync();
-       if (status !== 'granted') {
-         Alert.alert('需要推播權限', '請允許接收通知');
-         return;
-       }
-       const token = (await Notifications.getExpoPushTokenAsync()).data;
-       Alert.alert('推播 Token', token);
-     } catch (error) {
-       Alert.alert('錯誤', error.message);
-     }
-   }; */
 
   // 從後端獲取最新用戶信息
   const fetchLatestUser = async () => {
@@ -623,20 +518,6 @@ export default function Dashboard() {
 
   const handleLogoutPressOut = () => {
     Animated.spring(logoutScale, { toValue: 1, useNativeDriver: true }).start();
-  };
-
-  const handleNearbyPressIn = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleNearbyPressOut = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 1, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
   };
 
   const openLogoutModal = () => {
