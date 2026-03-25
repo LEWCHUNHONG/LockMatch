@@ -687,7 +687,7 @@ export default function Dashboard() {
 
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/coupons')}>
             <View style={{ position: 'relative' }}>
@@ -698,10 +698,6 @@ export default function Dashboard() {
                 </View>
               )}
             </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/scenario')}>
-            <MaterialCommunityIcons name="drama-masks" size={28} color="#5c4033" />
           </TouchableOpacity>
 
           <Text style={styles.logo}>LockMATCH</Text>
@@ -907,7 +903,7 @@ export default function Dashboard() {
           <View style={styles.cardsGrid}>
             <AnimatedCard icon="chat-outline" title="開始聊天" desc="和附近的人即時聊天、分享心情或找活動夥伴" buttonText="開啟聊天" onPress={() => router.push('/chat')} cardWidth={cardWidth} />
             <AnimatedCard icon="heart-multiple" title="智能匹配" desc="基於 MBTI 找到最適合的學習夥伴、運動搭檔" buttonText="尋找匹配" onPress={() => router.push('/chat/search')} cardWidth={cardWidth} />
-            <AnimatedCard icon="drama-masks" title="劇本對決" desc="兩人 PK 劇情任務，完成挑戰、搶高分！" buttonText="開始對決" /* onPress={() => router.push('/scenario')} */ cardWidth={cardWidth} />
+            <AnimatedCard icon="drama-masks" title="劇本對決" desc="兩人 PK 劇情任務，完成挑戰、搶高分！" buttonText="開始對決" onPress={() => router.push('/scenario')} cardWidth={cardWidth} />
             <AnimatedCard icon="star-circle" title="獎勵任務" desc="完成任務賺積分，兌換優惠券、電影票等獎勵！" buttonText="查看任務" onPress={() => router.push('/rewards')} cardWidth={cardWidth} />
           </View>
 

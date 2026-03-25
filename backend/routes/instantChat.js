@@ -3,8 +3,6 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-const { Expo } = require('expo-server-sdk');
-let expo = new Expo();
 
 const query = (sql, params) => new Promise((resolve, reject) => {
     connection.query(sql, params, (err, results) => {
@@ -13,9 +11,43 @@ const query = (sql, params) => new Promise((resolve, reject) => {
     });
 });
 
+// ====================== 動態載入 Expo (解決 ESM 錯誤) ======================
+let ExpoClass = null;
+let expoInstance = null;
 
+async function getExpo() {
+    if (!ExpoClass) {
+        const expoModule = await import('expo-server-sdk');
+        ExpoClass = expoModule.Expo;
+        expoInstance = new ExpoClass();
+    }
+    return { Expo: ExpoClass, expo: expoInstance };
+}
+// ===========================================================================
 
+// 發送推送通知的輔助函數
+async function sendPushNotification(targetUserId, notification) {
+    try {
+        const { Expo, expo } = await getExpo();
 
+        const pushTokenRow = await query('SELECT expo_push_token FROM users WHERE id = ?', [targetUserId]);
+        const pushToken = pushTokenRow[0]?.expo_push_token;
+
+        if (!pushToken || !Expo.isExpoPushToken(pushToken)) {
+            return;
+        }
+
+        await expo.sendPushNotificationsAsync([{
+            to: pushToken,
+            sound: 'default',
+            title: notification.title,
+            body: notification.body,
+            data: notification.data
+        }]);
+    } catch (err) {
+        console.error('推送通知失敗:', err);
+    }
+}
 
 // 發送邀請
 router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
@@ -25,50 +57,40 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
     if (!targetUserId) return res.status(400).json({ success: false, error: '請指定對象' });
 
     try {
-
-        // 檢查對方是否已有進行中的即時聊天
         if (await hasActiveInstantChat(targetUserId)) {
             return res.status(400).json({ success: false, error: '對方正在進行即時聊天，請稍後再邀請' });
         }
 
-        // 創建臨時聊天室
         const roomResult = await query(
             'INSERT INTO chat_rooms (type, is_temp, created_at) VALUES ("private", 1, NOW())'
         );
         const roomId = roomResult.insertId;
 
-        // 添加雙方為成員
         await query(
             'INSERT INTO chat_room_members (room_id, user_id, joined_at) VALUES (?, ?, NOW()), (?, ?, NOW())',
             [roomId, fromUserId, roomId, targetUserId]
         );
 
-        // 創建邀請記錄（可選）
         await query(
             'INSERT INTO instant_chat_invites (from_user_id, to_user_id, room_id, status, expires_at) VALUES (?, ?, ?, "pending", DATE_ADD(NOW(), INTERVAL 5 MINUTE))',
             [fromUserId, targetUserId, roomId]
         );
 
         // 發送推送通知
-        const pushTokenRow = await query('SELECT expo_push_token FROM users WHERE id = ?', [targetUserId]);
-        if (pushTokenRow[0]?.expo_push_token && Expo.isExpoPushToken(pushTokenRow[0].expo_push_token)) {
-            await expo.sendPushNotificationsAsync([{
-                to: pushTokenRow[0].expo_push_token,
-                sound: 'default',
-                title: '即時聊天邀請',
-                body: `附近用戶邀請你進行即時聊天（限時1分鐘）`,
-                data: { roomId, fromUserId, type: 'instant_chat_invite' }
-            }]);
-        }
+        await sendPushNotification(targetUserId, {
+            title: '即時聊天邀請',
+            body: `附近用戶邀請你進行即時聊天（限時1分鐘）`,
+            data: { roomId, fromUserId, type: 'instant_chat_invite' }
+        });
 
-        // 發送 Socket 通知（如果對方在線）
+        // 發送 Socket 通知
         const io = req.app.get('io');
         if (io) {
             io.to(`user_${targetUserId}`).emit('instant-chat-invite', {
                 fromUserId,
                 fromUsername: req.user.username,
                 roomId,
-                expiresIn: 60 // 1分鐘
+                expiresIn: 60
             });
         }
 

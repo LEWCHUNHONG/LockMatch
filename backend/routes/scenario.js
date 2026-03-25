@@ -2,8 +2,19 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-const { Expo } = require('expo-server-sdk');
-let expo = new Expo();
+
+
+let ExpoClass;
+let expoInstance;
+
+async function initExpo() {
+    if (!ExpoClass) {
+        const { Expo } = await import('expo-server-sdk');
+        ExpoClass = Expo;
+        expoInstance = new ExpoClass();
+    }
+    return expoInstance;
+}
 
 // 輔助函數
 const query = (sql, params) => {
@@ -25,10 +36,14 @@ async function hasActiveScenario(userId) {
     return rows.length > 0;
 }
 async function sendPushNotification(userId, { title, body, data }) {
+    const expo = await initExpo();   // ← 改這裡
+
     const tokens = await query('SELECT expo_push_token FROM users WHERE id = ?', [userId]);
     if (!tokens[0]?.expo_push_token) return;
+
     const pushToken = tokens[0].expo_push_token;
-    if (!Expo.isExpoPushToken(pushToken)) return;
+    if (!ExpoClass.isExpoPushToken(pushToken)) return;   // 注意這裡也要用 ExpoClass
+
     await expo.sendPushNotificationsAsync([{
         to: pushToken,
         sound: 'default',
