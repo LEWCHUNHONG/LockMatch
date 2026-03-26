@@ -48,10 +48,10 @@ export default function TermsScreen() {
 
         <Text style={styles.sectionTitle}>3. 使用者義務</Text>
         <Text style={styles.paragraph}>
-          您同意不會：
-          • 建立虛假帳號或冒用他人身分
-          • 發送垃圾訊息、廣告或商業訊息
-          • 騷擾、威脅、歧視其他使用者
+          您同意不會：{'\n'}
+          • 建立虛假帳號或冒用他人身分{'\n'}
+          • 發送垃圾訊息、廣告或商業訊息{'\n'}
+          • 騷擾、威脅、歧視其他使用者{'\n'}
           • 上傳含有色情、暴力、非法內容的照片或文字
         </Text>
 
