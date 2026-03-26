@@ -77,7 +77,7 @@ export default function InsightsScreen() {
 
     return (
         <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 {/* 頂部返回按鈕 */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()}>

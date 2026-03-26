@@ -26,7 +26,7 @@ export default function PublicProfile() {
 
   if (!id) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#f4c7ab" />
@@ -237,7 +237,7 @@ export default function PublicProfile() {
 
   if (loadingProfile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#f4c7ab" />
@@ -250,7 +250,7 @@ export default function PublicProfile() {
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
           <View style={styles.center}>
             <Text style={styles.errorText}>無法載入用戶資料</Text>
@@ -267,7 +267,7 @@ export default function PublicProfile() {
 
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />

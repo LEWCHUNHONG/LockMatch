@@ -188,7 +188,7 @@ export default function ChatRooms() {
 
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         {/* 頂部欄 - 移除創建群組按鈕，只保留返回與鈴鐺 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>

@@ -39,7 +39,7 @@ export default function CouponDetail() {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <ActivityIndicator size="large" color="#f4c7ab" />
             </SafeAreaView>
         );
@@ -47,14 +47,14 @@ export default function CouponDetail() {
 
     if (!coupon) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <Text>優惠券不存在</Text>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />

@@ -405,7 +405,7 @@ const handleUploadAvatar = async () => {
 
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.header}>
@@ -686,6 +686,7 @@ const styles = StyleSheet.create({
   back: { fontSize: 32, color: '#5c4033' },
   title: { fontSize: 26, fontWeight: '800', color: '#5c4033' },
   avatarSection: { alignItems: 'center', marginBottom: 40 },
+  safeArea: { flex: 1 },
   avatar: {
     width: 120,
     height: 120,

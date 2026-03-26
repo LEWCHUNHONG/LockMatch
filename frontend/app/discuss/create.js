@@ -242,7 +242,7 @@ export default function CreatePost() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <LinearGradient

@@ -287,7 +287,7 @@ export default function EditPost() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color="#f4c7ab" />
       </SafeAreaView>
     );
@@ -295,7 +295,7 @@ export default function EditPost() {
 
   if (!postExists) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>無法載入貼文</Text>
           <TouchableOpacity
@@ -310,7 +310,7 @@ export default function EditPost() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
         style={styles.gradient}

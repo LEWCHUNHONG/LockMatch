@@ -134,7 +134,7 @@ export default function AiChat() {
 
     return (
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                         <MaterialCommunityIcons name="arrow-left" size={24} color="#5c4033" />

@@ -455,7 +455,7 @@ export default function RewardsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* 頂部欄 */}
       <View style={styles.header}>
         <TouchableOpacity
