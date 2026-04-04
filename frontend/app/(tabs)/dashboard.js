@@ -716,7 +716,7 @@ export default function Dashboard() {
               {/* MBTI 重新測試 / 開始測試 */}
               <TouchableOpacity
                 style={styles.smallToolItem}
-                onPress={() => router.push('/mbti-test')}
+                onPress={() => router.push('/mbti-game')}
               >
                 <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
                 <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>

@@ -568,6 +568,69 @@ const mbtiAPI = {
   searchByMbti: (mbtiType) => api.get(`/api/search-by-mbti?type=${mbtiType}`),
 };
 
+// 遊戲相關 API 函數
+const gameAPI = {
+  // 上傳遊戲結果
+  uploadGameResult: (gameData) => {
+    sendHeartbeat().catch(err => console.error('上傳遊戲結果時心跳失敗:', err));
+    return api.post('/api/game/upload-result', gameData);
+  },
+  
+  // 獲取遊戲歷史
+  getGameHistory: () => api.get('/api/game/history'),
+  
+  // 獲取排行榜
+  getLeaderboard: () => api.get('/api/game/leaderboard'),
+  
+  // 解鎖獎勵
+  unlockReward: (rewardId) => {
+    sendHeartbeat().catch(err => console.error('解鎖獎勵時心跳失敗:', err));
+    return api.post('/api/unlock-reward', { rewardId });
+  },
+  
+  // 獲取遊戲統計
+  getGameStats: () => api.get('/api/game/stats'),
+  
+  // 保存遊戲進度
+  saveGameProgress: (progressData) => {
+    sendHeartbeat().catch(err => console.error('保存進度時心跳失敗:', err));
+    return api.post('/api/game/save-progress', progressData);
+  },
+  
+  // 加載遊戲進度
+  loadGameProgress: () => api.get('/api/game/load-progress'),
+  
+  // 測試遊戲API連接
+  testGameConnection: () => api.get('/api/game/test'),
+
+  // 獲取本週已用積分（無限模式）
+  getWeeklyPoints: () => api.get('/api/game/weekly-points'),
+
+  // ✅ 新增：獲取 MBTI 累計分數與已完成預設關卡
+  getMbtiScores: () => api.get('/api/game/mbti-scores'),
+
+  // ✅ 新增：重置 MBTI 進度
+  resetMbti: () => api.post('/api/game/reset-mbti'),
+};
+
+// 自定義關卡相關 API 函數
+const customLevelAPI = {
+  // 獲取所有自定義關卡
+  getAll: () => api.get('/api/custom-levels'),
+  
+  // 獲取單個關卡
+  get: (id) => api.get(`/api/custom-levels/${id}`),
+  
+  // 創建新關卡
+  create: (levelData) => api.post('/api/custom-levels', levelData),
+  
+  // 更新關卡
+  update: (id, levelData) => api.put(`/api/custom-levels/${id}`, levelData),
+  
+  // 刪除關卡
+  delete: (id) => api.delete(`/api/custom-levels/${id}`),
+};
+
 // 臨時聊天相關 API 函數（新增）
 const tempChatAPI = {
   // 發送臨時聊天邀請
@@ -615,6 +678,8 @@ export {
   chatAPI,
   userAPI,
   mbtiAPI,
+  gameAPI,
+  customLevelAPI,
   tempChatAPI,      // 新增導出
   socketAPI,
   heartbeatAPI,

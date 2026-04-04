@@ -744,3 +744,12 @@ export const calculateMbtiResult = (scores) => {
     description: MBTI_DESCRIPTIONS[ei + sn + tf + jp] || MBTI_DESCRIPTIONS.ISTJ
   };
 };
+
+// 在檔案最下方加入
+export const getAllQuestions = () => {
+  return [
+    ...MBTI_GAME_SCENES,
+    ...MBTI_TRADITIONAL_QUESTIONS,
+    ...MBTI_FULL_QUESTIONS,
+  ];
+};

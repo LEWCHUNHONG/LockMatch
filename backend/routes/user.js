@@ -108,14 +108,15 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
   //  PUT /api/update-profile
   // =============================================
 router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
-  const { username, email, status, bio } = req.body;
+  const { username, email, status, bio, character } = req.body;
 
   // 改用 hasOwnProperty 或 in 來判斷是否有傳入任何欄位
   const hasUpdate = 
     'username' in req.body ||
     'email' in req.body ||
     'status' in req.body ||    // 即使是 null 或 "" 也算有更新意圖
-    'bio' in req.body;
+    'bio' in req.body ||
+    'character' in req.body;
 
   if (!hasUpdate) {
     return res.status(400).json({ error: '請提供至少一項更新資訊' });
@@ -145,6 +146,18 @@ router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
       : (bio ? bio.trim() : null);
     updates.push('bio = ?');
     params.push(trimmedBio);
+  }
+
+if ('character' in req.body) {
+    let characterValue = character;
+
+    // 如果是物件，轉成 JSON 字串儲存到資料庫
+    if (typeof character === 'object' && character !== null) {
+      characterValue = JSON.stringify(character);
+    }
+
+    updates.push('`character` = ?');
+    params.push(characterValue);
   }
 
   params.push(req.user.id);
