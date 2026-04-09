@@ -398,7 +398,7 @@ const handleUploadAvatar = async () => {
   };
 
   const handleMbtiTest = () => {
-    router.push('/mbti-test');
+    router.push('/mbti-game');
   };
 
   if (!user) return null;
