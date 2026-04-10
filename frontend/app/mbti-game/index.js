@@ -12,21 +12,23 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ShootingGameEngine from './ShootingGameEngine';
-import NewLevelEditor from './NewLevelEditor';
-import LevelSelect from './LevelSelect';
+import ShootingGameEngine from '../../components/mbti-game/ShootingGameEngine';
+import NewLevelEditor from '../../components/mbti-game/NewLevelEditor';
+import LevelSelect from '../../components/mbti-game/LevelSelect';
 import CharacterCustomScreen from '../../components/mbti-game/character-custom';
-import EndlessMode from './EndlessMode';
+import EndlessMode from '../../components/mbti-game/EndlessMode';
 import GameResults from '../../components/mbti-game/game-results';
 import { useLevelManager } from '../../components/mbti-game/level-manager';
 import { MBTI_DESCRIPTIONS, calculateMbtiResult, getAllQuestions } from '../../data/mbti-questions';
 import { gameAPI, customLevelAPI, userAPI, mbtiAPI } from '../../utils/api';
 import { MBTI_DIMENSION_LEVELS } from '../../data/levels';
+import { useRouter } from 'expo-router';
 
 const WEEKLY_LIMIT = 1000;
 const PRESET_LEVEL_IDS = ['ei-dimension', 'sn-dimension', 'tf-dimension', 'jp-dimension'];
 
-export default function MBTIGameMain({ onBackToHome }) {
+export default function MBTIGameMain() {
+  const router = useRouter();
   const [gameState, setGameState] = useState('menu');
   const [character, setCharacter] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
@@ -463,6 +465,14 @@ const handleCharacterComplete = async (customized) => {
     if (selectedLevel) setGameState('playing');
   };
 
+  const handleBackToHome = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/'); // 返回首頁
+    }
+  };
+
   const handleBackToMenu = () => {
     resetGame();
     setGameState('menu');
@@ -517,8 +527,8 @@ const handleCharacterComplete = async (customized) => {
     case 'menu':
       return (
         <SafeAreaView style={styles.container}>
-          {onBackToHome && (
-            <TouchableOpacity style={styles.backToHomeButton} onPress={onBackToHome}>
+          {handleBackToHome && (
+            <TouchableOpacity style={styles.backToHomeButton} onPress={handleBackToHome}>
               <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
             </TouchableOpacity>
           )}
@@ -598,11 +608,6 @@ const handleCharacterComplete = async (customized) => {
             </TouchableOpacity>
           </ScrollView>
 
-          {__DEV__ && (
-            <TouchableOpacity style={styles.debugButton} onPress={() => openEditor()}>
-              <MaterialCommunityIcons name="pencil" size={28} color="#fff" />
-            </TouchableOpacity>
-          )}
         </SafeAreaView>
       );
 

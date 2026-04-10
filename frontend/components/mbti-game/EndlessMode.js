@@ -1,7 +1,7 @@
 // app/mbti-game/EndlessMode.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import ShootingGameEngine from './ShootingGameEngine';
+import ShootingGameEngine from '../../components/mbti-game/ShootingGameEngine';
 
 export default function EndlessMode({ character, onBack, onGameComplete, mbtiScores, setMbtiScores, remainingPoints, pickQuestion, returnQuestions }) {
   const generateEndlessFloor = (floorIndex) => {
