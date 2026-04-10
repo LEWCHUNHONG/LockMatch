@@ -485,7 +485,7 @@ const handleUpdateStatus = async (newStatus) => {
                   ) : (
                     <TouchableOpacity 
                       style={styles.mbtiTagEmpty}
-                      onPress={() => router.push('/mbti-test')}
+                      onPress={() => router.push('/mbti-game')}
                     >
                       <MaterialCommunityIcons name="brain" size={18} color="#f4c7ab" />
                       <Text style={styles.mbtiTextEmpty}>完成 MBTI 測試</Text>

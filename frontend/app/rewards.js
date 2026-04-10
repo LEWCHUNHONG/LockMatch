@@ -43,6 +43,10 @@ export default function RewardsScreen() {
   const [processingTask, setProcessingTask] = useState(null);
   const [showCheckinSuccessModal, setShowCheckinSuccessModal] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskModalTitle, setTaskModalTitle] = useState('');
+  const [taskModalMessage, setTaskModalMessage] = useState('');
+  const [taskModalButtons, setTaskModalButtons] = useState([]);
 
   const router = useRouter();
 
@@ -87,29 +91,36 @@ export default function RewardsScreen() {
     }
   }, [activeTab]);
 
+  const showTaskAlert = (title, message, buttons = []) => {
+    setTaskModalTitle(title);
+    setTaskModalMessage(message);
+    setTaskModalButtons(buttons.length > 0 ? buttons : [
+      { text: '知道了', onPress: () => setShowTaskModal(false) }
+    ]);
+    setShowTaskModal(true);
+  };
+
   const handleRedeem = async (item) => {
-    // 前端積分檢查（可選）
     if (userPoints.points < item.points_required) {
-      Alert.alert('積分不足', '你嘅積分唔夠兌換呢個商品');
+      showTaskAlert('積分不足', '你的積分不夠兌換這個商品');
       return;
     }
 
     try {
       const response = await api.post('/api/redeem-item', { itemId: item.id });
       if (response.data.success) {
-        Alert.alert(
+        showTaskAlert(
           '兌換成功！',
           `你已成功兌換 ${response.data.itemName || item.name}\n優惠碼: ${response.data.couponCode || ''}`,
           [
-            { text: '查看我的優惠券', onPress: () => router.push('/coupons') },
-            { text: '繼續瀏覽', style: 'cancel' }
+            { text: '查看我的優惠券', onPress: () => { setShowTaskModal(false); router.push('/coupons'); } },
+            { text: '繼續瀏覽', onPress: () => setShowTaskModal(false) }
           ]
         );
-        // 重新載入用戶積分和商店列表
         loadAllData();
       }
     } catch (error) {
-      Alert.alert('兌換失敗', error.response?.data?.error || '請稍後再試');
+      showTaskAlert('兌換失敗', error.response?.data?.error || '請稍後再試');
     }
   };
 
@@ -127,31 +138,28 @@ export default function RewardsScreen() {
 
   const handleDailyCheckin = async () => {
     if (checkinStatus.checked_in_today) {
-      Alert.alert('提示', '今日已簽到,明天再來吧!');
+      showTaskAlert('提示', '今日已經簽到過了，明天再來吧！');
       return;
     }
 
     try {
       const response = await api.post('/api/daily-checkin');
       if (response.data.success) {
-        // 更新簽到狀態
         setCheckinStatus(prev => ({
           ...prev,
           checked_in_today: true,
           consecutive_week_days: response.data.streak || (prev.consecutive_week_days || 0) + 1
         }));
 
-        // 設置彈窗訊息
         const successMessage = `獲得 ${response.data.points_earned} 積分`;
         setCheckinMessage(successMessage);
         setShowCheckinSuccessModal(true);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // 重新載入資料
         loadAllData();
       }
     } catch (error) {
-      Alert.alert('簽到失敗', error.response?.data?.error || '請稍後再試');
+      showTaskAlert('簽到失敗', error.response?.data?.error || '請稍後再試');
     }
   };
 
@@ -162,7 +170,7 @@ export default function RewardsScreen() {
 
     try {
       if (task.user_status === 'completed') {
-        Alert.alert('提示', '此任務已完成');
+        showTaskAlert('提示', '此任務已經完成囉！');
         return;
       }
 
@@ -171,40 +179,51 @@ export default function RewardsScreen() {
         const response = await api.post('/api/start-task', { taskId: task.id });
         if (response.data.success) {
           if (response.data.completed) {
-            Alert.alert(
-              '恭喜!',
-              `任務完成!\n獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadAllData() }]
+            showTaskAlert(
+              '恭喜完成！',
+              `任務已完成！\n獲得 ${response.data.points_earned || 0} 積分`,
+              [{ text: '太好了！', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
             );
           } else {
-            Alert.alert('任務已開始', '請完成任務要求後再來檢查進度');
-            loadAllData();
+            showTaskAlert(
+              '任務已開始',
+              '請按照任務要求完成後，再點擊「檢查進度」按鈕',
+              [{ text: '知道了', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
+            );
           }
         }
-      } else if (task.user_status === 'in_progress') {
-        // 檢查進度
+      } 
+      else if (task.user_status === 'in_progress') {
+        // 檢查任務進度
         const response = await api.post('/api/check-task-progress', { taskId: task.id });
         if (response.data.success) {
           if (response.data.completed) {
-            Alert.alert(
-              '恭喜完成!',
-              `獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadAllData() }]
+            showTaskAlert(
+              '恭喜完成！',
+              `獲得 ${response.data.points_earned || 0} 積分 🎉`,
+              [{ text: '太棒了！', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
             );
           } else {
-            const progress = response.data.current_progress || 0;
-            const required = response.data.required_progress || 1;
-            Alert.alert(
+            const progress = response.data.current_progress ?? 0;
+            const required = response.data.required_progress ?? (task.points_required || 1);
+            const msg = response.data.message || '繼續加油！';
+
+            showTaskAlert(
               '任務進度',
-              `當前進度: ${progress}/${required}\n${response.data.message || '繼續加油!'}`,
-              [{ text: '知道了', onPress: () => loadAllData() }]
+              `當前進度：${progress} / ${required}\n\n${msg}`,
+              [{ text: '知道了', onPress: () => setShowTaskModal(false) }]
             );
           }
+        } else {
+          showTaskAlert('提示', response.data?.message || '檢查進度失敗，請稍後再試');
         }
       }
     } catch (error) {
       console.error('任務操作失敗:', error);
-      Alert.alert('操作失敗', error.response?.data?.error || '請稍後再試');
+      showTaskAlert(
+        '操作失敗',
+        error.response?.data?.error || error.response?.data?.message || '請檢查網路後再試'
+      );
     } finally {
       setProcessingTask(null);
     }
@@ -606,6 +625,58 @@ export default function RewardsScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+            {/* 統一任務/操作 Modal（取代所有 Alert） */}
+      <Modal
+        isVisible={showTaskModal}
+        onBackdropPress={() => setShowTaskModal(false)}
+        onBackButtonPress={() => setShowTaskModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.5}
+      >
+        <View style={styles.modalContainer}>
+          <MaterialCommunityIcons
+            name="information-outline"
+            size={56}
+            color="#f4c7ab"
+            style={{ marginBottom: 16 }}
+          />
+
+          <Text style={styles.modalTitle}>{taskModalTitle}</Text>
+
+          <Text style={[styles.modalMessage, { whiteSpace: 'pre-line' }]}>
+            {taskModalMessage}
+          </Text>
+
+          <View style={styles.modalButtonRow}>
+            {taskModalButtons.map((btn, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.modalButton,
+                  btn.text === '知道了' || btn.text === '繼續瀏覽'
+                    ? styles.modalCancelButton
+                    : styles.modalConfirmButton
+                ]}
+                onPress={() => {
+                  setShowTaskModal(false);
+                  if (btn.onPress) btn.onPress();
+                }}
+              >
+                <Text style={[
+                  styles.modalButtonText,
+                  (btn.text === '太好了！' || btn.text === '太棒了！' || btn.text === '查看我的優惠券')
+                    ? { color: '#fffaf5' } : {}
+                ]}>
+                  {btn.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1020,5 +1091,29 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+    modalButtonRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f4c7ab',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#e74c3c',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5c4033',
   },
 });

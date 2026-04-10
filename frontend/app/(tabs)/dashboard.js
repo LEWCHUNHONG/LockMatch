@@ -112,6 +112,10 @@ export default function Dashboard() {
   const [processingTask, setProcessingTask] = useState(null);
   const [couponCount, setCouponCount] = useState(0);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskModalTitle, setTaskModalTitle] = useState('');
+  const [taskModalMessage, setTaskModalMessage] = useState('');
+  const [taskModalButtons, setTaskModalButtons] = useState([]);
 
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
@@ -215,6 +219,15 @@ export default function Dashboard() {
     }
   };
 
+  const showTaskAlert = (title, message, buttons = []) => {
+  setTaskModalTitle(title);
+  setTaskModalMessage(message);
+  setTaskModalButtons(buttons.length > 0 ? buttons : [
+    { text: '知道了', onPress: () => setShowTaskModal(false) }
+  ]);
+  setShowTaskModal(true);
+};
+
   const fetchCouponCount = async () => {
     try {
       const res = await api.get('/api/user-coupons');
@@ -292,58 +305,74 @@ export default function Dashboard() {
     }
   };
 
-  // 處理任務操作
-  const handleTaskAction = async (task) => {
-    if (processingTask === task.id) return;
-    setProcessingTask(task.id);
+// 處理任務操作
+// 處理任務操作
+const handleTaskAction = async (task) => {
+  if (processingTask === task.id) return;
+  setProcessingTask(task.id);
 
-    try {
-      if (task.user_status === 'completed') {
-        alert('提示', '此任務已完成');
-        return;
-      }
-
-      if (!task.user_status || task.user_status === 'not_started') {
-        const response = await api.post('/api/start-task', { taskId: task.id });
-        if (response.data.success) {
-          if (response.data.completed) {
-            alert(
-              '恭喜!',
-              `任務完成!\n獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadUser(false) }]
-            );
-          } else {
-            alert('任務已開始', '請完成任務要求後再來檢查進度');
-            loadUser(false);
-          }
-        }
-      } else if (task.user_status === 'in_progress') {
-        const response = await api.post('/api/check-task-progress', { taskId: task.id });
-        if (response.data.success) {
-          if (response.data.completed) {
-            alert(
-              '恭喜完成!',
-              `獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadUser(false) }]
-            );
-          } else {
-            const progress = response.data.current_progress || 0;
-            const required = response.data.required_progress || 1;
-            alert(
-              '任務進度',
-              `當前進度: ${progress}/${required}\n${response.data.message || '繼續加油!'}`,
-              [{ text: '知道了', onPress: () => loadUser(false) }]
-            );
-          }
-        }
-      }
-    } catch (error) {
-      console.error('任務操作失敗:', error);
-      alert('操作失敗', error.response?.data?.error || '請稍後再試');
-    } finally {
-      setProcessingTask(null);
+  try {
+    if (task.user_status === 'completed') {
+      showTaskAlert('提示', '此任務已經完成囉！');
+      return;
     }
-  };
+
+    if (!task.user_status || task.user_status === 'not_started') {
+      // 開始任務
+      const response = await api.post('/api/start-task', { taskId: task.id });
+      
+      if (response.data.success) {
+        if (response.data.completed) {
+          showTaskAlert(
+            '恭喜完成！',
+            `任務已完成！\n獲得 ${response.data.points_earned || 0} 積分`,
+            [{ text: '太好了！', onPress: () => { setShowTaskModal(false); loadUser(false); } }]
+          );
+        } else {
+          showTaskAlert(
+            '任務已開始',
+            '請按照任務要求完成後，再點擊「檢查進度」按鈕',
+            [{ text: '知道了', onPress: () => { setShowTaskModal(false); loadUser(false); } }]
+          );
+        }
+      }
+    } 
+    else if (task.user_status === 'in_progress') {
+      // 檢查任務進度（解決你原本「只有任務進度四個字」的問題）
+      const response = await api.post('/api/check-task-progress', { taskId: task.id });
+      
+      if (response.data.success) {
+        if (response.data.completed) {
+          showTaskAlert(
+            '恭喜完成！',
+            `獲得 ${response.data.points_earned || 0} 積分 🎉`,
+            [{ text: '太棒了！', onPress: () => { setShowTaskModal(false); loadUser(false); } }]
+          );
+        } else {
+          const current = response.data.current_progress ?? 0;
+          const required = response.data.required_progress ?? (task.points_required || 1);
+          const msg = response.data.message || '繼續加油！';
+
+          showTaskAlert(
+            '任務進度',
+            `當前進度：${current} / ${required}\n\n${msg}`,
+            [{ text: '知道了', onPress: () => setShowTaskModal(false) }]
+          );
+        }
+      } else {
+        showTaskAlert('提示', response.data?.message || '檢查進度失敗，請稍後再試');
+      }
+    }
+  } catch (error) {
+    console.error('任務操作失敗:', error);
+    showTaskAlert(
+      '操作失敗',
+      error.response?.data?.error || error.response?.data?.message || '請檢查網路後再試'
+    );
+  } finally {
+    setProcessingTask(null);
+  }
+};
 
   // 獲取任務按鈕配置
   const getTaskButtonConfig = (task) => {
@@ -809,18 +838,6 @@ export default function Dashboard() {
             </View>
           )}
 
-          {/* 開發者測試區 - 導航到 native-test 頁面 */}
-          <View style={styles.devSection}>
-            <Text style={styles.sectionTitle}>開發者工具</Text>
-            <TouchableOpacity
-              style={styles.devSingleButton}
-              onPress={() => router.push('/native-test')}
-            >
-              <MaterialCommunityIcons name="flask" size={24} color="#5c4033" />
-              <Text style={styles.devSingleButtonText}>原生模組測試 (App.js)</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* 每日任務 */}
           <View style={styles.tasksSection}>
             <View style={styles.sectionHeader}>
@@ -892,6 +909,66 @@ export default function Dashboard() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+            {/* 任務提示 Modal（取代原本的 Alert） */}
+      <Modal 
+        isVisible={showTaskModal} 
+        onBackdropPress={() => setShowTaskModal(false)}
+        onBackButtonPress={() => setShowTaskModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.5}
+      >
+        <View style={modalStyles.container}>
+          <MaterialCommunityIcons 
+            name="information-outline" 
+            size={56} 
+            color="#f4c7ab" 
+            style={{ marginBottom: 16 }} 
+          />
+          
+          <Text style={[modalStyles.title, { fontSize: 20 }]}>
+            {taskModalTitle}
+          </Text>
+          
+          <Text style={[modalStyles.message, { 
+            fontSize: 16, 
+            lineHeight: 24,
+            textAlign: 'center',
+            whiteSpace: 'pre-line' 
+          }]}>
+            {taskModalMessage}
+          </Text>
+
+          <View style={modalStyles.buttonRow}>
+            {taskModalButtons.map((btn, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  modalStyles.button,
+                  btn.text.includes('知道了') || btn.text.includes('好的') 
+                    ? modalStyles.cancelButton 
+                    : modalStyles.logoutButton
+                ]}
+                onPress={() => {
+                  setShowTaskModal(false);
+                  if (btn.onPress) btn.onPress();
+                }}
+              >
+                <Text style={[
+                  modalStyles.cancelText,
+                  btn.text.includes('太好了') || btn.text.includes('太棒了') 
+                    ? { color: '#fffaf5' } 
+                    : {}
+                ]}>
+                  {btn.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+      
     </LinearGradient>
   );
 }
