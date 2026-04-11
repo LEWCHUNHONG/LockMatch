@@ -22,9 +22,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../utils/api';
 import Modal from 'react-native-modal';
 
-// 裁剪功能所需套件
-import ImageCropPicker from 'react-native-image-crop-picker';
-
 export default function EditPost() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -151,47 +148,55 @@ export default function EditPost() {
   };
 
   // ==================== 裁剪功能（從 create.js 移植並適配） ====================
-  const editImage = async (index) => {
-    const img = images[index];
-    if (!img) return;
+// 單張重新挑選 + 開啟內建裁剪（適用於 iOS 和 Android）
+const editImage = async (index) => {
+  const img = images[index];
+  if (!img) return;
 
-    try {
-      const cropped = await ImageCropPicker.openCropper({
-        path: img.uri,
-        cropperCircleOverlay: false,
-        compressImageQuality: 0.88,
-        showCropGuidelines: true,
-        freeStyleCropEnabled: true,
-        includeBase64: false,
-      });
+  try {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setMessageTitle('需要權限');
+      setMessageText('請允許存取相簿才能編輯圖片');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: false,   // 單張
+      allowsEditing: true,              // 開啟內建裁剪器
+      quality: 0.92,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const croppedAsset = result.assets[0];
 
       const newImages = [...images];
-      const oldImg = newImages[index];
 
-      // 如果是舊圖片（來自伺服器），加入移除清單
+      // 如果是舊圖片（來自伺服器），記錄要刪除
+      const oldImg = newImages[index];
       if (!oldImg.isNew && oldImg.serverUrl) {
         setRemovedImages((prev) => [...new Set([...prev, oldImg.serverUrl])]);
       }
 
-      // 替換為裁剪後的新圖片
+      // 替換成裁剪後的新圖片
       newImages[index] = {
-        uri: cropped.path,
-        originalUri: cropped.path,
-        isNew: true,           // 標記為需要上傳的新圖片
+        uri: croppedAsset.uri,
+        originalUri: croppedAsset.uri,
+        isNew: true,
       };
 
       setImages(newImages);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    } catch (err) {
-      if (err.code !== 'E_PICKER_CANCELLED') {
-        console.error('裁剪錯誤:', err);
-        setMessageTitle('裁剪失敗');
-        setMessageText('無法裁剪圖片，請再試一次');
-        setShowMessageModal(true);
-      }
     }
-  };
+  } catch (err) {
+    console.error('編輯圖片錯誤:', err);
+    setMessageTitle('編輯失敗');
+    setMessageText('無法開啟裁剪工具，請再試一次');
+    setShowMessageModal(true);
+  }
+};
 
   // 刪除圖片
   const deleteImage = (index) => {
