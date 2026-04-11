@@ -1,5 +1,4 @@
 // app/_layout.js
-
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -19,9 +18,27 @@ export default function Layout() {
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [currentInvite, setCurrentInvite] = useState(null);
 
-  // 聊天結束 Modal（新增）
+  // 聊天結束 Modal
   const [chatEndModalVisible, setChatEndModalVisible] = useState(false);
   const [chatEndMessage, setChatEndMessage] = useState('');
+
+  // 全域 ScenarioAlert
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    iconName: "alert-circle",
+    iconColor: "#f39c12"
+  });
+
+  const showAlert = (title, message, buttons = [], iconName = "alert-circle", iconColor = "#f39c12") => {
+    setAlertConfig({ visible: true, title, message, buttons, iconName, iconColor });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
 
   // 接受即時聊天
   const acceptInstantChat = async (roomId, fromUserId) => {
@@ -33,6 +50,7 @@ export default function Layout() {
       }
     } catch (error) {
       console.error('接受失敗', error);
+      showAlert('錯誤', '接受邀請失敗，請稍後再試');
     }
   };
 
@@ -43,6 +61,7 @@ export default function Layout() {
       setInviteModalVisible(false);
     } catch (error) {
       console.error('拒絕失敗', error);
+      showAlert('錯誤', '操作失敗');
     }
   };
 
@@ -66,16 +85,16 @@ export default function Layout() {
         console.log('[SOCKET] Socket 已連接，ID:', socket.id);
 
         if (listenersRegistered.current) {
-          // 移除舊監聽器
           socket.off('instant-chat-invite');
           socket.off('instant-chat-accepted');
-          socket.off('chat-ended');           // 新增
+          socket.off('chat-ended');
           socket.off('temp-chat-invite');
           socket.off('new-friend-request');
           socket.off('friend-request-accepted');
           socket.off('temp-chat-accepted');
           socket.off('temp-chat-rejected');
           socket.off('scenario-started');
+          socket.off('scenario-invite');   // 新增清除
         }
 
         // 1. 即時聊天邀請 Modal
@@ -89,14 +108,10 @@ export default function Layout() {
           setInviteModalVisible(true);
         });
 
-        // 2. 聊天結束 Modal（重點新增）
+        // 2. 聊天結束 Modal
         socket.on('chat-ended', (data) => {
           console.log('📩 收到聊天結束事件:', data);
-          setChatEndMessage(
-            data.reason 
-              ? data.reason 
-              : '本次即時聊天已結束'
-          );
+          setChatEndMessage(data.reason ? data.reason : '本次即時聊天已結束');
           setChatEndModalVisible(true);
         });
 
@@ -106,32 +121,75 @@ export default function Layout() {
           router.push(`/instant-chat/${data.roomId}?otherUserId=${data.withUserId}`);
         });
 
-        // 其他事件（暫時保留 Alert，可後續繼續改成 Modal）
-        socket.on('temp-chat-invite', (data) => {
-          Alert.alert('新臨時聊天邀請', `${data.fromUsername} 邀請你進行臨時聊天`, [
-            { text: '稍後', style: 'cancel' },
-            { text: '查看', onPress: () => router.push('/temp-chat-invites') }
-          ]);
+        // === 劇本相關即時通知 ===
+        socket.on('scenario-started', (data) => {
+          showAlert(
+            '劇本已開始',
+            '對方已接受邀請，即將進入劇本',
+            [
+              { text: '確定', onPress: () => router.push(`/scenario/${data.scenarioId}`) }
+            ],
+            "play-circle",
+            "#2ecc71"
+          );
         });
 
-        socket.on('scenario-started', (data) => {
-          Alert.alert('劇本已開始', '對方已接受邀請，即將進入劇本', [
-            { text: '確定', onPress: () => router.push(`/scenario/${data.scenarioId}`) }
-          ]);
+        // ★★★ 新增：收到劇本邀請時即時彈窗 ★★★
+        socket.on('scenario-invite', (data) => {
+          console.log('📩 收到劇本邀請:', data);
+
+          showAlert(
+            '新劇本邀請',
+            `${data.fromUsername || '一位朋友'} 邀請你一起玩劇本：\n\n「${data.scenarioTitle || '未知劇本'}」`,
+            [
+              { 
+                text: '稍後再看', 
+                style: 'cancel' 
+              },
+              { 
+                text: '立即查看', 
+                onPress: () => router.push('/scenario/invites') 
+              }
+            ],
+            "drama-masks",
+            "#f4c7ab"
+          );
+        });
+
+        // 其他原有事件
+        socket.on('temp-chat-invite', (data) => {
+          showAlert(
+            '新臨時聊天邀請',
+            `${data.fromUsername} 邀請你進行臨時聊天`,
+            [
+              { text: '稍後', style: 'cancel' },
+              { text: '查看', onPress: () => router.push('/temp-chat-invites') }
+            ]
+          );
         });
 
         socket.on('new-friend-request', (data) => {
-          Alert.alert('新好友請求', `${data.fromUsername} 想加你為好友`, [
-            { text: '稍後', style: 'cancel' },
-            { text: '查看', onPress: () => router.push('/temp-chat-invites') }
-          ]);
+          showAlert(
+            '新好友請求',
+            `${data.fromUsername} 想加你為好友`,
+            [
+              { text: '稍後', style: 'cancel' },
+              { text: '查看', onPress: () => router.push('/temp-chat-invites') }
+            ]
+          );
         });
 
         socket.on('friend-request-accepted', (data) => {
-          Alert.alert('好友請求已接受', `${data.toUsername} 已經接受你的好友請求`, [
-            { text: '稍後', style: 'cancel' },
-            { text: '去聊天', onPress: () => router.push(`/chat/${data.roomId}`) }
-          ]);
+          showAlert(
+            '好友請求已接受',
+            `${data.toUsername} 已經接受你的好友請求`,
+            [
+              { text: '稍後', style: 'cancel' },
+              { text: '去聊天', onPress: () => router.push(`/chat/${data.roomId}`) }
+            ],
+            "account-check",
+            "#2ecc71"
+          );
         });
 
         socket.on('temp-chat-accepted', (data) => {
@@ -139,11 +197,11 @@ export default function Layout() {
         });
 
         socket.on('temp-chat-rejected', () => {
-          Alert.alert('邀請已拒絕', '對方拒絕了你的臨時聊天邀請');
+          showAlert('邀請已拒絕', '對方拒絕了你的臨時聊天邀請');
         });
 
         listenersRegistered.current = true;
-        console.log('[SOCKET] 事件監聽器註冊完成');
+        console.log('[SOCKET] 事件監聽器註冊完成（包含劇本邀請通知）');
 
       } catch (error) {
         console.warn('⚠️ Socket 初始化失敗:', error.message);
@@ -165,6 +223,7 @@ export default function Layout() {
         socket.off('temp-chat-accepted');
         socket.off('temp-chat-rejected');
         socket.off('scenario-started');
+        socket.off('scenario-invite');   // 新增清除
         listenersRegistered.current = false;
       }
     };
@@ -215,7 +274,7 @@ export default function Layout() {
           </View>
         </Modal>
 
-        {/* ==================== 聊天結束 Modal（新增） ==================== */}
+        {/* ==================== 聊天結束 Modal ==================== */}
         <Modal
           animationType="fade"
           transparent={true}
@@ -230,9 +289,7 @@ export default function Layout() {
                 color="#e67e22" 
                 style={{ marginBottom: 20 }} 
               />
-              
               <Text style={modalStyles.modalTitle}>聊天已結束</Text>
-              
               <Text style={[modalStyles.modalMessage, { marginBottom: 32 }]}>
                 {chatEndMessage}
               </Text>
@@ -243,6 +300,56 @@ export default function Layout() {
               >
                 <Text style={modalStyles.confirmText}>確定</Text>
               </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ==================== 全域 ScenarioAlert ==================== */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={alertConfig.visible}
+          onRequestClose={hideAlert}
+        >
+          <View style={modalStyles.modalOverlay}>
+            <View style={modalStyles.modalContainer}>
+              <MaterialCommunityIcons 
+                name={alertConfig.iconName} 
+                size={68} 
+                color={alertConfig.iconColor} 
+                style={{ marginBottom: 20 }} 
+              />
+              <Text style={modalStyles.modalTitle}>{alertConfig.title}</Text>
+              <Text style={modalStyles.modalMessage}>{alertConfig.message}</Text>
+
+              <View style={modalStyles.buttonContainer}>
+                {alertConfig.buttons.map((btn, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      modalStyles.confirmButton,
+                      btn.style === 'cancel' && { backgroundColor: '#e6d5c0' },
+                      btn.style === 'destructive' && { backgroundColor: '#e74c3c' }
+                    ]}
+                    onPress={() => {
+                      btn.onPress?.();
+                      hideAlert();
+                    }}
+                  >
+                    <Text style={[
+                      modalStyles.confirmText,
+                      btn.style === 'cancel' && { color: '#5c4033' }
+                    ]}>
+                      {btn.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                {alertConfig.buttons.length === 0 && (
+                  <TouchableOpacity style={modalStyles.confirmButton} onPress={hideAlert}>
+                    <Text style={modalStyles.confirmText}>確定</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         </Modal>
@@ -291,6 +398,7 @@ const modalStyles = StyleSheet.create({
     color: '#5c4033',
     textAlign: 'center',
     lineHeight: 26,
+    marginBottom: 32,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -315,11 +423,11 @@ const modalStyles = StyleSheet.create({
   rejectText: { color: '#5c4033', fontSize: 17, fontWeight: '600' },
   acceptText: { color: '#3d2a1f', fontSize: 17, fontWeight: '700' },
   confirmButton: {
+    flex: 1,
     backgroundColor: '#f4c7ab',
     paddingVertical: 16,
-    paddingHorizontal: 60,
     borderRadius: 16,
-    marginTop: 10,
+    alignItems: 'center',
   },
   confirmText: {
     color: '#3d2a1f',

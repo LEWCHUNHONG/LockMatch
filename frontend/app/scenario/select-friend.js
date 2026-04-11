@@ -1,11 +1,11 @@
+// select-friend.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, TextInput, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import api from '../../utils/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
+import ScenarioAlert from '../../components/ScenarioAlert';
 
 export default function SelectFriend() {
     const { templateId } = useLocalSearchParams();
@@ -14,7 +14,20 @@ export default function SelectFriend() {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ 
+        visible: false, 
+        title: '', 
+        message: '', 
+        buttons: [] 
+    });
+
     const router = useRouter();
+
+    const showAlert = (title, message, buttons = [], iconName = "alert-circle", iconColor = "#f39c12") => {
+        setAlertConfig({ visible: true, title, message, buttons, iconName, iconColor });
+    };
+
+    const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
     useEffect(() => {
         loadFriends();
@@ -25,7 +38,7 @@ export default function SelectFriend() {
             const res = await api.get('/api/friends');
             setFriends(res.data.friends);
         } catch (error) {
-            Alert.alert('錯誤', '無法載入好友');
+            showAlert('錯誤', '無法載入好友');
         } finally {
             setLoading(false);
         }
@@ -54,12 +67,12 @@ export default function SelectFriend() {
         try {
             const res = await api.post('/api/scenario/invite', { targetUserId, templateId });
             if (res.data.success) {
-                Alert.alert('邀請已發送', '等待對方接受邀請', [
+                showAlert('邀請已發送', '等待對方接受邀請', [
                     { text: '確定', onPress: () => router.back() }
-                ]);
+                ], "send-check", "#2ecc71");
             }
         } catch (error) {
-            Alert.alert('錯誤', error.response?.data?.error || '發送失敗');
+            showAlert('錯誤', error.response?.data?.error || '發送失敗');
         } finally {
             setSending(false);
         }
@@ -124,6 +137,16 @@ export default function SelectFriend() {
                     />
                 </>
             )}
+
+            <ScenarioAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                iconName={alertConfig.iconName}
+                iconColor={alertConfig.iconColor}
+                onClose={hideAlert}
+            />
         </SafeAreaView>
     );
 }

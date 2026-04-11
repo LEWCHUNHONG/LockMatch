@@ -1,10 +1,13 @@
+// [id].js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api, { socketAPI } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ScenarioAlert from '../../components/ScenarioAlert';
+
 export default function ScenarioDetail() {
     const { id } = useLocalSearchParams();
     const [scenario, setScenario] = useState(null);
@@ -13,8 +16,23 @@ export default function ScenarioDetail() {
     const [loading, setLoading] = useState(true);
     const [timeLeft, setTimeLeft] = useState(null);
     const [timer, setTimer] = useState(null);
-    const router = useRouter();
     const [allCompleted, setAllCompleted] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ 
+        visible: false, 
+        title: '', 
+        message: '', 
+        buttons: [], 
+        iconName: "alert-circle", 
+        iconColor: "#f39c12" 
+    });
+
+    const router = useRouter();
+
+    const showAlert = (title, message, buttons = [], iconName = "alert-circle", iconColor = "#f39c12") => {
+        setAlertConfig({ visible: true, title, message, buttons, iconName, iconColor });
+    };
+
+    const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
     useEffect(() => {
         if (keywords.length > 0) {
@@ -27,20 +45,19 @@ export default function ScenarioDetail() {
         const init = async () => {
             const userId = await getCurrentUser();
             if (!userId) {
-                Alert.alert('錯誤', '無法獲取用戶信息，請重新登入');
+                showAlert('錯誤', '無法獲取用戶信息，請重新登入');
                 router.replace('/login');
                 return;
             }
             setMyId(userId);
             await loadScenario(userId);
-            // 加入房間（只執行一次）
             const socket = socketAPI.getSocket();
             if (socket) {
                 socket.emit('join-room', `scenario_${id}`);
-                console.log(`✅ 已加入房間 scenario_${id}`);
             }
         };
         init();
+
         return () => {
             const socket = socketAPI.getSocket();
             if (socket) {
@@ -52,8 +69,6 @@ export default function ScenarioDetail() {
             if (timer) clearInterval(timer);
         };
     }, [id]);
-
-
 
     useEffect(() => {
         if (myId !== null) {
@@ -69,18 +84,10 @@ export default function ScenarioDetail() {
         };
     }, [myId, id]);
 
-
-
-
-
     const getCurrentUser = async () => {
         try {
             const res = await api.get('/api/me');
-            if (res.data && res.data.id) {
-                const id = Number(res.data.id);
-                console.log('✅ 從 API 獲取用戶ID:', id);
-                return id;
-            }
+            if (res.data && res.data.id) return Number(res.data.id);
         } catch (error) {
             console.error('❌ API獲取用戶失敗:', error);
         }
@@ -88,11 +95,7 @@ export default function ScenarioDetail() {
             const userStr = await AsyncStorage.getItem('user');
             if (userStr) {
                 const user = JSON.parse(userStr);
-                if (user.id) {
-                    const id = Number(user.id);
-                    console.log('✅ 從本地存儲獲取用戶ID:', id);
-                    return id;
-                }
+                if (user.id) return Number(user.id);
             }
         } catch (e) {
             console.error('❌ 讀取本地用戶失敗:', e);
@@ -100,16 +103,12 @@ export default function ScenarioDetail() {
         return null;
     };
 
-
-
     const loadScenario = async (currentUserId) => {
         try {
             const res = await api.get(`/api/scenario/${id}`);
             if (res.data.success) {
                 setScenario(res.data.scenario);
                 setKeywords(res.data.scenario.keywords || []);
-                console.log('✅ 當前用戶ID:', currentUserId);
-                console.log('✅ keywords 內容:', res.data.scenario.keywords);
                 const startTime = new Date(res.data.created_at).getTime();
                 const elapsed = Math.floor((Date.now() - startTime) / 1000);
                 const remaining = 600 - elapsed;
@@ -120,11 +119,11 @@ export default function ScenarioDetail() {
                     completeScenario();
                 }
             } else {
-                Alert.alert('錯誤', '無法載入劇本');
+                showAlert('錯誤', '無法載入劇本');
                 router.back();
             }
         } catch (error) {
-            Alert.alert('錯誤', '載入失敗');
+            showAlert('錯誤', '載入失敗');
             router.back();
         } finally {
             setLoading(false);
@@ -151,25 +150,23 @@ export default function ScenarioDetail() {
             await api.post('/api/scenario/complete', { scenarioId: id });
         } catch (error) {
             console.error('完成劇本失敗', error);
-            Alert.alert('提示', '劇本時間已結束，將返回大廳', [
-                { text: '確定', onPress: () => router.replace('/scenario') }
-            ]);
         }
     };
 
     const endScenario = () => {
-        Alert.alert(
+        showAlert(
             '結束劇本',
             '確定要提前結束劇本嗎？將根據已完成的關鍵字計算積分，雙方都會退出。',
             [
                 { text: '取消', style: 'cancel' },
-                {
-                    text: '確定',
+                { 
+                    text: '確定', 
+                    style: 'destructive',
                     onPress: async () => {
                         try {
                             await api.post('/api/scenario/end', { scenarioId: id });
                         } catch (error) {
-                            Alert.alert('錯誤', error.response?.data?.error || '結束失敗');
+                            showAlert('錯誤', error.response?.data?.error || '結束失敗');
                         }
                     }
                 }
@@ -178,27 +175,26 @@ export default function ScenarioDetail() {
     };
 
     const leaveScenario = () => {
-        Alert.alert(
+        showAlert(
             '離開劇本',
             '確定要離開嗎？對方也會同時離開。',
             [
                 { text: '取消', style: 'cancel' },
-                {
-                    text: '確定',
+                { 
+                    text: '確定', 
+                    style: 'destructive',
                     onPress: async () => {
                         try {
                             await api.post('/api/scenario/leave', { scenarioId: id });
                             router.replace('/scenario');
                         } catch (error) {
-                            Alert.alert('錯誤', '離開失敗');
+                            showAlert('錯誤', '離開失敗');
                         }
                     }
                 }
             ]
         );
     };
-
-
 
     const setupSocket = () => {
         const socket = socketAPI.getSocket();
@@ -217,27 +213,22 @@ export default function ScenarioDetail() {
         });
 
         socket.on('scenario-completed', (data) => {
-            console.log('🔔 前端收到 scenario-completed 事件，完整數據:', data);
-            console.log('當前 myId:', myId, typeof myId);
-            console.log('scores 對象:', data.scores);
             if (String(data.scenarioId) === String(id)) {
                 const myPoints = data.scores[Number(myId)];
-                console.log('對應的分數:', myPoints);
-                Alert.alert('劇本完成', `你的得分: ${myPoints} 分`, [
+                showAlert('劇本完成', `你的得分: ${myPoints} 分`, [
                     { text: '確定', onPress: () => router.replace('/scenario') }
-                ]);
+                ], "trophy", "#f4c7ab");
             }
         });
 
         socket.on('scenario-aborted', (data) => {
             if (data.scenarioId === id) {
-                Alert.alert('提示', '對方已離開劇本', [
+                showAlert('提示', '對方已離開劇本', [
                     { text: '確定', onPress: () => router.replace('/scenario') }
                 ]);
             }
         });
     };
-
 
     const markKeyword = async (index) => {
         try {
@@ -245,14 +236,13 @@ export default function ScenarioDetail() {
                 scenarioId: id,
                 keywordIndex: index
             });
-            // 樂觀更新
             setKeywords(prev => {
                 const newKeywords = [...prev];
                 newKeywords[index].completed = true;
                 return newKeywords;
             });
         } catch (error) {
-            Alert.alert('錯誤', error.response?.data?.error || '標記失敗');
+            showAlert('錯誤', error.response?.data?.error || '標記失敗');
         }
     };
 
@@ -288,7 +278,7 @@ export default function ScenarioDetail() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <TouchableOpacity onPress={() => router.replace('/scenario')} style={styles.backButton}>
                         <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
                     </TouchableOpacity>
                     <Text style={styles.title}>{scenario.title}</Text>
@@ -356,13 +346,26 @@ export default function ScenarioDetail() {
                     <Text style={styles.earlySubmitButtonText}>提前提交</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            <ScenarioAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                iconName={alertConfig.iconName}
+                iconColor={alertConfig.iconColor}
+                onClose={hideAlert}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fffaf5' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    safeArea: { flex: 1, backgroundColor: '#fffaf5' },
+    scrollView: { flex: 1 },
+    scrollContent: { flexGrow: 1, paddingBottom: 20 },
+
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -374,37 +377,22 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
     },
-
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fffaf5',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        paddingBottom: 20,
-    },
-
-    earlySubmitButton: {
-        backgroundColor: '#f39c12',
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginTop: 20,
-        marginBottom: 30,
-    },
-    earlySubmitButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
     backButton: { padding: 8 },
     leaveButton: { padding: 8 },
     title: { fontSize: 20, fontWeight: '700', color: '#5c4033', flex: 1, textAlign: 'center' },
-    timerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 12, padding: 8, backgroundColor: '#fff', borderRadius: 12, marginHorizontal: 20 },
+
+    timerContainer: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        marginVertical: 12, 
+        padding: 8, 
+        backgroundColor: '#fff', 
+        borderRadius: 12, 
+        marginHorizontal: 20 
+    },
     timerText: { fontSize: 18, fontWeight: '600', color: '#5c4033', marginLeft: 8 },
+
     content: { padding: 20 },
     backstory: { fontSize: 16, lineHeight: 24, color: '#5c4033', marginBottom: 20 },
     roles: { marginBottom: 20 },
@@ -412,6 +400,7 @@ const styles = StyleSheet.create({
     roleText: { fontSize: 16, color: '#5c4033', marginBottom: 4 },
     sectionTitle: { fontSize: 20, fontWeight: '700', color: '#5c4033', marginBottom: 8, marginTop: 16 },
     sectionSubtitle: { fontSize: 14, color: '#8b5e3c', marginBottom: 12 },
+
     keywordCard: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -428,8 +417,20 @@ const styles = StyleSheet.create({
     markButtonText: { color: '#5c4033', fontWeight: '600', fontSize: 14 },
     completedBadge: { flexDirection: 'row', alignItems: 'center' },
     completedText: { color: '#2ecc71', marginLeft: 4, fontSize: 14 },
+
     opponentList: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
-    opponentKeyword: { backgroundColor: '#fff', padding: 8, borderRadius: 20, marginRight: 8, marginBottom: 8, fontSize: 14, color: '#5c4033', borderWidth: 1, borderColor: '#f4c7ab' },
+    opponentKeyword: { 
+        backgroundColor: '#fff', 
+        padding: 8, 
+        borderRadius: 20, 
+        marginRight: 8, 
+        marginBottom: 8, 
+        fontSize: 14, 
+        color: '#5c4033', 
+        borderWidth: 1, 
+        borderColor: '#f4c7ab' 
+    },
+
     submitButton: {
         backgroundColor: '#2ecc71',
         paddingVertical: 12,
@@ -438,10 +439,15 @@ const styles = StyleSheet.create({
         marginTop: 20,
         marginBottom: 30,
     },
-    submitButtonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
+    submitButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 
+    earlySubmitButton: {
+        backgroundColor: '#f39c12',
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 30,
+    },
+    earlySubmitButtonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });

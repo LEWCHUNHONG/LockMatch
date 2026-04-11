@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+// index.js
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../../utils/api';
+import ScenarioAlert from '../../components/ScenarioAlert';
 
 export default function ScenarioList() {
     const [templates, setTemplates] = useState([]);
@@ -11,16 +13,53 @@ export default function ScenarioList() {
     const [pendingInviteCount, setPendingInviteCount] = useState(0);
     const [activeScenario, setActiveScenario] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ 
+        visible: false, 
+        title: '', 
+        message: '', 
+        buttons: [] 
+    });
+
     const router = useRouter();
 
+    const showAlert = (title, message, buttons = []) => {
+        setAlertConfig({ visible: true, title, message, buttons });
+    };
 
+    const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
+
+    // 每次返回此頁面時自動刷新一次（重點修改）
+    useFocusEffect(
+        useCallback(() => {
+            console.log('🔄 劇本大廳頁面獲得焦點，執行刷新');
+            loadAllData();
+        }, [])
+    );
+
+    // 初始載入
     useEffect(() => {
-        loadTemplates();
-        loadInviteCount();
-        loadActiveScenario();
+        loadAllData();
+
+        // 每30秒更新邀請數量（可選）
         const interval = setInterval(loadInviteCount, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    // 統一載入所有資料的函數
+    const loadAllData = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                loadTemplates(),
+                loadInviteCount(),
+                loadActiveScenario()
+            ]);
+        } catch (error) {
+            console.error('載入資料失敗', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const loadTemplates = async () => {
         try {
@@ -28,14 +67,11 @@ export default function ScenarioList() {
             if (res.data.success && Array.isArray(res.data.templates)) {
                 setTemplates(res.data.templates);
             } else {
-                console.error('API 返回的 templates 不是陣列:', res.data);
                 setTemplates([]);
             }
         } catch (error) {
             console.error('載入劇本失敗', error);
             setTemplates([]);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -49,6 +85,7 @@ export default function ScenarioList() {
             }
         } catch (error) {
             console.error('載入進行中劇本失敗', error);
+            setActiveScenario(null);
         }
     };
 
@@ -79,20 +116,15 @@ export default function ScenarioList() {
     const onRefresh = async () => {
         setRefreshing(true);
         try {
-            await Promise.all([
-                loadTemplates(),
-                loadInviteCount(),
-                loadActiveScenario()
-            ]);
+            await loadAllData();
         } catch (error) {
-            console.error('刷新失敗', error);
+            console.error('手動刷新失敗', error);
         } finally {
             setRefreshing(false);
         }
     };
 
-
-    if (loading) {
+    if (loading && templates.length === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
                 <ActivityIndicator size="large" color="#f4c7ab" />
@@ -101,10 +133,9 @@ export default function ScenarioList() {
     }
 
     return (
-
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <TouchableOpacity onPress={() => router.replace('/dashboard')} style={styles.backButton}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>劇本大廳</Text>
@@ -119,7 +150,10 @@ export default function ScenarioList() {
             </View>
 
             {activeScenario && (
-                <TouchableOpacity style={styles.activeScenarioCard} onPress={() => router.push(`/scenario/${activeScenario.id}`)}>
+                <TouchableOpacity 
+                    style={styles.activeScenarioCard} 
+                    onPress={() => router.push(`/scenario/${activeScenario.id}`)}
+                >
                     <MaterialCommunityIcons name="play-circle" size={24} color="#5c4033" />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.activeTitle}>進行中的劇本</Text>
@@ -151,6 +185,14 @@ export default function ScenarioList() {
                     }
                 />
             )}
+
+            <ScenarioAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                onClose={hideAlert}
+            />
         </SafeAreaView>
     );
 }
@@ -203,7 +245,6 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 18, fontWeight: '700', color: '#5c4033', marginTop: 16 },
     emptySubText: { fontSize: 14, color: '#8b5e3c', marginTop: 8 },
 
-
     activeScenarioCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -228,5 +269,4 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#5c4033',
     },
-
 });

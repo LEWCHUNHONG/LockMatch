@@ -234,17 +234,25 @@ router.get('/active', authMiddleware(process.env.JWT_SECRET), async (req, res) =
     }
 });
 
+// ==================== 發送劇本邀請路由（已修正） ====================
 router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
     const fromUserId = req.user.id;
     const { targetUserId, templateId } = req.body;
-    if (!targetUserId || !templateId) return res.status(400).json({ success: false, error: '缺少必要參數' });
+    if (!targetUserId || !templateId) 
+        return res.status(400).json({ success: false, error: '缺少必要參數' });
 
     try {
-        if (await hasActiveScenario(fromUserId)) return res.status(400).json({ success: false, error: '你已有進行中的劇本' });
-        if (await hasActiveScenario(targetUserId)) return res.status(400).json({ success: false, error: '對方已有進行中的劇本' });
+        // 檢查雙方是否有進行中的劇本
+        if (await hasActiveScenario(fromUserId)) 
+            return res.status(400).json({ success: false, error: '你已有進行中的劇本' });
+        
+        if (await hasActiveScenario(targetUserId)) 
+            return res.status(400).json({ success: false, error: '對方已有進行中的劇本' });
 
         const templateRows = await query('SELECT * FROM scenario_templates WHERE id = ?', [templateId]);
-        if (templateRows.length === 0) return res.status(404).json({ success: false, error: '劇本模板不存在' });
+        if (templateRows.length === 0) 
+            return res.status(404).json({ success: false, error: '劇本模板不存在' });
+
         const template = templateRows[0];
         let tasks = template.tasks;
         if (typeof tasks === 'string') tasks = JSON.parse(tasks);
@@ -255,9 +263,10 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
             if (task.type === 'keywords' && task.words) keywordWords = task.words;
             else otherTasks.push(task);
         });
-        if (keywordWords.length === 0) keywordWords = ["我愛你", "你好", "再見", "謝謝", "對不起", "請", "好", "不好", "可以", "不可以"];
+        if (keywordWords.length === 0) 
+            keywordWords = ["我愛你", "你好", "再見", "謝謝", "對不起", "請", "好", "不好", "可以", "不可以"];
 
-        // 隨機分配關鍵字監聽者
+        // 隨機分配關鍵字
         const shuffled = [...keywordWords];
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -274,7 +283,12 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
         const codeB = generateCode();
         const processedTasks = otherTasks.map(task => {
             if (task.desc && task.desc.includes('{my_code}')) {
-                return { ...task, desc: task.desc.replace('{my_code}', `${codeA} / ${codeB}`), type: 'code_exchange', codes: { userA: codeA, userB: codeB } };
+                return { 
+                    ...task, 
+                    desc: task.desc.replace('{my_code}', `${codeA} / ${codeB}`), 
+                    type: 'code_exchange', 
+                    codes: { userA: codeA, userB: codeB } 
+                };
             }
             return task;
         });
@@ -287,20 +301,56 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
             keywords: keywords
         };
 
+        // 儲存邀請
         const insertResult = await query(
             'INSERT INTO scenario_invites (from_user_id, to_user_id, scenario_data, status) VALUES (?, ?, ?, "pending")',
             [fromUserId, targetUserId, JSON.stringify(scenarioData)]
         );
 
+        const inviteId = insertResult.insertId;
+
+        // 取得發送者與接收者資訊
+        const fromUserRow = await query('SELECT username FROM users WHERE id = ?', [fromUserId]);
+        const fromUsername = fromUserRow[0]?.username || '一位朋友';
+
         const targetUserRow = await query('SELECT username FROM users WHERE id = ?', [targetUserId]);
-        const targetUserName = targetUserRow[0]?.username || '對方';
+        const targetUsername = targetUserRow[0]?.username || '對方';
+
+        // ==================== 關鍵修正：發送 Socket 事件 ====================
+        const io = req.app.get('io');
+        if (io) {
+            // 發送給被邀請者（targetUserId）
+            io.to(`user_${targetUserId}`).emit('scenario-invite', {
+                inviteId: inviteId,
+                fromUserId: fromUserId,
+                fromUsername: fromUsername,
+                scenarioTitle: scenarioData.title,
+                scenarioData: scenarioData   // 可選：如果前端需要更多資訊
+            });
+
+            console.log(`📡 [Socket] 已發送 scenario-invite 給用戶 ${targetUserId}，邀請ID: ${inviteId}`);
+        } else {
+            console.error('❌ io 對象未找到，無法發送 scenario-invite Socket 事件');
+        }
+
+        // 保留原本的 Push Notification（作為備用）
         await sendPushNotification(targetUserId, {
             title: '新劇本邀請',
-            body: `「${scenarioData.title}」邀請您一起體驗！`,
-            data: { inviteId: insertResult.insertId, type: 'scenario_invite' }
+            body: `${fromUsername} 邀請你一起玩「${scenarioData.title}」`,
+            data: { 
+                inviteId: inviteId, 
+                type: 'scenario_invite',
+                fromUsername: fromUsername,
+                scenarioTitle: scenarioData.title 
+            }
         });
 
-        res.json({ success: true, message: '邀請已發送' });
+        res.json({ 
+            success: true, 
+            message: '邀請已發送',
+            inviteId: inviteId 
+        });
+
     } catch (error) {
         console.error('發送邀請失敗:', error);
         res.status(500).json({ success: false, error: '伺服器錯誤' });

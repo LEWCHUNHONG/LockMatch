@@ -1,14 +1,29 @@
+// invites.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import api from '../../utils/api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ScenarioAlert from '../../components/ScenarioAlert';
 
 export default function InvitesScreen() {
     const [invites, setInvites] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [alertConfig, setAlertConfig] = useState({ 
+        visible: false, 
+        title: '', 
+        message: '', 
+        buttons: [] 
+    });
+    
     const router = useRouter();
+
+    const showAlert = (title, message, buttons = [], iconName = "alert-circle", iconColor = "#f39c12") => {
+        setAlertConfig({ visible: true, title, message, buttons, iconName, iconColor });
+    };
+
+    const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
     useEffect(() => {
         loadInvites();
@@ -21,7 +36,7 @@ export default function InvitesScreen() {
             const res = await api.get('/api/scenario/invites/pending');
             setInvites(res.data.invites);
         } catch (error) {
-            Alert.alert('錯誤', '無法載入邀請');
+            showAlert('錯誤', '無法載入邀請');
         } finally {
             setLoading(false);
         }
@@ -31,11 +46,12 @@ export default function InvitesScreen() {
         try {
             const res = await api.post('/api/scenario/invite/accept', { inviteId });
             if (res.data.success) {
-                Alert.alert('成功', '已接受邀請');
-                router.push(`/scenario/${res.data.scenarioId}`);
+                showAlert('成功', '已接受邀請', [
+                    { text: '確定', onPress: () => router.push(`/scenario/${res.data.scenarioId}`) }
+                ], "check-circle", "#2ecc71");
             }
         } catch (error) {
-            Alert.alert('錯誤', error.response?.data?.error || '接受失敗');
+            showAlert('錯誤', error.response?.data?.error || '接受失敗');
         }
     };
 
@@ -44,7 +60,7 @@ export default function InvitesScreen() {
             await api.post('/api/scenario/invite/reject', { inviteId });
             loadInvites();
         } catch (error) {
-            Alert.alert('錯誤', '拒絕失敗');
+            showAlert('錯誤', '拒絕失敗');
         }
     };
 
@@ -92,6 +108,16 @@ export default function InvitesScreen() {
                     contentContainerStyle={styles.list}
                 />
             )}
+
+            <ScenarioAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                iconName={alertConfig.iconName}
+                iconColor={alertConfig.iconColor}
+                onClose={hideAlert}
+            />
         </SafeAreaView>
     );
 }
