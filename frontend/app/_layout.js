@@ -42,19 +42,35 @@ export default function Layout() {
     setAlertConfig(prev => ({ ...prev, visible: false }));
   };
 
-  const getMyUserId = async () => {
-    try {
-      const res = await api.get('/api/me');
-      if (res.data?.id) return setMyUserId(Number(res.data.id));
-      const userStr = await AsyncStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.id) setMyUserId(Number(user.id));
-      }
-    } catch (error) {
-      console.error('取得用戶ID失敗', error);
+const getMyUserId = async () => {
+  try {
+    // 先檢查有沒有 token，沒有就直接跳過（避免不必要的 401）
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      console.log('👋 未登入狀態，跳過 /api/me 請求（正常）');
+      setMyUserId(null);
+      return;
     }
-  };
+
+    const res = await api.get('/api/me');
+    
+    if (res.data?.id) {
+      const id = Number(res.data.id);
+      setMyUserId(id);
+      console.log('✅ 取得當前用戶 ID:', id);
+    }
+  } catch (error) {
+    // 只處理 401 為「正常未登入」，其他錯誤才真的印錯誤
+    if (error.response?.status === 401) {
+      console.log('👋 未登入或 token 失效（正常情況）');
+      setMyUserId(null);
+      return;
+    }
+
+    // 其他錯誤（404、500、網路問題等）才真的當錯誤處理
+    console.error('取得用戶ID失敗', error);
+  }
+};
 
   const acceptInstantChat = async (roomId, fromUserId) => {
     try {
