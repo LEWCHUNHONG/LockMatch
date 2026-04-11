@@ -18,7 +18,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-//import ImageCropPicker from 'react-native-image-crop-picker';
+import ImageCropPicker from 'react-native-image-crop-picker';
 import * as Haptics from 'expo-haptics';
 import api from '../../utils/api';
 import Modal from 'react-native-modal';
@@ -52,7 +52,7 @@ export default function CreatePost() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,          // 允许多选
         selectionLimit: MAX_IMAGES - images.length,
         quality: 0.92,

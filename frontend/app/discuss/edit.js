@@ -1,4 +1,4 @@
-// app/discuss/edit.js (Expo Go 兼容版)
+// app/discuss/edit.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -22,11 +22,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../utils/api';
 import Modal from 'react-native-modal';
 
+// 裁剪功能所需套件
+import ImageCropPicker from 'react-native-image-crop-picker';
+
 export default function EditPost() {
   const params = useLocalSearchParams();
   const router = useRouter();
 
-  // 獲取貼文 ID（支援多種參數名稱）
   const id = params.id || params.postId || params.post_id;
 
   const [content, setContent] = useState('');
@@ -70,7 +72,6 @@ export default function EditPost() {
             const post = data.post;
             setContent(post.content || '');
 
-            // 處理圖片
             const mediaUrls = post.media_urls || [];
             const loadedImages = mediaUrls.map(url => ({
               uri: url.startsWith('http') ? url : `${baseURL}${url}`,
@@ -91,15 +92,11 @@ export default function EditPost() {
           try {
             const errorData = JSON.parse(errorText);
             if (errorData.error) errorMessage = errorData.error;
-          } catch (e) { }
+          } catch (e) {}
 
-          if (response.status === 404) {
-            errorMessage = '找不到此貼文';
-          } else if (response.status === 401) {
-            errorMessage = '請先登入';
-          } else if (response.status === 403) {
-            errorMessage = '沒有權限編輯此貼文';
-          }
+          if (response.status === 404) errorMessage = '找不到此貼文';
+          else if (response.status === 401) errorMessage = '請先登入';
+          else if (response.status === 403) errorMessage = '沒有權限編輯此貼文';
 
           Alert.alert('錯誤', errorMessage);
           router.back();
@@ -116,7 +113,7 @@ export default function EditPost() {
     loadPost();
   }, [id]);
 
-  // 選擇新圖片（使用 expo-image-picker）
+  // 選擇新圖片（可多選）
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -129,7 +126,7 @@ export default function EditPost() {
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         selectionLimit: MAX_IMAGES - images.length,
         quality: 0.92,
@@ -143,9 +140,56 @@ export default function EditPost() {
           isNew: true,
         }));
         setImages((prev) => [...prev, ...newImages]);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (err) {
       console.error('選擇圖片錯誤:', err);
+      setMessageTitle('選擇失敗');
+      setMessageText('無法開啟相簿，請再試一次');
+      setShowMessageModal(true);
+    }
+  };
+
+  // ==================== 裁剪功能（從 create.js 移植並適配） ====================
+  const editImage = async (index) => {
+    const img = images[index];
+    if (!img) return;
+
+    try {
+      const cropped = await ImageCropPicker.openCropper({
+        path: img.uri,
+        cropperCircleOverlay: false,
+        compressImageQuality: 0.88,
+        showCropGuidelines: true,
+        freeStyleCropEnabled: true,
+        includeBase64: false,
+      });
+
+      const newImages = [...images];
+      const oldImg = newImages[index];
+
+      // 如果是舊圖片（來自伺服器），加入移除清單
+      if (!oldImg.isNew && oldImg.serverUrl) {
+        setRemovedImages((prev) => [...new Set([...prev, oldImg.serverUrl])]);
+      }
+
+      // 替換為裁剪後的新圖片
+      newImages[index] = {
+        uri: cropped.path,
+        originalUri: cropped.path,
+        isNew: true,           // 標記為需要上傳的新圖片
+      };
+
+      setImages(newImages);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    } catch (err) {
+      if (err.code !== 'E_PICKER_CANCELLED') {
+        console.error('裁剪錯誤:', err);
+        setMessageTitle('裁剪失敗');
+        setMessageText('無法裁剪圖片，請再試一次');
+        setShowMessageModal(true);
+      }
     }
   };
 
@@ -155,7 +199,6 @@ export default function EditPost() {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
 
-    // 如果是舊圖片，添加到要刪除的列表
     if (!img.isNew && img.serverUrl) {
       setRemovedImages((prev) => [...new Set([...prev, img.serverUrl])]);
     }
@@ -175,22 +218,19 @@ export default function EditPost() {
       const token = await AsyncStorage.getItem('token');
       const formData = new FormData();
 
-      // 確保內容為字串
       formData.append('content', content.trim() || '');
 
-      // 收集要刪除的舊媒體 URL
+      // 傳送要刪除的舊圖片
       if (removedImages.length > 0) {
         formData.append('removeMedia', JSON.stringify(removedImages));
       }
 
-      // 上傳新圖片
+      // 只上傳新圖片（包含裁剪後的圖片）
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
-        // 只上傳新圖片
         if (img.isNew) {
           let mediaUri = img.uri;
 
-          // 壓縮圖片
           const manipResult = await ImageManipulator.manipulateAsync(
             mediaUri,
             [{ resize: { width: 1200 } }],
@@ -200,16 +240,11 @@ export default function EditPost() {
 
           formData.append('media', {
             uri: mediaUri,
-            name: `post_${Date.now()}_${i}.jpg`,
+            name: `post_edit_${Date.now()}_${i}.jpg`,
             type: 'image/jpeg',
           });
         }
       }
-
-      console.log('提交更新，ID:', id);
-      console.log('內容:', content.trim());
-      console.log('刪除圖片:', removedImages.length);
-      console.log('上傳圖片:', images.filter(img => img.isNew).length);
 
       const response = await fetch(`${baseURL}/api/posts/${id}`, {
         method: 'PUT',
@@ -219,58 +254,27 @@ export default function EditPost() {
         body: formData,
       });
 
-      console.log('更新回應狀態:', response.status);
-
       const responseText = await response.text();
-      console.log('更新回應內容:', responseText);
-
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        console.error('解析 JSON 失敗:', e);
         throw new Error('伺服器回應格式錯誤');
       }
 
       if (response.ok && data.success) {
-        // 更新成功
         Alert.alert('成功', data.message || '貼文已更新！', [
-          {
-            text: '確定',
-            onPress: () => {
-              router.replace(`/discuss/${id}`);
-            }
-          }
+          { text: '確定', onPress: () => router.replace(`/discuss/${id}`) }
         ]);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        // 處理失敗情況
-        let errorMessage = '更新失敗';
         let errorTitle = '更新失敗';
+        let errorMessage = data.message || data.error || '請稍後再試';
 
-        if (data.error) errorMessage = data.error;
-        if (data.message) errorMessage = data.message;
-
-        // 特別處理內容審核失敗的情況
         if (response.status === 403) {
           errorTitle = '內容不恰當';
-          if (data.error && data.error.includes('審核')) {
-            errorMessage = data.message || '您的言論包含不當內容，無法更新';
-          }
-          if (data.details?.reasons) {
-            errorMessage += '\n\n原因: ' + data.details.reasons.join(', ');
-          }
-          if (data.details?.suggestion) {
-            errorMessage += '\n\n建議: ' + data.details.suggestion;
-          }
         } else if (response.status === 404) {
-          errorTitle = '錯誤';
-          errorMessage = '貼文不存在或已被刪除';
-        } else if (response.status === 400) {
-          errorTitle = '輸入錯誤';
-        } else if (response.status === 500) {
-          errorTitle = '伺服器錯誤';
-          errorMessage = '伺服器暫時出現問題，請稍後再試';
+          errorTitle = '貼文不存在';
         }
 
         Alert.alert(errorTitle, errorMessage);
@@ -278,13 +282,14 @@ export default function EditPost() {
       }
     } catch (error) {
       console.error('更新錯誤:', error);
-      Alert.alert('更新錯誤', error.message || '請檢查網路連線後再試');
+      Alert.alert('更新錯誤', error.message || '請檢查網路連線');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Loading 畫面
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -298,10 +303,7 @@ export default function EditPost() {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>無法載入貼文</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>返回</Text>
           </TouchableOpacity>
         </View>
@@ -315,7 +317,6 @@ export default function EditPost() {
         colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
         style={styles.gradient}
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
@@ -324,7 +325,6 @@ export default function EditPost() {
           <View style={styles.headerRight} />
         </View>
 
-        {/* Content */}
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.inputCard}>
             <TextInput
@@ -337,10 +337,8 @@ export default function EditPost() {
               textAlignVertical="top"
             />
 
-            {/* Character count */}
             <Text style={styles.charCount}>{content.length} 字元</Text>
 
-            {/* Image preview */}
             {images.length > 0 && (
               <View style={styles.imagesContainer}>
                 <Text style={styles.imagesTitle}>圖片 ({images.length})</Text>
@@ -349,7 +347,12 @@ export default function EditPost() {
                     <View key={index} style={styles.imagePreviewContainer}>
                       <Image source={{ uri: img.uri }} style={styles.preview} />
 
-                      {/* Delete button */}
+                      {/* 裁剪按鈕 */}
+                      <TouchableOpacity style={styles.editButton} onPress={() => editImage(index)}>
+                        <MaterialCommunityIcons name="image-edit-outline" size={20} color="#fff" />
+                      </TouchableOpacity>
+
+                      {/* 刪除按鈕 */}
                       <TouchableOpacity style={styles.deleteButton} onPress={() => deleteImage(index)}>
                         <Ionicons name="trash-outline" size={22} color="#fff" />
                       </TouchableOpacity>
@@ -359,7 +362,6 @@ export default function EditPost() {
               </View>
             )}
 
-            {/* Add image button */}
             {images.length < MAX_IMAGES && (
               <TouchableOpacity style={styles.imageBtn} onPress={pickImages}>
                 <MaterialCommunityIcons name="image-plus" size={26} color="#f4c7ab" />
@@ -369,7 +371,6 @@ export default function EditPost() {
           </View>
         </ScrollView>
 
-        {/* Submit button */}
         <View style={styles.bottomSubmitContainer}>
           <TouchableOpacity
             style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
@@ -410,7 +411,6 @@ export default function EditPost() {
   );
 }
 
-// 樣式部分保持 edit.js 中的原有樣式，僅刪除了 editButton 和 originalButton 相關樣式
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -492,6 +492,24 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 16,
     backgroundColor: '#f8f1eb',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 8,
+    right: 60,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    borderRadius: 24,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   deleteButton: {
     position: 'absolute',
