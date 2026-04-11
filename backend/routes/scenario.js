@@ -374,7 +374,7 @@ router.get('/invites/pending', authMiddleware(process.env.JWT_SECRET), async (re
 });
 
 router.post('/invite/accept', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
-    const userId = req.user.id;
+    const userId = req.user.id;        // 接受者（B）
     const { inviteId } = req.body;
 
     try {
@@ -388,52 +388,64 @@ router.post('/invite/accept', authMiddleware(process.env.JWT_SECRET), async (req
         }
         const invite = invites[0];
 
-        // 2. 檢查接受者是否已有進行中劇本
+        // 2. 檢查是否已有進行中劇本
         if (await hasActiveScenario(userId)) {
-            return res.status(400).json({ success: false, error: '你已有進行中的劇本，無法接受新邀請' });
+            return res.status(400).json({ success: false, error: '你已有進行中的劇本' });
         }
-        // 3. 檢查發起人是否還有進行中劇本
         if (await hasActiveScenario(invite.from_user_id)) {
-            return res.status(400).json({ success: false, error: '對方已有進行中的劇本，邀請已失效' });
+            return res.status(400).json({ success: false, error: '對方已有進行中的劇本' });
         }
 
-        // 4. 確保 scenario_data 是字串
         let scenarioData = invite.scenario_data;
-        if (typeof scenarioData === 'object') {
-            scenarioData = JSON.stringify(scenarioData);
+        if (typeof scenarioData === 'string') {
+            scenarioData = JSON.parse(scenarioData);
         }
 
-        // 5. 插入 user_scenarios 表
+        // 3. 建立正式劇本
         const insertResult = await query(
             'INSERT INTO user_scenarios (user_id, target_user_id, scenario_data, status) VALUES (?, ?, ?, "active")',
-            [invite.from_user_id, userId, scenarioData]
+            [invite.from_user_id, userId, JSON.stringify(scenarioData)]
         );
 
+        const newScenarioId = insertResult.insertId;
 
         const io = req.app.get('io');
         if (io) {
+            // === 修正重點：發送給邀請方（A） ===
             io.to(`user_${invite.from_user_id}`).emit('scenario-started', {
-                scenarioId: insertResult.insertId,
-                withUserId: userId
+                scenarioId: newScenarioId,
+                fromUserId: invite.from_user_id,     // ← 關鍵：告訴 A 「我是發送方」
+                fromUsername: '你',                  // A 自己看到時顯示「對方」
+                scenarioTitle: scenarioData.title || '未知劇本',
+                type: 'accepted'                     // 可選標記
             });
-            console.log(`📡 已向用戶 ${invite.from_user_id} 發送 scenario-started 事件`);
-        } else {
-            console.error('❌ io 對象未找到，無法發送 scenario-started');
+
+            console.log(`📡 已向邀請方 ${invite.from_user_id} 發送 scenario-started（對方已接受）`);
+
+            // 可選：也發送給接受方（B），讓 B 直接進入
+            io.to(`user_${userId}`).emit('scenario-started', {
+                scenarioId: newScenarioId,
+                fromUserId: invite.from_user_id,     // B 收到的 fromUserId 是 A
+                scenarioTitle: scenarioData.title || '未知劇本',
+            });
         }
 
-
-        // 6. 更新邀請狀態
+        // 4. 更新邀請狀態
         await query('UPDATE scenario_invites SET status = "accepted" WHERE id = ?', [inviteId]);
 
-
-        // 8. 推送通知（若已配置）
+        // 5. Push Notification（可保留）
         await sendPushNotification(invite.from_user_id, {
-            title: '邀請已接受',
+            title: '劇本邀請已接受',
             body: '對方已接受你的劇本邀請',
-            data: { scenarioId: insertResult.insertId, type: 'scenario_accepted' }
+            data: { scenarioId: newScenarioId, type: 'scenario_accepted' }
         });
 
-        res.json({ success: true, scenarioId: insertResult.insertId });
+        res.json({ 
+            success: true, 
+            scenarioId: newScenarioId,
+            message: '邀請接受成功'
+        });
+
     } catch (error) {
         console.error('接受邀請失敗:', error);
         res.status(500).json({ success: false, error: '伺服器錯誤' });
