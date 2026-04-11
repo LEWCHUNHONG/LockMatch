@@ -352,7 +352,14 @@ export default function PublicProfile() {
           </View>
 
           <View style={styles.postsSection}>
-            <Text style={styles.sectionTitle}>最近 5 篇貼文</Text>
+            <View style={styles.sectionTitleContainer}>
+              <MaterialCommunityIcons 
+                name="book-open-variant" 
+                size={24} 
+                color="#5c4033" 
+              />
+              <Text style={styles.sectionTitle}>最近 5 篇貼文</Text>
+            </View>
 
             {loadingPosts ? (
               <ActivityIndicator size="small" color="#f4c7ab" style={{ marginTop: 20 }} />
@@ -646,8 +653,8 @@ noPostsText: {
   },
 
   // 貼文區塊
-  postsSection: {
-    marginTop: 32,
+postsSection: {
+    marginTop: 25,
     paddingHorizontal: 4,
   },
   sectionTitle: {
@@ -703,4 +710,16 @@ addFriendText: {
   fontSize: 16,
   fontWeight: '700',
 },
+sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingLeft: 4,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#5c4033',
+  },
 });
