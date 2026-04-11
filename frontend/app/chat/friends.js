@@ -420,14 +420,6 @@ export default function FriendsList() {
                   )}
                 </View>
               </TouchableOpacity>
-
-              {/* 原本的添加好友按鈕 */}
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => router.push('/chat/search')}
-              >
-                <MaterialCommunityIcons name="account-plus" size={26} color="#5c4033" />
-              </TouchableOpacity>
             </View>
           </View>
 

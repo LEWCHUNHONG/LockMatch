@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { chatAPI } from '../../utils/api';
+import { chatAPI, fixImageUrl, API_URL } from '../../utils/api';
 
 export default function FriendRequests() {
     const [requests, setRequests] = useState([]);
@@ -74,24 +74,48 @@ export default function FriendRequests() {
         }
     };
 
-    const renderRequestItem = (item) => (
+const renderRequestItem = (item) => {
+    // 先用 fixImageUrl 處理
+    let avatarUri = fixImageUrl(item.avatar);
+
+    // 如果還是 localhost，就用從 api.js 拿到的 API_URL 替換
+    if (avatarUri && avatarUri.includes('localhost:3000')) {
+        avatarUri = avatarUri.replace(/http:\/\/localhost:3000/g, API_URL);
+    }
+
+    // 如果是相對路徑，補上 API_URL
+    if (avatarUri && !avatarUri.startsWith('http')) {
+        avatarUri = avatarUri.startsWith('/') 
+            ? `${API_URL}${avatarUri}` 
+            : `${API_URL}/${avatarUri}`;
+    }
+
+    return (
         <View key={item.id} style={styles.requestItem}>
             <View style={styles.avatarContainer}>
-                {item.avatar ? (
-                    <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                {avatarUri ? (
+                    <Image
+                        source={{ uri: avatarUri }}
+                        style={styles.avatar}
+                        resizeMode="cover"
+                    />
                 ) : (
                     <View style={styles.defaultAvatar}>
-                        <Text style={styles.avatarText}>{item.username.charAt(0)}</Text>
+                        <Text style={styles.avatarText}>
+                            {item.username?.charAt(0).toUpperCase() || '?'}
+                        </Text>
                     </View>
                 )}
             </View>
+
             <View style={styles.infoContainer}>
                 <Text style={styles.username}>{item.username}</Text>
                 {item.mbti && <Text style={styles.mbti}>{item.mbti}</Text>}
                 <Text style={styles.time}>
-                    {new Date(item.createdAt).toLocaleDateString()}
+                    {new Date(item.createdAt).toLocaleDateString('zh-TW')}
                 </Text>
             </View>
+
             <View style={styles.buttonGroup}>
                 <TouchableOpacity
                     style={[styles.acceptButton, processingId === item.id && styles.disabled]}
@@ -104,6 +128,7 @@ export default function FriendRequests() {
                         <Text style={styles.acceptText}>接受</Text>
                     )}
                 </TouchableOpacity>
+
                 <TouchableOpacity
                     style={[styles.declineButton, processingId === item.id && styles.disabled]}
                     onPress={() => handleDecline(item.id)}
@@ -114,6 +139,7 @@ export default function FriendRequests() {
             </View>
         </View>
     );
+};
 
     return (
         <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.gradient}>
