@@ -1,13 +1,15 @@
-{
+import 'dotenv/config';
+
+export default {
   "expo": {
     "name": "LockMatchApp",
     "slug": "LockMatchApp",
+    "scheme": "lockmatchapp",
     "version": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/app_icon/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "lockmatchapp",
     "splash": {
       "image": "./assets/app_icon/splash.png",
       "resizeMode": "contain",
@@ -30,7 +32,7 @@
       "package": "com.lockmatch.LockMatchApp",
       "config": {
         "googleMaps": {
-          "apiKey": "process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY"
+          "apiKey": process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_KEY
         }
       }
     },
@@ -40,7 +42,6 @@
     "plugins": [
       "expo-router"
     ],
-    "owner": "",
     "extra": {
       "router": {},
       "eas": {

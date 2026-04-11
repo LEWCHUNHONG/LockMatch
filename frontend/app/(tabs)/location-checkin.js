@@ -7,10 +7,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
   Modal,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,11 +29,7 @@ export default function LocationCheckin() {
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const mapRef = useRef(null);
 
-
-
   const [activeChat, setActiveChat] = useState(null);
-
-
 
   const lastUploadedLocationRef = useRef(null);
 
@@ -41,9 +37,22 @@ export default function LocationCheckin() {
   const FORCE_UPLOAD_INTERVAL_MS = 300000;     // 5分鐘強制上傳
   const MIN_DISTANCE_THRESHOLD = 20;
 
-  // 預覽 Modal 相關狀態
+  // 預覽用戶 Modal
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [previewUser, setPreviewUser] = useState(null);
+
+  // 通用 Alert Modal
+  const [alertModalVisible, setAlertModalVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertOnConfirm, setAlertOnConfirm] = useState(null);
+
+  const showAlert = (title, message, onConfirm = null) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertOnConfirm(() => onConfirm);
+    setAlertModalVisible(true);
+  };
 
   const getMbtiColor = (mbti) => {
     if (!mbti) return '#f4c7ab';
@@ -70,20 +79,16 @@ export default function LocationCheckin() {
     return R * c;
   };
 
-
-
-
   const sendInstantChatInvite = async (targetUserId) => {
     try {
       const res = await api.post('/api/instant-chat/invite', { targetUserId });
       if (res.data.success) {
-        Alert.alert('邀請已發送', '等待對方接受');
+        showAlert('邀請已發送', '等待對方接受');
       }
     } catch (error) {
-      Alert.alert('錯誤', error.response?.data?.error || '發送失敗');
+      showAlert('錯誤', error.response?.data?.error || '發送失敗');
     }
   };
-
 
   const getCurrentLocationAndNearby = async (showLoading = true, isForceUpload = false) => {
     try {
@@ -91,7 +96,7 @@ export default function LocationCheckin() {
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('需要位置權限', '請允許存取位置');
+        showAlert('需要位置權限', '請允許存取位置');
         return;
       }
 
@@ -188,14 +193,13 @@ export default function LocationCheckin() {
     } catch (error) {
       console.error('位置/附近用戶錯誤:', error);
       if (showLoading) {
-        Alert.alert('錯誤', '無法獲取位置或附近用戶');
+        showAlert('錯誤', '無法獲取位置或附近用戶');
       }
     } finally {
       if (showLoading) setLoading(false);
       setInitialLoading(false);
     }
   };
-
 
   const loadActiveChat = async () => {
     try {
@@ -209,8 +213,6 @@ export default function LocationCheckin() {
       console.error('載入即時聊天失敗', error);
     }
   };
-
-
 
   useFocusEffect(
     useCallback(() => {
@@ -231,8 +233,6 @@ export default function LocationCheckin() {
       };
     }, [])
   );
-
-
 
   const renderAvatarMarker = (user) => {
     const avatarUri = user.avatar
@@ -273,11 +273,10 @@ export default function LocationCheckin() {
     );
   };
 
+  // 初始載入畫面
   if (initialLoading) {
     return (
       <SafeAreaView style={styles.container}>
-
-
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
@@ -300,7 +299,6 @@ export default function LocationCheckin() {
           </View>
         </View>
 
-
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#f4c7ab" />
           <Text style={styles.loadingText}>獲取位置及附近用戶中...</Text>
@@ -312,7 +310,7 @@ export default function LocationCheckin() {
   return (
     <SafeAreaView style={styles.container}>
 
-      {/* 所有 Modal 統一放在這裡，同級 */}
+      {/* ==================== 所有 Modal ==================== */}
 
       {/* 預覽用戶 Modal */}
       <Modal
@@ -329,7 +327,7 @@ export default function LocationCheckin() {
           <TouchableOpacity
             activeOpacity={1}
             style={[modalStyles.modalContainer, { paddingVertical: 40, paddingHorizontal: 28 }]}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             {/* 頭像 */}
             <View style={{ marginBottom: 16 }}>
@@ -373,6 +371,7 @@ export default function LocationCheckin() {
               {previewUser?.username || '用戶'}
             </Text>
 
+            {/* MBTI */}
             {previewUser?.mbti ? (
               <View
                 style={{
@@ -385,7 +384,7 @@ export default function LocationCheckin() {
                   gap: 8,
                   marginBottom: 24,
                   borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.3)', // 輕微白色邊框增加質感
+                  borderColor: 'rgba(255,255,255,0.3)',
                 }}
               >
                 <MaterialCommunityIcons name="account-check" size={18} color="#fff" />
@@ -401,7 +400,7 @@ export default function LocationCheckin() {
                   paddingHorizontal: 18,
                   paddingVertical: 8,
                   borderRadius: 30,
-                  backgroundColor: 'rgba(244, 199, 171, 0.15)', // 跟公開頁面一致的極淡暖灰
+                  backgroundColor: 'rgba(244, 199, 171, 0.15)',
                   borderWidth: 1,
                   borderColor: 'rgba(244, 199, 171, 0.3)',
                   gap: 8,
@@ -421,7 +420,8 @@ export default function LocationCheckin() {
                 </Text>
               </View>
             )}
-            {/* 查看個人卡片按鈕 */}
+
+            {/* 查看個人卡片 */}
             <TouchableOpacity
               style={{
                 backgroundColor: '#f4c7ab',
@@ -437,7 +437,7 @@ export default function LocationCheckin() {
                 if (previewUser?.id) {
                   router.push(`/profile/public/${previewUser.id}`);
                 } else {
-                  Alert.alert('提示', '無法獲取用戶 ID');
+                  showAlert('提示', '無法獲取用戶 ID');
                 }
               }}
             >
@@ -446,7 +446,8 @@ export default function LocationCheckin() {
               </Text>
             </TouchableOpacity>
 
-            {<TouchableOpacity
+            {/* 立刻即時聊天 */}
+            <TouchableOpacity
               style={{
                 backgroundColor: '#f4c7ab',
                 paddingVertical: 16,
@@ -464,9 +465,9 @@ export default function LocationCheckin() {
               <Text style={{ color: '#5c4033', fontSize: 17, fontWeight: '700' }}>
                 立刻即時聊天
               </Text>
-            </TouchableOpacity>}
+            </TouchableOpacity>
 
-            {/* 關閉按鈕 */}
+            {/* 關閉 */}
             <TouchableOpacity onPress={() => setPreviewModalVisible(false)}>
               <Text style={{ color: '#8b5e3c', fontSize: 15, fontWeight: '500' }}>
                 關閉
@@ -491,12 +492,12 @@ export default function LocationCheckin() {
           <TouchableOpacity
             activeOpacity={1}
             style={[modalStyles.modalContainer, { maxHeight: '70%' }]}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             <Text style={modalStyles.modalTitle}>使用說明</Text>
 
             <Text style={[modalStyles.modalMessage, { textAlign: 'left', lineHeight: 24 }]}>
-              • 每 15 秒自動檢查位置，移動 80m 時上傳{'\n\n'}
+              • 每 15 秒自動檢查位置，移動 20m 時上傳{'\n\n'}
               • 每 5 分鐘強制更新一次{'\n\n'}
               • 顯示 1 公里內的用戶（紅色圓圈）{'\n\n'}
               • 點大頭針可查看用戶資訊{'\n\n'}
@@ -512,11 +513,7 @@ export default function LocationCheckin() {
                 marginTop: 24,
               }}
             >
-              <Text style={{
-                color: '#3d2a1f',
-                fontSize: 17,
-                fontWeight: '700',
-              }}>
+              <Text style={{ color: '#3d2a1f', fontSize: 17, fontWeight: '700' }}>
                 知道了
               </Text>
             </TouchableOpacity>
@@ -524,7 +521,55 @@ export default function LocationCheckin() {
         </TouchableOpacity>
       </Modal>
 
-      {/* 頁面主要內容 */}
+      {/* 通用 Alert Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={alertModalVisible}
+        onRequestClose={() => setAlertModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={modalStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setAlertModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={modalStyles.modalContainer}
+            onPress={() => {}}
+          >
+            <Text style={modalStyles.modalTitle}>{alertTitle}</Text>
+            <Text style={[modalStyles.modalMessage, { marginBottom: 32 }]}>
+              {alertMessage}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setAlertModalVisible(false);
+                if (alertOnConfirm) alertOnConfirm();
+              }}
+              style={{
+                backgroundColor: '#f4c7ab',
+                paddingVertical: 14,
+                paddingHorizontal: 40,
+                borderRadius: 12,
+                minWidth: 140,
+              }}
+            >
+              <Text style={{
+                color: '#3d2a1f',
+                fontSize: 17,
+                fontWeight: '700',
+                textAlign: 'center',
+              }}>
+                確定
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ==================== 頁面主要內容 ==================== */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -564,7 +609,7 @@ export default function LocationCheckin() {
             initialRegion={location}
             showsUserLocation={true}
             showsMyLocationButton={false}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
           >
             <Circle
               center={{
@@ -611,7 +656,6 @@ export default function LocationCheckin() {
   );
 }
 
-// styles 與 modalStyles 保持不變（你原本的就很好）
 const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
@@ -755,13 +799,13 @@ const modalStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#5c4033',
     marginBottom: 20,
+    textAlign: 'center',
   },
   modalMessage: {
     fontSize: 16,
     color: '#5c4033',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
   },
   infoButton: {
     padding: 8,

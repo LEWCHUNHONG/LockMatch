@@ -198,9 +198,51 @@ router.post('/reject', authMiddleware(process.env.JWT_SECRET), async (req, res) 
     }
 });
 
+// 結束即時聊天並清理
+router.post('/end', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
+    const userId = req.user.id;
+    const { roomId } = req.body;
 
+    try {
+        await query(
+            'UPDATE instant_chat_invites SET status = "expired", expires_at = NOW() WHERE room_id = ?',
+            [roomId]
+        );
 
+        // 真正刪除臨時聊天室（最乾淨）
+        await query(
+            'DELETE FROM chat_rooms WHERE id = ? AND is_temp = 1',
+            [roomId]
+        );
 
+        await query(
+            'DELETE FROM chat_room_members WHERE room_id = ?',
+            [roomId]
+        );
+
+        // 通知對方聊天已結束
+        const io = req.app.get('io');
+        const invite = await query(
+            'SELECT from_user_id, to_user_id FROM instant_chat_invites WHERE room_id = ?',
+            [roomId]
+        );
+
+        if (invite.length > 0) {
+            const otherId = invite[0].from_user_id === userId 
+                ? invite[0].to_user_id 
+                : invite[0].from_user_id;
+            
+            if (io && otherId) {
+                io.to(`user_${otherId}`).emit('instant-chat-ended', { roomId });
+            }
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('結束即時聊天失敗:', error);
+        res.status(500).json({ success: false, error: '伺服器錯誤' });
+    }
+});
 
 // 檢查用戶是否有進行中的即時聊天
 async function hasActiveInstantChat(userId) {

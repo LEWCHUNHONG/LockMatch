@@ -7,7 +7,7 @@ const path = require('path');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, uploadMedia, broadcastNewMessage, io) => {
 
   // 獲取我的所有聊天室列表（1對1 + 群組）
-  router.get('/chat-rooms', authMiddleware(JWT_SECRET), (req, res) => {
+router.get('/chat-rooms', authMiddleware(JWT_SECRET), (req, res) => {
     connection.query(
       `SELECT 
       cr.id,
@@ -60,6 +60,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     JOIN chat_room_members crm ON cr.id = crm.room_id
     LEFT JOIN messages m ON cr.id = m.room_id
     WHERE crm.user_id = ?
+      AND (cr.is_temp = 0 OR cr.is_temp IS NULL)     -- ←←← 這裡新增這一行
     GROUP BY cr.id
     ORDER BY COALESCE(cr.last_activity, cr.created_at) DESC`,
       [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id],
