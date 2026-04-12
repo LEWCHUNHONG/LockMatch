@@ -1,4 +1,4 @@
-// app/mbti-game/NewLevelEditor.js
+// app/components/mbti-game/NewLevelEditor.js
 import React, { useState } from 'react';
 import {
   View,

@@ -1,4 +1,4 @@
-// app/mbti-game/MBTIBonuses.js
+// app/components/mbti-game/MBTIBonuses.js
 // MBTI 類型對應的角色屬性加成
 export const MBTI_BONUSES = {
   ISTJ: { attack: 1.2, attackSpeed: 0.9, moveSpeed: 1.0, maxHp: 1.3, lifesteal: 0 },

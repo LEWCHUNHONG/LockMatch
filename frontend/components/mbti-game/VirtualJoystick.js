@@ -1,4 +1,4 @@
-// app/mbti-game/VirtualJoystick.js
+// app/components/mbti-game/VirtualJoystick.js
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';

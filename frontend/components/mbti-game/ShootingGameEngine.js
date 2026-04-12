@@ -1,18 +1,18 @@
-// app/mbti-game/ShootingGameEngine.js
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+// app/components/mbti-game/ShootingGameEngine.js
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   Dimensions,
   Text,
   TouchableOpacity,
-  Alert,
   Image,
   ActivityIndicator,
 } from 'react-native';
 import { GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import VirtualJoystick from '../../components/mbti-game/VirtualJoystick';
 import ScenarioDialog from '../../components/mbti-game/scenario-dialog';
+import CustomAlertModal from './CustomAlertModal';   // ← 新增
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PLAYER_SIZE = 40;
@@ -46,7 +46,7 @@ export default function ShootingGameEngine({
   setMbtiScores,
   gameMode = 'normal',
   pickQuestion,
-  returnQuestions,  // 新增：放回題目的回調
+  returnQuestions,
 }) {
   if (!levelProp) return null;
 
@@ -60,25 +60,35 @@ export default function ShootingGameEngine({
   const pickQuestionRef = useRef(pickQuestion);
   const returnQuestionsRef = useRef(returnQuestions);
 
-  useEffect(() => {
-    levelRef.current = levelProp;
-  }, [levelProp]);
+  useEffect(() => { levelRef.current = levelProp; }, [levelProp]);
+  useEffect(() => { onGameCompleteRef.current = onGameCompleteProp; }, [onGameCompleteProp]);
+  useEffect(() => { mbtiScoresRef.current = mbtiScoresProp; }, [mbtiScoresProp]);
+  useEffect(() => { pickQuestionRef.current = pickQuestion; }, [pickQuestion]);
+  useEffect(() => { returnQuestionsRef.current = returnQuestions; }, [returnQuestions]);
 
-  useEffect(() => {
-    onGameCompleteRef.current = onGameCompleteProp;
-  }, [onGameCompleteProp]);
+  // ====================== Custom Alert Modal ======================
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+  });
 
-  useEffect(() => {
-    mbtiScoresRef.current = mbtiScoresProp;
-  }, [mbtiScoresProp]);
+  const showAlert = useCallback((title, message, buttons = []) => {
+    setAlertModal({
+      visible: true,
+      title,
+      message,
+      buttons: buttons.length > 0 
+        ? buttons 
+        : [{ text: '確定', onPress: hideAlert }],
+    });
+  }, []);
 
-  useEffect(() => {
-    pickQuestionRef.current = pickQuestion;
-  }, [pickQuestion]);
-
-  useEffect(() => {
-    returnQuestionsRef.current = returnQuestions;
-  }, [returnQuestions]);
+  const hideAlert = useCallback(() => {
+    setAlertModal(prev => ({ ...prev, visible: false }));
+  }, []);
+  // ==============================================================
 
   // 玩家狀態
   const [player, setPlayer] = useState({
@@ -114,8 +124,8 @@ export default function ShootingGameEngine({
 
   const isTransitioning = useRef(false);
   const upgradeCountRef = useRef(0);
-  const usedQuestionsInLevel = useRef([]);      // 儲存本次關卡已抽出的題目
-  const isLevelCompletedRef = useRef(false);    // 是否正常通關
+  const usedQuestionsInLevel = useRef([]);
+  const isLevelCompletedRef = useRef(false);
 
   // Refs
   const playerRef = useRef(player);
@@ -144,7 +154,7 @@ export default function ShootingGameEngine({
   useEffect(() => { shootDirRef.current = shootDir; }, [shootDir]);
   useEffect(() => { isLoadingFloorRef.current = isLoadingFloor; }, [isLoadingFloor]);
 
-  // 手勢（同時識別）
+  // 手勢
   const moveGesture = useRef(Gesture.Pan());
   const shootGesture = useRef(Gesture.Pan());
 
@@ -197,12 +207,12 @@ export default function ShootingGameEngine({
     const interval = setInterval(() => {
       const dir = shootDirRef.current;
       if (dir.x === 0 && dir.y === 0) return;
-      const weapon = WEAPONS[playerRef.current.weapon];
+      const weaponConfig = WEAPONS[playerRef.current.weapon];
       const newBullets = [];
-      for (let i = 0; i < weapon.bulletCount; i++) {
+      for (let i = 0; i < weaponConfig.bulletCount; i++) {
         let bulletDir = dir;
-        if (weapon.spread > 0) {
-          const angle = Math.atan2(dir.y, dir.x) + (Math.random() - 0.5) * weapon.spread;
+        if (weaponConfig.spread > 0) {
+          const angle = Math.atan2(dir.y, dir.x) + (Math.random() - 0.5) * weaponConfig.spread;
           bulletDir = { x: Math.cos(angle), y: Math.sin(angle) };
         }
         newBullets.push({
@@ -210,8 +220,8 @@ export default function ShootingGameEngine({
           x: playerRef.current.x + PLAYER_SIZE / 2 - BULLET_SIZE / 2,
           y: playerRef.current.y + PLAYER_SIZE / 2 - BULLET_SIZE / 2,
           dir: bulletDir,
-          damage: weapon.damage,
-          range: weapon.range,
+          damage: weaponConfig.damage,
+          range: weaponConfig.range,
           distanceTraveled: 0,
         });
       }
@@ -233,30 +243,15 @@ export default function ShootingGameEngine({
     if (!obj) return null;
     let x, y, w, h;
     if (type === 'player') {
-      x = obj.x - PLAYER_SIZE / 2;
-      y = obj.y - PLAYER_SIZE / 2;
-      w = PLAYER_SIZE;
-      h = PLAYER_SIZE;
+      x = obj.x - PLAYER_SIZE / 2; y = obj.y - PLAYER_SIZE / 2; w = PLAYER_SIZE; h = PLAYER_SIZE;
     } else if (type === 'monster') {
-      x = obj.x - MONSTER_SIZE / 2;
-      y = obj.y - MONSTER_SIZE / 2;
-      w = MONSTER_SIZE;
-      h = MONSTER_SIZE;
+      x = obj.x - MONSTER_SIZE / 2; y = obj.y - MONSTER_SIZE / 2; w = MONSTER_SIZE; h = MONSTER_SIZE;
     } else if (type === 'obstacle') {
-      w = obj.width || 40;
-      h = obj.height || 40;
-      x = obj.x - w / 2;
-      y = obj.y - h / 2;
+      w = obj.width || 40; h = obj.height || 40; x = obj.x - w / 2; y = obj.y - h / 2;
     } else if (type === 'item') {
-      x = obj.x - 15;
-      y = obj.y - 15;
-      w = 30;
-      h = 30;
+      x = obj.x - 15; y = obj.y - 15; w = 30; h = 30;
     } else if (type === 'exit') {
-      w = obj.width || EXIT_SIZE;
-      h = obj.height || EXIT_SIZE;
-      x = obj.x - w / 2;
-      y = obj.y - h / 2;
+      w = obj.width || EXIT_SIZE; h = obj.height || EXIT_SIZE; x = obj.x - w / 2; y = obj.y - h / 2;
     } else return null;
     return { x, y, w, h };
   };
@@ -265,7 +260,6 @@ export default function ShootingGameEngine({
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   };
 
-  // 升級邏輯（使用父層傳入的 pickQuestion）
   const checkLevelUp = useCallback(() => {
     let leveled = false;
     while (playerRef.current.exp >= EXP_PER_LEVEL && playerRef.current.level < MAX_UPGRADES) {
@@ -278,7 +272,6 @@ export default function ShootingGameEngine({
       if (pickQuestionRef.current) {
         const question = pickQuestionRef.current();
         if (question) {
-          // 記錄本次關卡抽出的題目
           usedQuestionsInLevel.current.push(question);
           setTimeout(() => {
             setActiveQuestion(question);
@@ -289,17 +282,15 @@ export default function ShootingGameEngine({
     }
   }, []);
 
-  // 放回未完成題目的輔助函數
   const returnUnusedQuestions = useCallback(() => {
     if (!isLevelCompletedRef.current && usedQuestionsInLevel.current.length > 0 && returnQuestionsRef.current) {
       returnQuestionsRef.current(usedQuestionsInLevel.current);
     }
-    // 清空記錄，避免重複放回
     usedQuestionsInLevel.current = [];
   }, []);
 
   const finishGame = useCallback(() => {
-    isLevelCompletedRef.current = true;  // 正常通關，不放回題目
+    isLevelCompletedRef.current = true;
     setIsGameOver(true);
     onGameCompleteRef.current({
       score: playerRef.current.exp,
@@ -316,25 +307,16 @@ export default function ShootingGameEngine({
     setCurrentFloorIndex(prev => {
       const next = prev + 1;
       if (next < (levelRef.current?.floors?.length || 0)) return next;
-      else {
-        // 已通關所有樓層，標記為完成
-        isLevelCompletedRef.current = true;
-        finishGame();
-        return prev;
-      }
+      isLevelCompletedRef.current = true;
+      finishGame();
+      return prev;
     });
   }, [finishGame]);
 
-  // 遊戲結束或退出時放回題目
   const handleGameAbort = useCallback(() => {
     returnUnusedQuestions();
     onBack();
   }, [returnUnusedQuestions, onBack]);
-
-  // 死亡處理（在遊戲迴圈中觸發）
-  // 注意：死亡時 setIsGameOver 會觸發，但我們需要在死亡後也放回題目
-  // 因此修改死亡時的邏輯：在設定遊戲結束前先放回題目
-  // 我們會在遊戲迴圈中死亡判斷處調用 returnUnusedQuestions
 
   // 主遊戲迴圈
   useEffect(() => {
@@ -475,12 +457,13 @@ export default function ShootingGameEngine({
         }
       }
 
-      // 死亡處理
+      // 死亡處理 - 使用 Modal
       if (p.hp <= 0) {
-        // 先放回未完成的題目，再結束遊戲
         returnUnusedQuestions();
         setIsGameOver(true);
-        Alert.alert('遊戲結束', '你死了...', [{ text: '返回', onPress: onBack }]);
+        showAlert('遊戲結束', '你死了...', [
+          { text: '返回', onPress: onBack }
+        ]);
         return;
       }
 
@@ -506,10 +489,9 @@ export default function ShootingGameEngine({
     };
     frameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(frameId);
-  }, [gamePaused, isGameOver, gameStarted, isLoadingFloor, checkLevelUp, goToNextFloor, onBack, returnUnusedQuestions]);
+  }, [gamePaused, isGameOver, gameStarted, isLoadingFloor, checkLevelUp, goToNextFloor, onBack, returnUnusedQuestions, showAlert]);
 
   const handleStartBattle = () => {
-    // 重置關卡狀態
     upgradeCountRef.current = 0;
     usedQuestionsInLevel.current = [];
     isLevelCompletedRef.current = false;
@@ -553,9 +535,16 @@ export default function ShootingGameEngine({
   };
 
   const handleQuit = () => {
-    Alert.alert('離開遊戲', '確定要回到主頁嗎？', [
-      { text: '取消', style: 'cancel' },
-      { text: '確定', onPress: handleGameAbort },
+    showAlert('離開遊戲', '確定要回到主頁嗎？', [
+      { text: '取消', style: 'cancel', onPress: hideAlert },
+      { 
+        text: '確定', 
+        style: 'destructive', 
+        onPress: () => {
+          hideAlert();
+          handleGameAbort();
+        }
+      },
     ]);
   };
 
@@ -575,10 +564,7 @@ export default function ShootingGameEngine({
       aimDots.push(
         <View
           key={`aim_${i}`}
-          style={[
-            styles.aimDot,
-            { left: renderX(dotX) - 3, top: renderY(dotY) - 3 },
-          ]}
+          style={[styles.aimDot, { left: renderX(dotX) - 3, top: renderY(dotY) - 3 }]}
         />
       );
     }
@@ -795,6 +781,15 @@ export default function ShootingGameEngine({
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Custom Alert Modal */}
+        <CustomAlertModal
+          visible={alertModal.visible}
+          title={alertModal.title}
+          message={alertModal.message}
+          buttons={alertModal.buttons}
+          onClose={hideAlert}
+        />
       </View>
     </GestureHandlerRootView>
   );
@@ -812,10 +807,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-  playerImage: {
-    position: 'absolute',
-    zIndex: 10,
-  },
+  playerImage: { position: 'absolute', zIndex: 10 },
   playerHp: { color: '#fff', fontSize: 10 },
   monster: {
     position: 'absolute',
@@ -826,15 +818,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 5,
   },
-  monsterImage: {
-    position: 'absolute',
-    zIndex: 5,
-  },
+  monsterImage: { position: 'absolute', zIndex: 5 },
   monsterHp: { color: '#fff', fontSize: 10 },
-  obstacle: {
-    position: 'absolute',
-    zIndex: 2,
-  },
+  obstacle: { position: 'absolute', zIndex: 2 },
   item: {
     position: 'absolute',
     width: 30,
@@ -884,18 +870,8 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   hudText: { color: '#fff', fontWeight: 'bold', marginHorizontal: 5 },
-  joystickContainer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 30,
-    zIndex: 100,
-  },
-  shootJoystickContainer: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    zIndex: 100,
-  },
+  joystickContainer: { position: 'absolute', bottom: 30, left: 30, zIndex: 100 },
+  shootJoystickContainer: { position: 'absolute', bottom: 30, right: 30, zIndex: 100 },
   startButton: {
     position: 'absolute',
     bottom: SCREEN_HEIGHT / 2 - 30,
@@ -968,9 +944,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
   },
-  loadingText: {
-    color: '#fff',
-    fontSize: 18,
-    marginTop: 10,
-  },
+  loadingText: { color: '#fff', fontSize: 18, marginTop: 10 },
 });

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +22,7 @@ import { MBTI_DESCRIPTIONS, calculateMbtiResult, getAllQuestions } from '../../d
 import { gameAPI, customLevelAPI, userAPI, mbtiAPI } from '../../utils/api';
 import { MBTI_DIMENSION_LEVELS } from '../../data/levels';
 import { useRouter } from 'expo-router';
+import CustomAlertModal from '../../components/mbti-game/CustomAlertModal';   // ← 新增
 
 const WEEKLY_LIMIT = 1000;
 const PRESET_LEVEL_IDS = ['ei-dimension', 'sn-dimension', 'tf-dimension', 'jp-dimension'];
@@ -47,17 +47,37 @@ export default function MBTIGameMain() {
   // ========== 全局題目管理 ==========
   const [globalRemainingQuestions, setGlobalRemainingQuestions] = useState([]);
 
+  // Modal 狀態
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+  });
+
+  const showAlert = useCallback((title, message, buttons = []) => {
+    setAlertModal({
+      visible: true,
+      title,
+      message,
+      buttons: buttons.length > 0 
+        ? buttons 
+        : [{ text: '確定', onPress: () => hideAlert() }],
+    });
+  }, []);
+
+  const hideAlert = useCallback(() => {
+    setAlertModal(prev => ({ ...prev, visible: false }));
+  }, []);
+
   // 初始化全局題目池
   useEffect(() => {
     setGlobalRemainingQuestions(getAllQuestions());
   }, []);
 
-  // 抽題函數（全局不重複）
   const pickGlobalQuestion = useCallback(() => {
     if (globalRemainingQuestions.length === 0) {
-      // 所有題目用完，重置題目池
       setGlobalRemainingQuestions(getAllQuestions());
-      // 重新抽題（此時池子已重置）
       return pickGlobalQuestion();
     }
     const idx = Math.floor(Math.random() * globalRemainingQuestions.length);
@@ -66,10 +86,8 @@ export default function MBTIGameMain() {
     return question;
   }, [globalRemainingQuestions]);
 
-  // 放回題目（用於關卡中途退出）
   const returnQuestions = useCallback((questions) => {
     if (!questions || questions.length === 0) return;
-    // 使用 Set 基於 id 去重，避免重複放回
     setGlobalRemainingQuestions(prev => {
       const currentIds = new Set(prev.map(q => q.id));
       const toAdd = questions.filter(q => !currentIds.has(q.id));
@@ -97,7 +115,6 @@ export default function MBTIGameMain() {
     loadUserId();
   }, []);
 
-  // 當 userId 變化時，載入所有使用者相關資料
   useEffect(() => {
     if (userId) {
       loadCharacter();
@@ -107,49 +124,41 @@ export default function MBTIGameMain() {
     }
   }, [userId]);
 
-  // 初始載入每週積分
   useEffect(() => {
     loadWeeklyPoints();
   }, []);
 
-  // 當遊戲狀態變為選單時，刷新使用者資料
-// 推薦改法
-useEffect(() => {
-  if (gameState === 'menu') {
-    refreshUserData();
-  }
-}, [gameState]);   // 先保持這樣，但必須修 refreshUserData
-
-const refreshUserData = useCallback(async () => {
-  if (gameState !== 'menu') return;
-
-  try {
-    const response = await userAPI.getCurrentUser();
-    if (!response?.data?.success) return;
-
-    const user = response.data.user;
-
-    // 只在真的有變化時才 setState
-    if (user.id && user.id !== userId) {
-      setUserId(user.id);
+  useEffect(() => {
+    if (gameState === 'menu') {
+      refreshUserData();
     }
+  }, [gameState]);
 
-    const newChar = user.character && user.character !== 'null' && user.character !== ''
-      ? JSON.parse(user.character)
-      : null;
+  const refreshUserData = useCallback(async () => {
+    if (gameState !== 'menu') return;
+    try {
+      const response = await userAPI.getCurrentUser();
+      if (!response?.data?.success) return;
 
-    // 避免每次都 set 相同物件導致無限迴圈
-    if (JSON.stringify(character) !== JSON.stringify(newChar)) {
-      setCharacter(newChar);
+      const user = response.data.user;
+      if (user.id && user.id !== userId) {
+        setUserId(user.id);
+      }
+
+      const newChar = user.character && user.character !== 'null' && user.character !== ''
+        ? JSON.parse(user.character)
+        : null;
+
+      if (JSON.stringify(character) !== JSON.stringify(newChar)) {
+        setCharacter(newChar);
+      }
+
+      await loadWeeklyPoints();
+    } catch (err) {
+      console.error('刷新失敗', err);
     }
+  }, [gameState, userId, character]);
 
-    await loadWeeklyPoints();
-  } catch (err) {
-    console.error('刷新失敗', err);
-  }
-}, [gameState, userId, character]);   // 加入依賴，但小心循環
-
-  // 從後端載入 MBTI 累計分數與已完成預設關卡，並返回數據
   const loadMbtiScores = async () => {
     if (!userId) return null;
     try {
@@ -165,7 +174,6 @@ const refreshUserData = useCallback(async () => {
     return null;
   };
 
-  // 從 AsyncStorage 載入已保存的 MBTI 結果
   const loadMbtiResult = async () => {
     if (!userId) return;
     try {
@@ -200,9 +208,7 @@ const refreshUserData = useCallback(async () => {
     try {
       const response = await customLevelAPI.getAll();
       if (response.data.success) {
-        const levels = response.data.levels || [];
-        console.log('自定義關卡原始資料:', levels);
-        setCustomLevels(levels);
+        setCustomLevels(response.data.levels || []);
       } else {
         console.error('載入自定義關卡失敗:', response.data.error);
       }
@@ -231,31 +237,23 @@ const refreshUserData = useCallback(async () => {
     await AsyncStorage.setItem(`mbti_result_${userId}`, JSON.stringify(result));
   };
 
-const handleCharacterComplete = async (customized) => {
-  console.log('【角色完成】收到的 customized:', customized);
+  const handleCharacterComplete = async (customized) => {
+    if (!customized || typeof customized !== 'object' || Object.keys(customized).length === 0) {
+      showAlert('錯誤', '角色資料無效，請重新自訂');
+      setGameState('levelSelect');
+      return;
+    }
 
-  if (!customized || typeof customized !== 'object' || Object.keys(customized).length === 0) {
-    Alert.alert('錯誤', '角色資料無效，請重新自訂');
+    setCharacter(customized);
+
+    try {
+      await userAPI.updateProfile({ character: customized });
+    } catch (error) {
+      console.error('儲存角色失敗:', error);
+    }
+
     setGameState('levelSelect');
-    return;
-  }
-
-  setCharacter(customized);
-
-  try {
-    // 優先嘗試傳物件（推薦）
-    const response = await userAPI.updateProfile({ 
-      character: customized 
-    });
-
-    console.log('角色儲存成功:', response.data);
-
-  } catch (error) {
-    console.error('儲存角色失敗:', error);
-  }
-
-  setGameState('levelSelect');
-};
+  };
 
   const originalToCustom = {};
   customLevels.forEach(level => {
@@ -281,8 +279,6 @@ const handleCharacterComplete = async (customized) => {
     if (level.originalId && PRESET_LEVEL_IDS.includes(level.originalId)) return false;
     return true;
   });
-
-  console.log('過濾後的自定義關卡數量:', filteredCustom.length);
 
   const handleLevelSelect = (level) => {
     loadWeeklyPoints();
@@ -312,6 +308,7 @@ const handleCharacterComplete = async (customized) => {
         score: results.score || 0,
         play_time_seconds: results.playTime || 0,
       };
+
       const response = await gameAPI.uploadGameResult(gameData);
       if (response.data.success) {
         if (response.data.totalMbtiScores) {
@@ -319,8 +316,9 @@ const handleCharacterComplete = async (customized) => {
         }
 
         if (response.data.pointsEarned > 0) {
-          Alert.alert('積分 +' + response.data.pointsEarned, '繼續加油！');
+          showAlert('積分獲得', `獲得 +${response.data.pointsEarned} 積分！\n繼續加油！`);
         }
+
         if (response.data.totalPoints !== undefined) {
           const userStr = await AsyncStorage.getItem('user');
           if (userStr) {
@@ -340,7 +338,7 @@ const handleCharacterComplete = async (customized) => {
           if (response.data.mbti) {
             finalMbtiType = response.data.mbti;
           } else {
-            const latestScores = response.data.totalMbtiScores || (mbtiData ? mbtiData.scores : mbtiScores);
+            const latestScores = response.data.totalMbtiScores || mbtiScores;
             finalMbtiType = calculateMbtiResult(latestScores).type;
           }
           setMbtiResult({ type: finalMbtiType });
@@ -357,6 +355,7 @@ const handleCharacterComplete = async (customized) => {
       }
     } catch (error) {
       console.error('❌ 上傳遊戲結果失敗:', error);
+      showAlert('錯誤', '上傳遊戲結果失敗，請稍後重試');
     }
   };
 
@@ -397,7 +396,7 @@ const handleCharacterComplete = async (customized) => {
   const handleEditorSave = async (newLevel, action, targetPresetId) => {
     try {
       if (action === 'saveToPreset') {
-        Alert.alert('提示', '請使用「另存為新自定義關卡」來修改預設關卡');
+        showAlert('提示', '請使用「另存為新自定義關卡」來修改預設關卡');
         setEditorOpen(false);
         return;
       }
@@ -410,24 +409,21 @@ const handleCharacterComplete = async (customized) => {
       }
 
       if (response.data.success) {
-        Alert.alert('成功', '關卡已儲存');
+        showAlert('成功', '關卡已儲存');
         setEditorOpen(false);
         await loadCustomLevels();
       } else {
-        Alert.alert('錯誤', response.data.error || '儲存失敗');
+        showAlert('錯誤', response.data.error || '儲存失敗');
       }
     } catch (error) {
       console.error('儲存關卡失敗:', error);
-      Alert.alert('錯誤', '儲存關卡失敗，已儲存至本地');
+      showAlert('錯誤', '儲存關卡失敗，已儲存至本地');
       try {
         const saved = await AsyncStorage.getItem('custom_levels') || '[]';
         const list = JSON.parse(saved);
         const index = list.findIndex(l => l.id === newLevel.id);
-        if (index >= 0) {
-          list[index] = newLevel;
-        } else {
-          list.push(newLevel);
-        }
+        if (index >= 0) list[index] = newLevel;
+        else list.push(newLevel);
         await AsyncStorage.setItem('custom_levels', JSON.stringify(list));
         setCustomLevels(list);
         setEditorOpen(false);
@@ -439,14 +435,14 @@ const handleCharacterComplete = async (customized) => {
     try {
       const response = await customLevelAPI.delete(level.id);
       if (response.data.success) {
-        Alert.alert('成功', '關卡已刪除');
+        showAlert('成功', '關卡已刪除');
         await loadCustomLevels();
       } else {
-        Alert.alert('錯誤', response.data.error || '刪除失敗');
+        showAlert('錯誤', response.data.error || '刪除失敗');
       }
     } catch (error) {
       console.error('刪除關卡失敗:', error);
-      Alert.alert('錯誤', '刪除關卡失敗，已從本地移除');
+      showAlert('錯誤', '刪除關卡失敗，已從本地移除');
       try {
         const updated = customLevels.filter(l => l.id !== level.id);
         await AsyncStorage.setItem('custom_levels', JSON.stringify(updated));
@@ -469,7 +465,7 @@ const handleCharacterComplete = async (customized) => {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/'); // 返回首頁
+      router.replace('/');
     }
   };
 
@@ -478,12 +474,12 @@ const handleCharacterComplete = async (customized) => {
     setGameState('menu');
   };
 
-  const handleResetMBTI = async () => {
-    Alert.alert(
+  const handleResetMBTI = () => {
+    showAlert(
       '重置 MBTI 進度',
       '確定要重置所有預設關卡的 MBTI 分數嗎？此操作無法復原，但已獲得的積分不會消失。',
       [
-        { text: '取消', style: 'cancel' },
+        { text: '取消', style: 'cancel',onPress: hideAlert },
         {
           text: '確定',
           style: 'destructive',
@@ -494,15 +490,13 @@ const handleCharacterComplete = async (customized) => {
                 await loadMbtiScores();
                 setMbtiResult(null);
                 await AsyncStorage.removeItem(`mbti_result_${userId}`);
-                // 重置全局題目池
                 setGlobalRemainingQuestions(getAllQuestions());
-                Alert.alert('成功', 'MBTI 分數已重置，可重新測試');
+                showAlert('成功', 'MBTI 分數已重置，可重新測試');
               } else {
-                Alert.alert('錯誤', response.data.error || '重置失敗');
+                showAlert('錯誤', response.data.error || '重置失敗');
               }
             } catch (error) {
-              console.error('❌ 重置 MBTI 失敗:', error);
-              Alert.alert('錯誤', '網路錯誤，請稍後重試');
+              showAlert('錯誤', '網路錯誤，請稍後重試');
             }
           },
         },
@@ -527,11 +521,9 @@ const handleCharacterComplete = async (customized) => {
     case 'menu':
       return (
         <SafeAreaView style={styles.container}>
-          {handleBackToHome && (
-            <TouchableOpacity style={styles.backToHomeButton} onPress={handleBackToHome}>
-              <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.backToHomeButton} onPress={handleBackToHome}>
+            <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
+          </TouchableOpacity>
 
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.header}>
@@ -593,7 +585,7 @@ const handleCharacterComplete = async (customized) => {
                 style={[styles.playButton, !character && styles.disabledButton]}
                 onPress={() => {
                   if (character) setGameState('levelSelect');
-                  else Alert.alert('提示', '請先創建角色');
+                  else showAlert('提示', '請先創建角色');
                 }}
                 disabled={!character}
               >
@@ -608,6 +600,14 @@ const handleCharacterComplete = async (customized) => {
             </TouchableOpacity>
           </ScrollView>
 
+          {/* 自訂 Alert Modal */}
+          <CustomAlertModal
+            visible={alertModal.visible}
+            title={alertModal.title}
+            message={alertModal.message}
+            buttons={alertModal.buttons}
+            onClose={hideAlert}
+          />
         </SafeAreaView>
       );
 
@@ -679,7 +679,7 @@ const handleCharacterComplete = async (customized) => {
             if (next) {
               handleLevelSelect(next);
             } else {
-              Alert.alert('提示', '沒有下一關了');
+              showAlert('提示', '沒有下一關了');
             }
           }}
           character={character}

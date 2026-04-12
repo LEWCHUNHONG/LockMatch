@@ -1,4 +1,4 @@
-// app/mbti-game/LevelSelect.js
+// app/components/mbti-game/LevelSelect.js
 import React from 'react';
 import {
   View,

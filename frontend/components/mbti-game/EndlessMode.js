@@ -1,4 +1,4 @@
-// app/mbti-game/EndlessMode.js
+// app/components/mbti-game/EndlessMode.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import ShootingGameEngine from '../../components/mbti-game/ShootingGameEngine';

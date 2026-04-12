@@ -1,4 +1,4 @@
-// app/mbti-game/scenario-dialog.js
+// app/components/mbti-game/scenario-dialog.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, 

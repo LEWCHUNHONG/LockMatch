@@ -1,4 +1,4 @@
-// app/mbti-game/game-results.js
+// app/components/mbti-game/game-results.js
 import React, { useEffect } from 'react';
 import {
   View,

@@ -1,4 +1,4 @@
-// app/mbti-game/character-custom.js
+// app/components/mbti-game/character-custom.js
 import React, { useState } from 'react';
 import {
   View,
@@ -9,21 +9,21 @@ import {
   Dimensions,
   TextInput,
   Image,
-  Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import CustomAlertModal from './CustomAlertModal';   // ← 新增
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// 武器定義：優先使用本地圖片，若不存在則使用 MaterialCommunityIcons 備用圖標
+// 武器定義
 const WEAPONS = [
   {
     id: 'pistol',
     name: '手槍',
     description: '傷害較低，射速快',
-    icon: 'pistol',           // MaterialCommunityIcons 備用
-    image: require('../../assets/images/weapons/pistol.png'), // 本地圖片路徑（請確保存在）
+    icon: 'pistol',
+    image: require('../../assets/images/weapons/pistol.png'),
     damage: 8,
     attackSpeed: 200,
     bulletCount: 1,
@@ -33,7 +33,7 @@ const WEAPONS = [
     id: 'rifle',
     name: '步槍',
     description: '傷害一般，射速一般',
-    icon: 'gun',               // 備用圖標
+    icon: 'gun',
     image: require('../../assets/images/weapons/rifle.png'),
     damage: 15,
     attackSpeed: 300,
@@ -44,7 +44,7 @@ const WEAPONS = [
     id: 'sniper',
     name: '狙擊槍',
     description: '傷害極高，射速極慢',
-    icon: 'crosshairs',        // 備用圖標
+    icon: 'crosshairs',
     image: require('../../assets/images/weapons/sniper.png'),
     damage: 40,
     attackSpeed: 800,
@@ -55,7 +55,7 @@ const WEAPONS = [
     id: 'shotgun',
     name: '散彈槍',
     description: '傷害高，一次射出多顆子彈',
-    icon: 'gun',               // 備用圖標
+    icon: 'gun',
     image: require('../../assets/images/weapons/shotgun.png'),
     damage: 10,
     attackSpeed: 500,
@@ -67,7 +67,7 @@ const WEAPONS = [
     id: 'smg',
     name: '衝鋒槍',
     description: '傷害一般，射速極快',
-    icon: 'lightning-bolt',    // 備用圖標
+    icon: 'lightning-bolt',
     image: require('../../assets/images/weapons/smg.png'),
     damage: 10,
     attackSpeed: 100,
@@ -86,6 +86,29 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
     }
   );
 
+  // Modal 狀態
+  const [alertModal, setAlertModal] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+  });
+
+  const showAlert = (title, message, buttons = []) => {
+    setAlertModal({
+      visible: true,
+      title,
+      message,
+      buttons: buttons.length > 0 
+        ? buttons 
+        : [{ text: '確定', onPress: hideAlert }],
+    });
+  };
+
+  const hideAlert = () => {
+    setAlertModal(prev => ({ ...prev, visible: false }));
+  };
+
   const colors = [
     '#3498db', '#e74c3c', '#2ecc71', '#f39c12', 
     '#9b59b6', '#1abc9c', '#e67e22', '#34495e'
@@ -94,7 +117,7 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('需要權限', '請允許存取相簿以選擇頭像');
+      showAlert('需要權限', '請允許存取相簿以選擇頭像');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -116,29 +139,21 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
     onComplete?.(character);
   };
 
-  // 渲染武器圖標：優先使用圖片，若圖片載入失敗則顯示備用 MaterialCommunityIcons
+  // 渲染武器圖標
   const renderWeaponIcon = (weapon, isSelected) => {
     const iconColor = isSelected ? '#f4c7ab' : '#5c4033';
     
-    // 嘗試使用本地圖片
     if (weapon.image) {
       return (
         <Image
           source={weapon.image}
-          style={[
-            styles.weaponImage,
-            { tintColor: iconColor } // 可選：著色
-          ]}
+          style={[styles.weaponImage, { tintColor: iconColor }]}
           resizeMode="contain"
-          onError={() => {
-            // 圖片載入失敗時，切換到備用圖標（此處僅作示意，實際需用狀態管理）
-            console.warn(`圖片載入失敗: ${weapon.id}`);
-          }}
+          onError={() => console.warn(`圖片載入失敗: ${weapon.id}`)}
         />
       );
     }
     
-    // 備用：使用 MaterialCommunityIcons
     return (
       <MaterialCommunityIcons
         name={weapon.icon}
@@ -222,7 +237,7 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
         </View>
       </View>
 
-      {/* 如果沒有頭像，顯示顏色選擇 */}
+      {/* 服裝顏色 */}
       {!character.avatar && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>服裝顏色</Text>
@@ -246,7 +261,7 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
         </View>
       )}
 
-      {/* 如果使用頭像，提示可清除 */}
+      {/* 頭像提示 */}
       {character.avatar && (
         <View style={styles.avatarHint}>
           <MaterialCommunityIcons name="information" size={20} color="#8b5e3c" />
@@ -264,6 +279,15 @@ export default function CharacterCustomScreen({ initialCharacter, onComplete, on
         <MaterialCommunityIcons name="check-circle" size={28} color="#fff" />
         <Text style={styles.completeButtonText}>完成創建，開始冒險！</Text>
       </TouchableOpacity>
+
+      {/* Custom Alert Modal */}
+      <CustomAlertModal
+        visible={alertModal.visible}
+        title={alertModal.title}
+        message={alertModal.message}
+        buttons={alertModal.buttons}
+        onClose={hideAlert}
+      />
     </ScrollView>
   );
 }
