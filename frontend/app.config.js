@@ -43,6 +43,7 @@ export default {
       "expo-router"
     ],
     "extra": {
+      "apiUrl": process.env.EXPO_PUBLIC_API_URL,
       "router": {},
       "eas": {
         "projectId": "bb321c3e-074f-49f5-94bf-cb6b7b5ea5a6"

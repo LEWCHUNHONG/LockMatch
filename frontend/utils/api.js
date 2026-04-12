@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 import { AppState } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = "https://lockmatch.shamough1792.synology.me";
 
 // 創建 axios 實例
 const api = axios.create({
