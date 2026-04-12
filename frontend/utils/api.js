@@ -3,8 +3,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 import { AppState } from 'react-native';
+import Constants from 'expo-constants';
 
-const API_URL = "https://lockmatch.shamough1792.synology.me";
+const API_URL = Constants.expoConfig?.extra?.apiUrl || "https://lockmatch.shamough1792.synology.me";
 
 // 創建 axios 實例
 const api = axios.create({
