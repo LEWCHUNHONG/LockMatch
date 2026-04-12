@@ -48,6 +48,10 @@ export default function RewardsScreen() {
   const [taskModalMessage, setTaskModalMessage] = useState('');
   const [taskModalButtons, setTaskModalButtons] = useState([]);
 
+  // 新增：兌換確認 Modal 的狀態
+  const [showConfirmRedeemModal, setShowConfirmRedeemModal] = useState(false);
+  const [redeemItemToConfirm, setRedeemItemToConfirm] = useState(null);
+
   const router = useRouter();
 
   const loadAllData = useCallback(async () => {
@@ -100,11 +104,24 @@ export default function RewardsScreen() {
     setShowTaskModal(true);
   };
 
-  const handleRedeem = async (item) => {
+  // 修改後的 handleRedeem：先彈出確認視窗，不直接兌換
+  const handleRedeem = (item) => {
     if (userPoints.points < item.points_required) {
       showTaskAlert('積分不足', '你的積分不夠兌換這個商品');
       return;
     }
+
+    setRedeemItemToConfirm(item);
+    setShowConfirmRedeemModal(true);
+  };
+
+  // 新增：確認後才執行兌換
+  const confirmRedeem = async () => {
+    const item = redeemItemToConfirm;
+    setShowConfirmRedeemModal(false);
+    setRedeemItemToConfirm(null);
+
+    if (!item) return;
 
     try {
       const response = await api.post('/api/redeem-item', { itemId: item.id });
@@ -319,7 +336,6 @@ export default function RewardsScreen() {
       onPress={() => handleRedeem(item)}
       activeOpacity={0.7}
     >
-      {/* 原有內容不變 */}
       <View style={styles.shopImageContainer}>
         {item.image_url ? (
           <Image
@@ -357,8 +373,6 @@ export default function RewardsScreen() {
       default: return '#f4c7ab';
     }
   };
-
-
 
   const getTaskIcon = (type) => {
     switch (type) {
@@ -626,7 +640,7 @@ export default function RewardsScreen() {
         </View>
       </Modal>
 
-            {/* 統一任務/操作 Modal（取代所有 Alert） */}
+      {/* 統一任務/操作 Modal */}
       <Modal
         isVisible={showTaskModal}
         onBackdropPress={() => setShowTaskModal(false)}
@@ -677,6 +691,72 @@ export default function RewardsScreen() {
         </View>
       </Modal>
 
+      {/* 新增：兌換前確認 Modal */}
+      <Modal
+        isVisible={showConfirmRedeemModal}
+        onBackdropPress={() => {
+          setShowConfirmRedeemModal(false);
+          setRedeemItemToConfirm(null);
+        }}
+        onBackButtonPress={() => {
+          setShowConfirmRedeemModal(false);
+          setRedeemItemToConfirm(null);
+        }}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.4}
+      >
+        <View style={styles.modalContainer}>
+          <MaterialCommunityIcons
+            name="gift-open-outline"
+            size={64}
+            color="#f4c7ab"
+            style={{ marginBottom: 16 }}
+          />
+
+          <Text style={styles.modalTitle}>確認兌換？</Text>
+
+          {redeemItemToConfirm && (
+            <>
+              <Text style={styles.modalMessage}>
+                你確定要花費{' '}
+                <Text style={{ fontWeight: '700', color: '#f4c7ab' }}>
+                  {redeemItemToConfirm.points_required} 積分
+                </Text>{' '}
+                兌換
+              </Text>
+              <Text style={[styles.modalMessage, { marginTop: -8, fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
+                {redeemItemToConfirm.name}
+              </Text>
+              <Text style={[styles.modalMessage, { marginTop: 12, fontSize: 14, color: '#e67e22' }]}>
+                兌換後積分將立即扣除且無法退回
+              </Text>
+            </>
+          )}
+
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalCancelButton]}
+              onPress={() => {
+                setShowConfirmRedeemModal(false);
+                setRedeemItemToConfirm(null);
+              }}
+            >
+              <Text style={styles.modalButtonText}>取消</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: '#2ecc71' }
+              ]}
+              onPress={confirmRedeem}
+            >
+              <Text style={[styles.modalButtonText, { color: '#fff' }]}>確認兌換</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1049,7 +1129,6 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 40,
   },
-  // 從 dashboard.js 複製的 modal 樣式（調整為 styles 物件的一部分）
   modalContainer: {
     backgroundColor: '#fffaf5',
     borderRadius: 28,
@@ -1092,7 +1171,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-    modalButtonRow: {
+  modalButtonRow: {
     flexDirection: 'row',
     width: '100%',
     gap: 12,
