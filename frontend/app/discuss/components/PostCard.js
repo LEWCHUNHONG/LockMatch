@@ -122,40 +122,40 @@ const confirmDelete = () => {
   };
 
   
-  const timeAgo = (dateString) => {
-    if (!dateString) return '未知時間';
+const timeAgo = (dateString) => {
+  if (!dateString) return '未知時間';
 
-    let date = new Date(dateString);
-
-    if (isNaN(date.getTime())) {
-      const [datePart, timePart] = dateString.split(' ');
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour, min, sec] = timePart.split(':').map(Number);
-      date = new Date(Date.UTC(year, month - 1, day, hour, min, sec));
+  let date;
+  try {
+    // 後端已返回帶 +08:00 的 ISO 字串
+    if (typeof dateString === 'string' && dateString.includes('+08:00')) {
+      date = new Date(dateString);
+    } 
+    // 保險：如果是純日期時間字串
+    else if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+      date = new Date(dateString + ' +08:00');
+    } 
+    else {
+      date = new Date(dateString);
     }
 
-    if (isNaN(date.getTime())) return '時間錯誤';
+    if (isNaN(date.getTime())) {
+      console.warn('時間解析失敗:', dateString);
+      return '時間錯誤';
+    }
 
-    const utcTimestamp = Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      date.getUTCHours(),
-      date.getUTCMinutes(),
-      date.getUTCSeconds()
-    );
+    const now = Date.now();
+    const diffMs = now - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
 
-    const now = new Date().getTime();
-    const diffMs = now - utcTimestamp;
-    const diffMins = Math.round(diffMs / 60000);
-
+    if (diffMins < 0) return '剛剛';
     if (diffMins <= 1) return '剛剛';
     if (diffMins < 60) return `${diffMins}分鐘前`;
 
     const diffHrs = Math.floor(diffMins / 60);
     if (diffHrs < 24) return `${diffHrs}小時前`;
 
-    return new Date(utcTimestamp).toLocaleString('zh-TW', {
+    return date.toLocaleString('zh-TW', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -163,7 +163,11 @@ const confirmDelete = () => {
       minute: '2-digit',
       hour12: false,
     });
-  };
+  } catch (e) {
+    console.error('timeAgo 錯誤:', e);
+    return '時間錯誤';
+  }
+};
 
   const openFullImage = (index) => {
     setFullImageIndex(index);

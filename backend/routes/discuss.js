@@ -9,6 +9,28 @@ const textAnalytics = require('../services/textAnalyticsService');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload) => {
 
 
+  // ==================== 正確的香港時間 Helper（Docker TZ=HK 專用） ====================
+  const toHKTime = (dateValue) => {
+    if (!dateValue) return null;
+
+    let date;
+
+    // 如果是字串（如 "2026-04-12 22:00:00"），直接當成香港時間解析
+    if (typeof dateValue === 'string') {
+      // 把空格換成 T，讓 new Date 正確解析
+      const isoString = dateValue.replace(' ', 'T');
+      date = new Date(isoString + '+08:00');   // 強制視為 +08:00
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) return null;
+
+    // 輸出標準 ISO 格式（帶 +08:00），供前端使用
+    return date.toISOString().replace('Z', '+08:00');
+  };
+  // =================================================================================
+  
   // 發佈新帖子（支援文字或媒體）- 帶有內容安全檢查
   router.post('/posts', authMiddleware(JWT_SECRET), postMediaUpload.array('media', 10), async (req, res) => {
     const { content } = req.body;
@@ -92,22 +114,22 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     );
   });
 
-  // 獲取帖子列表（時間線，按時間倒序）
+// ==================== 獲取帖子列表 ====================
   router.get('/posts', authMiddleware(JWT_SECRET), (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
 
     connection.query(
       `SELECT 
-      p.id, p.content, p.media_urls, p.media_types, p.created_at,
-      u.id as user_id, u.username, u.avatar,
-      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
-      (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count,
-      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = ?) as is_liked_by_me
-    FROM posts p
-    JOIN users u ON p.user_id = u.id
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?`,
+        p.id, p.content, p.media_urls, p.media_types, p.created_at,
+        u.id as user_id, u.username, u.avatar,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
+        (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = ?) as is_liked_by_me
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?`,
       [req.user.id, limit, offset],
       (err, results) => {
         if (err) {
@@ -115,11 +137,11 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           return res.status(500).json({ error: '獲取失敗' });
         }
 
-        // 解析 JSON 為陣列
         const formattedPosts = results.map(post => ({
           ...post,
           media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
-          media_types: post.media_types ? JSON.parse(post.media_types) : []
+          media_types: post.media_types ? JSON.parse(post.media_types) : [],
+          created_at: toHKTime(post.created_at)   // ← 修正重點
         }));
 
         res.json({ success: true, posts: formattedPosts });
@@ -197,61 +219,45 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
   });
 
 
-  // 獲取單個貼文 - 修正版
+// ==================== 獲取單個貼文 ====================
   router.get('/posts/:id', authMiddleware(JWT_SECRET), (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
-    console.log(`正在獲取貼文 ID: ${id}, 用戶 ID: ${userId}`);
-
     connection.query(
       `SELECT 
-    p.id, p.content, p.media_urls, p.media_types, p.created_at, p.safety_score, p.is_approved,
-    u.id as user_id, u.username, u.avatar,
-    COUNT(DISTINCT pl.id) as like_count,
-    IF(MAX(pl2.user_id) IS NOT NULL, 1, 0) as is_liked_by_me,
-    COUNT(DISTINCT pc.id) as comment_count
-  FROM posts p
-  JOIN users u ON p.user_id = u.id
-  LEFT JOIN post_likes pl ON p.id = pl.post_id
-  LEFT JOIN post_likes pl2 ON p.id = pl2.post_id AND pl2.user_id = ?
-  LEFT JOIN post_comments pc ON p.id = pc.post_id
-  WHERE p.id = ?
-  GROUP BY p.id, u.id`,
+        p.id, p.content, p.media_urls, p.media_types, p.created_at, p.safety_score, p.is_approved,
+        u.id as user_id, u.username, u.avatar,
+        COUNT(DISTINCT pl.id) as like_count,
+        IF(MAX(pl2.user_id) IS NOT NULL, 1, 0) as is_liked_by_me,
+        COUNT(DISTINCT pc.id) as comment_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      LEFT JOIN post_likes pl ON p.id = pl.post_id
+      LEFT JOIN post_likes pl2 ON p.id = pl2.post_id AND pl2.user_id = ?
+      LEFT JOIN post_comments pc ON p.id = pc.post_id
+      WHERE p.id = ?
+      GROUP BY p.id, u.id`,
       [userId, id],
       (err, results) => {
         if (err) {
           console.error('獲取貼文失敗:', err);
-          return res.status(500).json({
-            success: false,
-            error: '伺服器錯誤',
-            details: err.message
-          });
+          return res.status(500).json({ success: false, error: '伺服器錯誤' });
         }
         if (results.length === 0) {
-          console.log(`貼文 ID ${id} 不存在`);
-          return res.status(404).json({
-            success: false,
-            error: '貼文不存在'
-          });
+          return res.status(404).json({ success: false, error: '貼文不存在' });
         }
 
-        console.log(`成功找到貼文 ID: ${id}`);
-
-        // 解析 JSON 字段
         const post = results[0];
+
         let media_urls = [];
         let media_types = [];
 
         try {
-          if (post.media_urls) {
-            media_urls = JSON.parse(post.media_urls);
-          }
-          if (post.media_types) {
-            media_types = JSON.parse(post.media_types);
-          }
+          if (post.media_urls) media_urls = JSON.parse(post.media_urls);
+          if (post.media_types) media_types = JSON.parse(post.media_types);
         } catch (parseErr) {
-          console.warn('解析媒體 URL/類型失敗:', parseErr);
+          console.warn('解析媒體失敗:', parseErr);
         }
 
         const formattedPost = {
@@ -259,7 +265,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           content: post.content || '',
           media_urls: media_urls,
           media_types: media_types,
-          created_at: post.created_at,
+          created_at: toHKTime(post.created_at),     // ← 修正重點
           user_id: post.user_id,
           username: post.username,
           avatar: post.avatar,
@@ -270,10 +276,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           is_approved: post.is_approved || 1
         };
 
-        res.json({
-          success: true,
-          post: formattedPost
-        });
+        res.json({ success: true, post: formattedPost });
       }
     );
   });
@@ -338,7 +341,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     );
   });
 
-  // 獲取評論列表
+// ==================== 獲取評論列表 ====================
   router.get('/posts/:postId/comments', authMiddleware(JWT_SECRET), (req, res) => {
     const { postId } = req.params;
     const limit = parseInt(req.query.limit) || 20;
@@ -346,20 +349,27 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
 
     connection.query(
       `SELECT 
-      c.id, c.content, c.created_at,
-      u.id as user_id, u.username, u.avatar
-    FROM post_comments c
-    JOIN users u ON c.user_id = u.id
-    WHERE c.post_id = ?
-    ORDER BY c.created_at DESC
-    LIMIT ? OFFSET ?`,
+        c.id, c.content, c.created_at,
+        u.id as user_id, u.username, u.avatar
+      FROM post_comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.post_id = ?
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?`,
       [postId, limit, offset],
       (err, results) => {
         if (err) {
           console.error('獲取評論失敗:', err);
           return res.status(500).json({ error: '獲取失敗' });
         }
-        res.json({ success: true, comments: results });
+
+        // 評論也需要轉換時間
+        const formattedComments = results.map(comment => ({
+          ...comment,
+          created_at: toHKTime(comment.created_at)
+        }));
+
+        res.json({ success: true, comments: formattedComments });
       }
     );
   });
@@ -613,118 +623,94 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     }
   });
 
-  // 獲取朋友圈貼文（只顯示朋友的貼文，不包括自己）
+// ==================== 獲取朋友圈貼文 ====================
   router.get('/friend-posts', authMiddleware(JWT_SECRET), async (req, res) => {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 15;
     const offset = parseInt(req.query.offset) || 0;
 
     try {
-      // 步驟1: 找出所有朋友的 user ID（雙向關係，不包含自己）
       const [friendRows] = await connection.promise().query(`
-      SELECT user2_id AS friend_id
-      FROM friendships
-      WHERE user1_id = ? AND status = 'accepted'
-      UNION
-      SELECT user1_id AS friend_id
-      FROM friendships
-      WHERE user2_id = ? AND status = 'accepted'
-    `, [userId, userId]);
+        SELECT user2_id AS friend_id FROM friendships WHERE user1_id = ? AND status = 'accepted'
+        UNION
+        SELECT user1_id AS friend_id FROM friendships WHERE user2_id = ? AND status = 'accepted'
+      `, [userId, userId]);
 
       if (friendRows.length === 0) {
         return res.json({ success: true, posts: [] });
       }
 
       const friendIds = friendRows.map(row => row.friend_id);
-
-      // 步驟2: 動態生成 IN clause 的 ? 占位符
       const placeholders = friendIds.map(() => '?').join(', ');
+
       const sql = `
-      SELECT
-        p.*,
-        u.username,
-        u.avatar,
-        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked_by_me,
-        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
-        (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comment_count
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      WHERE p.user_id IN (${placeholders})
-      ORDER BY p.created_at DESC
-      LIMIT ? OFFSET ?
-    `;
+        SELECT
+          p.*, 
+          u.username, u.avatar,
+          (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked_by_me,
+          (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+          (SELECT COUNT(*) FROM post_comments c WHERE c.post_id = p.id) AS comment_count
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.user_id IN (${placeholders})
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
 
-      // 參數順序：先 is_liked_by_me 的 userId，再 friendIds，再 limit/offset
       const params = [userId, ...friendIds, limit, offset];
-
       const [posts] = await connection.promise().query(sql, params);
 
-      // 處理媒體與頭像（保持相對路徑，讓前端統一加上 baseURL）
-      posts.forEach(post => {
-        if (post.media_urls) {
-          try {
-            post.media_urls = JSON.parse(post.media_urls);
-          } catch (e) {
-            post.media_urls = [];
-          }
-        }
-        // avatar 保持相對路徑
-        if (post.avatar && post.avatar.startsWith('http')) {
-          // 如果後端不小心加了 http，可選擇這裡移除，但建議統一由前端處理
-        }
-      });
-
-      res.json({ success: true, posts });
-    } catch (err) {
-      res.status(500).json({
-        success: false,
-        error: '伺服器錯誤'
-      });
-    }
-  });
-
-  // 獲取用戶自己的帖子（時間線，按時間倒序）
-// 獲取指定用戶的帖子（支援 ?user_id=xxx，若沒傳則預設自己）
-router.get('/user-posts', authMiddleware(JWT_SECRET), (req, res) => {
-  const currentUserId = req.user.id;
-  const targetUserId = req.query.user_id ? parseInt(req.query.user_id) : currentUserId;
-  
-  // 可選：如果不是查自己，可以加額外邏輯（例如檢查隱私設定）
-  // 這裡先簡單允許所有人查看別人的公開貼文
-  // 如果未來要加隱私，可在此處判斷 targetUserId 是否為好友等
-
-  const limit  = parseInt(req.query.limit)  || 20;
-  const offset = parseInt(req.query.offset) || 0;
-
-  connection.query(
-    `SELECT 
-      p.id, p.content, p.media_urls, p.media_types, p.created_at,
-      u.id as user_id, u.username, u.avatar,
-      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
-      (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count,
-      (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = ?) as is_liked_by_me
-    FROM posts p
-    JOIN users u ON p.user_id = u.id
-    WHERE p.user_id = ?
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?`,
-    [currentUserId, targetUserId, limit, offset],   // ← 第一個 ? 是 is_liked_by_me 用 currentUserId
-    (err, results) => {
-      if (err) {
-        console.error('獲取用戶帖子失敗:', err);
-        return res.status(500).json({ error: '獲取失敗' });
-      }
-
-      const formattedPosts = results.map(post => ({
+      const formattedPosts = posts.map(post => ({
         ...post,
-        media_urls:  post.media_urls  ? JSON.parse(post.media_urls)  : [],
-        media_types: post.media_types ? JSON.parse(post.media_types) : []
+        media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
+        media_types: post.media_types ? JSON.parse(post.media_types) : [],
+        created_at: toHKTime(post.created_at)     // ← 修正重點
       }));
 
       res.json({ success: true, posts: formattedPosts });
+    } catch (err) {
+      console.error('獲取朋友圈失敗:', err);
+      res.status(500).json({ success: false, error: '伺服器錯誤' });
     }
-  );
-});
+  });
+
+// ==================== 獲取用戶貼文 ====================
+  router.get('/user-posts', authMiddleware(JWT_SECRET), (req, res) => {
+    const currentUserId = req.user.id;
+    const targetUserId = req.query.user_id ? parseInt(req.query.user_id) : currentUserId;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+
+    connection.query(
+      `SELECT 
+        p.id, p.content, p.media_urls, p.media_types, p.created_at,
+        u.id as user_id, u.username, u.avatar,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
+        (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count,
+        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = ?) as is_liked_by_me
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?`,
+      [currentUserId, targetUserId, limit, offset],
+      (err, results) => {
+        if (err) {
+          console.error('獲取用戶帖子失敗:', err);
+          return res.status(500).json({ error: '獲取失敗' });
+        }
+
+        const formattedPosts = results.map(post => ({
+          ...post,
+          media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
+          media_types: post.media_types ? JSON.parse(post.media_types) : [],
+          created_at: toHKTime(post.created_at)     // ← 修正重點
+        }));
+
+        res.json({ success: true, posts: formattedPosts });
+      }
+    );
+  });
 
   return router;
 };
