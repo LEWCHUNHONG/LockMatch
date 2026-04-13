@@ -9,27 +9,34 @@ const textAnalytics = require('../services/textAnalyticsService');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload) => {
 
 
-  // ==================== 正確的香港時間 Helper（Docker TZ=HK 專用） ====================
+// ==================== 香港時間 Helper（最終穩定版） ====================
   const toHKTime = (dateValue) => {
     if (!dateValue) return null;
 
-    let date;
+    try {
+      let date;
 
-    // 如果是字串（如 "2026-04-12 22:00:00"），直接當成香港時間解析
-    if (typeof dateValue === 'string') {
-      // 把空格換成 T，讓 new Date 正確解析
-      const isoString = dateValue.replace(' ', 'T');
-      date = new Date(isoString + '+08:00');   // 強制視為 +08:00
-    } else {
-      date = new Date(dateValue);
+      if (typeof dateValue === 'string') {
+        // 直接強制視為香港時間（最可靠）
+        const cleanStr = dateValue.replace(' ', 'T');
+        date = new Date(cleanStr + '+08:00');
+      } else {
+        date = new Date(dateValue);
+      }
+
+      if (isNaN(date.getTime())) return null;
+
+      // 返回簡單的香港時間字串（Expo Go 更友好）
+      return date.toLocaleString('sv-SE', { 
+        timeZone: 'Asia/Hong_Kong' 
+      }).replace(' ', 'T') + '+08:00';
+
+    } catch (e) {
+      console.error('toHKTime 錯誤:', e);
+      return null;
     }
-
-    if (isNaN(date.getTime())) return null;
-
-    // 輸出標準 ISO 格式（帶 +08:00），供前端使用
-    return date.toISOString().replace('Z', '+08:00');
   };
-  // =================================================================================
+  // =================================================================
   
   // 發佈新帖子（支援文字或媒體）- 帶有內容安全檢查
   router.post('/posts', authMiddleware(JWT_SECRET), postMediaUpload.array('media', 10), async (req, res) => {
