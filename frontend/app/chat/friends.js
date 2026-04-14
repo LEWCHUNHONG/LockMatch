@@ -95,47 +95,55 @@ export default function FriendsList() {
       setLoading(true);
       const response = await chatAPI.getFriends();
       if (response.data.success) {
-        const formattedFriends = response.data.friends.map(friend => {
-          // 調試日誌
-          console.log('好友原始數據:', friend);
-          console.log('好友頭像路徑:', friend.avatar);
+const formattedFriends = response.data.friends.map(friend => {
+  // 調試日誌
+  console.log('好友原始數據:', friend);
+  console.log('好友頭像路徑:', friend.avatar);
 
-          // 修復頭像URL
-          let fixedAvatar = friend.avatar;
+  // === 修正時區：強制視為香港時間 ===
+  let lastActiveDate;
+  if (friend.last_active) {
+    if (typeof friend.last_active === 'string' && 
+        !friend.last_active.includes('Z') && 
+        !friend.last_active.includes('+') && 
+        !friend.last_active.includes('T')) {
+      lastActiveDate = new Date(friend.last_active + '+08:00');
+    } else {
+      lastActiveDate = new Date(friend.last_active);
+    }
+  }
 
-          // 如果後端沒有正確構建完整URL，我們在前端處理
-          if (friend.avatar) {
-            // 如果已經是完整URL，直接使用
-            if (friend.avatar.startsWith('http')) {
-              fixedAvatar = friend.avatar;
-            }
-            // 如果是相對路徑，添加基礎URL
-            else if (friend.avatar.startsWith('/')) {
-              fixedAvatar = `${BASE_URL}${friend.avatar}`;
-            }
-            // 如果是沒有斜杠的相對路徑，加上斜杠
-            else if (friend.avatar.includes('uploads/')) {
-              fixedAvatar = `${BASE_URL}/${friend.avatar}`;
-            }
-          }
+  console.log(`好友 ${friend.username} 的 last_active:`, friend.last_active, 
+              '→ 解析後:', lastActiveDate ? lastActiveDate.toISOString() : null);
 
-          // 添加時間戳防止緩存
-          if (fixedAvatar) {
-            fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
-          }
+  // 修復頭像URL
+  let fixedAvatar = friend.avatar;
+  if (friend.avatar) {
+    if (friend.avatar.startsWith('http')) {
+      fixedAvatar = friend.avatar;
+    } else if (friend.avatar.startsWith('/')) {
+      fixedAvatar = `${BASE_URL}${friend.avatar}`;
+    } else if (friend.avatar.includes('uploads/')) {
+      fixedAvatar = `${BASE_URL}/${friend.avatar}`;
+    }
+  }
 
-          return {
-            id: friend.id.toString(),
-            name: friend.name || friend.username,
-            username: friend.username,
-            mbti: friend.mbti || '待測',
-            isOnline: friend.is_online || false,
-            avatar: fixedAvatar,
-            status: friend.status || '最近活躍',
-            lastActive: formatLastActive(friend.last_active),
-            isFriend: true,
-          };
-        });
+  if (fixedAvatar) {
+    fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
+  }
+
+  return {
+    id: friend.id.toString(),
+    name: friend.name || friend.username,
+    username: friend.username,
+    mbti: friend.mbti || '待測',
+    isOnline: friend.is_online || false,
+    avatar: fixedAvatar,
+    status: friend.status || '最近活躍',
+    lastActive: formatLastActive(friend.last_active),   // ← 使用修正後的函數
+    isFriend: true,
+  };
+});
 
         console.log('格式化後的好友數據:', formattedFriends);
         setFriends(formattedFriends);
@@ -210,39 +218,57 @@ export default function FriendsList() {
     }
   };
 
-  const formatLastActive = (timestamp) => {
-    if (!timestamp) return '很久以前';
+// 修正版：明確處理 UTC 時間（帶 Z）
+const formatLastActive = (timestamp) => {
+  if (!timestamp) return '很久以前';
 
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  // 直接 new Date() 即可，因為後端已經回傳帶 Z 的 ISO 字串
+  const date = new Date(timestamp);
+  
+  // 防呆：如果日期無效
+  if (isNaN(date.getTime())) {
+    console.warn('無效的 last_active 時間:', timestamp);
+    return '很久以前';
+  }
 
-    if (diffMins < 1) return '剛剛';
-    if (diffMins < 60) return `${diffMins}分鐘前`;
-    if (diffHours < 24) return `${diffHours}小時前`;
-    if (diffDays === 1) return '昨天';
-    if (diffDays < 7) return `${diffDays}天前`;
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
 
-    return `${diffDays}天前`;
-  };
+  if (diffMins < 1) return '剛剛';
+  if (diffMins < 60) return `${diffMins}分鐘前`;
+  if (diffHours < 24) return `${diffHours}小時前`;
+  if (diffDays === 1) return '昨天';
+  if (diffDays < 7) return `${diffDays}天前`;
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
+  return `${diffDays}天前`;
+};
 
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / 86400000);
+const formatTime = (timestamp) => {
+  if (!timestamp) return '';
 
-    if (diffDays === 0) return '今天';
-    if (diffDays === 1) return '昨天';
-    if (diffDays < 7) return `${diffDays}天前`;
+  const date = new Date(timestamp);
+  
+  if (isNaN(date.getTime())) {
+    console.warn('無效的 created_at 時間:', timestamp);
+    return '';
+  }
 
-    return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' });
-  };
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffDays === 0) return '今天';
+  if (diffDays === 1) return '昨天';
+  if (diffDays < 7) return `${diffDays}天前`;
+
+  return date.toLocaleDateString('zh-TW', { 
+    month: 'short', 
+    day: 'numeric' 
+  });
+};
 
   const handleAcceptRequest = async (requestId) => {
     try {

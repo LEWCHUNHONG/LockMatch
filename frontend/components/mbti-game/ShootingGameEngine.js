@@ -19,9 +19,9 @@ const PLAYER_SIZE = 40;
 const BULLET_SIZE = 8;
 const MONSTER_SIZE = 40;
 const EXIT_SIZE = 50;
-const PLAYER_SPEED = 5;
-const BULLET_SPEED = 8;
-const MONSTER_SPEED = 1.5;
+const PLAYER_SPEED = 3.8;
+const BULLET_SPEED = 6.8;
+const MONSTER_SPEED = 1.15;
 
 const MAP_WIDTH = 900;
 const MAP_HEIGHT = 550;
@@ -318,178 +318,214 @@ export default function ShootingGameEngine({
     onBack();
   }, [returnUnusedQuestions, onBack]);
 
-  // 主遊戲迴圈
-  useEffect(() => {
-    if (gamePaused || isGameOver || !gameStarted || isLoadingFloor) return;
-    let frameId;
-    const gameLoop = () => {
-      const p = playerRef.current;
-      const dir = joystickDirRef.current;
-      const currentMonsters = monstersRef.current;
-      const currentBullets = bulletsRef.current;
-      const currentObstacles = obstaclesRef.current;
-      const currentItems = itemsRef.current;
-      const currentExit = exitRef.current;
+// ====================== 主遊戲迴圈（已修正速度不一致問題） ======================
+useEffect(() => {
+  if (gamePaused || isGameOver || !gameStarted || isLoadingFloor) return;
 
-      // 移動
-      let dx = dir.x * p.moveSpeed;
-      let dy = dir.y * p.moveSpeed;
-      let newX = p.x + dx;
-      let newY = p.y + dy;
-      newX = Math.max(PLAYER_SIZE / 2, Math.min(MAP_WIDTH - PLAYER_SIZE / 2, newX));
-      newY = Math.max(PLAYER_SIZE / 2, Math.min(MAP_HEIGHT - PLAYER_SIZE / 2, newY));
+  let lastTime = performance.now();
+  let frameId;
 
-      const playerBoundsAfterMove = getBounds({ x: newX, y: newY }, 'player');
-      let collide = false;
+  const gameLoop = (currentTime) => {
+    const deltaTime = Math.min((currentTime - lastTime) / 16.67, 3); // 限制最大 delta，防止卡頓時飛太遠
+    lastTime = currentTime;
+
+    const p = playerRef.current;
+    const dir = joystickDirRef.current;
+    const currentMonsters = monstersRef.current;
+    const currentBullets = bulletsRef.current;
+    const currentObstacles = obstaclesRef.current;
+    const currentItems = itemsRef.current;
+    const currentExit = exitRef.current;
+
+    // ====================== 玩家移動（已修正） ======================
+    let dx = dir.x * p.moveSpeed * deltaTime;
+    let dy = dir.y * p.moveSpeed * deltaTime;
+
+    let newX = p.x + dx;
+    let newY = p.y + dy;
+
+    newX = Math.max(PLAYER_SIZE / 2, Math.min(MAP_WIDTH - PLAYER_SIZE / 2, newX));
+    newY = Math.max(PLAYER_SIZE / 2, Math.min(MAP_HEIGHT - PLAYER_SIZE / 2, newY));
+
+    const playerBoundsAfterMove = getBounds({ x: newX, y: newY }, 'player');
+    let collide = false;
+    for (let obs of currentObstacles) {
+      const obsBounds = getBounds(obs, 'obstacle');
+      if (obsBounds && rectCollide(playerBoundsAfterMove, obsBounds)) {
+        collide = true;
+        break;
+      }
+    }
+    const moved = !collide;
+    if (moved) {
+      p.x = newX;
+      p.y = newY;
+    }
+
+    // ====================== 子彈更新（已修正） ======================
+    const updatedBullets = currentBullets.map(b => {
+      const moveDistance = BULLET_SPEED * deltaTime;
+      const newX = b.x + b.dir.x * moveDistance;
+      const newY = b.y + b.dir.y * moveDistance;
+      return {
+        ...b,
+        x: newX,
+        y: newY,
+        distanceTraveled: b.distanceTraveled + moveDistance,
+      };
+    }).filter(b => 
+      b.distanceTraveled < b.range && 
+      b.x > 0 && b.x < MAP_WIDTH && 
+      b.y > 0 && b.y < MAP_HEIGHT
+    );
+
+    const bulletsAfterObstacles = [];
+    for (let bullet of updatedBullets) {
+      let hit = false;
+      const bulletBounds = { 
+        x: bullet.x - BULLET_SIZE / 2, 
+        y: bullet.y - BULLET_SIZE / 2, 
+        w: BULLET_SIZE, 
+        h: BULLET_SIZE 
+      };
       for (let obs of currentObstacles) {
         const obsBounds = getBounds(obs, 'obstacle');
-        if (obsBounds && rectCollide(playerBoundsAfterMove, obsBounds)) {
-          collide = true;
+        if (obsBounds && rectCollide(bulletBounds, obsBounds)) {
+          hit = true;
           break;
         }
       }
-      const moved = !collide;
-      if (moved) {
-        p.x = newX;
-        p.y = newY;
+      if (!hit) bulletsAfterObstacles.push(bullet);
+    }
+
+    // ====================== 怪物處理 ======================
+    const newMonsters = currentMonsters.map(m => ({ ...m }));
+    const killedMonsters = [];
+    const remainingBullets = [];
+
+    bulletsAfterObstacles.forEach(bullet => {
+      let bulletUsed = false;
+      const bulletBounds = { 
+        x: bullet.x - BULLET_SIZE / 2, 
+        y: bullet.y - BULLET_SIZE / 2, 
+        w: BULLET_SIZE, 
+        h: BULLET_SIZE 
+      };
+
+      for (let i = 0; i < newMonsters.length; i++) {
+        const m = newMonsters[i];
+        const monsterBounds = getBounds(m, 'monster');
+        if (!bulletUsed && monsterBounds && rectCollide(bulletBounds, monsterBounds)) {
+          m.hp -= bullet.damage;
+          if (m.hp <= 0) {
+            killedMonsters.push(m);
+            newMonsters.splice(i, 1);
+            i--;
+          }
+          bulletUsed = true;
+        }
       }
+      if (!bulletUsed) remainingBullets.push(bullet);
+    });
 
-      // 子彈更新
-      const updatedBullets = currentBullets.map(b => {
-        const newX = b.x + b.dir.x * BULLET_SPEED;
-        const newY = b.y + b.dir.y * BULLET_SPEED;
-        return { ...b, x: newX, y: newY, distanceTraveled: b.distanceTraveled + BULLET_SPEED };
-      }).filter(b => b.distanceTraveled < b.range && b.x > 0 && b.x < MAP_WIDTH && b.y > 0 && b.y < MAP_HEIGHT);
+    if (killedMonsters.length > 0) {
+      const totalExp = killedMonsters.reduce((sum, m) => sum + (m.expReward || 10), 0);
+      p.exp += totalExp;
+      checkLevelUp();
+    }
 
-      const bulletsAfterObstacles = [];
-      for (let bullet of updatedBullets) {
-        let hit = false;
-        const bulletBounds = { x: bullet.x - BULLET_SIZE / 2, y: bullet.y - BULLET_SIZE / 2, w: BULLET_SIZE, h: BULLET_SIZE };
+    // ====================== 怪物移動（已修正） ======================
+    newMonsters.forEach(m => {
+      const dx = p.x - m.x;
+      const dy = p.y - m.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1) {
+        const speed = (m.speed || MONSTER_SPEED) * deltaTime;   // ← 關鍵修正
+        let moveX = (dx / dist) * speed;
+        let moveY = (dy / dist) * speed;
+
+        let newX = m.x + moveX;
+        let newY = m.y + moveY;
+
+        newX = Math.max(MONSTER_SIZE / 2, Math.min(MAP_WIDTH - MONSTER_SIZE / 2, newX));
+        newY = Math.max(MONSTER_SIZE / 2, Math.min(MAP_HEIGHT - MONSTER_SIZE / 2, newY));
+
+        let collides = false;
+        const monsterBounds = getBounds({ x: newX, y: newY }, 'monster');
         for (let obs of currentObstacles) {
           const obsBounds = getBounds(obs, 'obstacle');
-          if (obsBounds && rectCollide(bulletBounds, obsBounds)) {
-            hit = true;
+          if (obsBounds && rectCollide(monsterBounds, obsBounds)) {
+            collides = true;
             break;
           }
         }
-        if (!hit) bulletsAfterObstacles.push(bullet);
-      }
-
-      // 怪物處理
-      const newMonsters = currentMonsters.map(m => ({ ...m }));
-      const killedMonsters = [];
-      const remainingBullets = [];
-
-      bulletsAfterObstacles.forEach(bullet => {
-        let bulletUsed = false;
-        const bulletBounds = { x: bullet.x - BULLET_SIZE / 2, y: bullet.y - BULLET_SIZE / 2, w: BULLET_SIZE, h: BULLET_SIZE };
-        for (let i = 0; i < newMonsters.length; i++) {
-          const m = newMonsters[i];
-          const monsterBounds = getBounds(m, 'monster');
-          if (!bulletUsed && monsterBounds && rectCollide(bulletBounds, monsterBounds)) {
-            m.hp -= bullet.damage;
-            if (m.hp <= 0) {
-              killedMonsters.push(m);
-              newMonsters.splice(i, 1);
-              i--;
-            }
-            bulletUsed = true;
-          }
-        }
-        if (!bulletUsed) remainingBullets.push(bullet);
-      });
-
-      if (killedMonsters.length > 0) {
-        const totalExp = killedMonsters.reduce((sum, m) => sum + (m.expReward || 10), 0);
-        p.exp += totalExp;
-        checkLevelUp();
-      }
-
-      // 怪物移動
-      newMonsters.forEach(m => {
-        const dx = p.x - m.x;
-        const dy = p.y - m.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist > 1) {
-          const speed = m.speed || MONSTER_SPEED;
-          let moveX = (dx / dist) * speed;
-          let moveY = (dy / dist) * speed;
-          let newX = m.x + moveX;
-          let newY = m.y + moveY;
-          newX = Math.max(MONSTER_SIZE / 2, Math.min(MAP_WIDTH - MONSTER_SIZE / 2, newX));
-          newY = Math.max(MONSTER_SIZE / 2, Math.min(MAP_HEIGHT - MONSTER_SIZE / 2, newY));
-
-          let collides = false;
-          const monsterBounds = getBounds({ x: newX, y: newY }, 'monster');
-          for (let obs of currentObstacles) {
-            const obsBounds = getBounds(obs, 'obstacle');
-            if (obsBounds && rectCollide(monsterBounds, obsBounds)) {
-              collides = true;
-              break;
-            }
-          }
-          if (!collides) {
-            m.x = newX;
-            m.y = newY;
-          }
-        }
-      });
-
-      const currentPlayerBounds = getBounds(p, 'player');
-      newMonsters.forEach(m => {
-        const monsterBounds = getBounds(m, 'monster');
-        if (monsterBounds && rectCollide(currentPlayerBounds, monsterBounds)) {
-          p.hp -= (m.attack || 5);
-        }
-      });
-
-      // 道具處理
-      const newItems = currentItems.map(i => ({ ...i }));
-      for (let i = newItems.length - 1; i >= 0; i--) {
-        const item = newItems[i];
-        const itemBounds = getBounds(item, 'item');
-        if (itemBounds && rectCollide(currentPlayerBounds, itemBounds)) {
-          if (item.effect?.exp) {
-            p.exp += item.effect.exp;
-            checkLevelUp();
-          }
-          newItems.splice(i, 1);
+        if (!collides) {
+          m.x = newX;
+          m.y = newY;
         }
       }
+    });
 
-      // 死亡處理 - 使用 Modal
-      if (p.hp <= 0) {
-        returnUnusedQuestions();
-        setIsGameOver(true);
-        showAlert('遊戲結束', '你死了...', [
-          { text: '返回', onPress: onBack }
-        ]);
-        return;
+    // ====================== 玩家與怪物碰撞 ======================
+    const currentPlayerBounds = getBounds(p, 'player');
+    newMonsters.forEach(m => {
+      const monsterBounds = getBounds(m, 'monster');
+      if (monsterBounds && rectCollide(currentPlayerBounds, monsterBounds)) {
+        p.hp -= (m.attack || 5);
       }
+    });
 
-      if (newMonsters.length === 0 && newItems.length === 0 && !isFloorCleared) {
-        setIsFloorCleared(true);
-      }
-
-      if (currentExit && newMonsters.length === 0 && newItems.length === 0 && !isTransitioning.current) {
-        const exitBounds = getBounds(currentExit, 'exit');
-        if (exitBounds && rectCollide(currentPlayerBounds, exitBounds)) {
-          goToNextFloor();
+    // ====================== 道具處理 ======================
+    const newItems = currentItems.map(i => ({ ...i }));
+    for (let i = newItems.length - 1; i >= 0; i--) {
+      const item = newItems[i];
+      const itemBounds = getBounds(item, 'item');
+      if (itemBounds && rectCollide(currentPlayerBounds, itemBounds)) {
+        if (item.effect?.exp) {
+          p.exp += item.effect.exp;
+          checkLevelUp();
         }
+        newItems.splice(i, 1);
       }
+    }
 
-      if (moved || p.exp !== playerRef.current.exp || p.hp !== playerRef.current.hp || p.level !== playerRef.current.level) {
-        setPlayer({ ...p });
+    // ====================== 死亡處理 ======================
+    if (p.hp <= 0) {
+      returnUnusedQuestions();
+      setIsGameOver(true);
+      showAlert('遊戲結束', '你死了...', [
+        { text: '返回', onPress: onBack }
+      ]);
+      return;
+    }
+
+    // ====================== 樓層清除與出口 ======================
+    if (newMonsters.length === 0 && newItems.length === 0 && !isFloorCleared) {
+      setIsFloorCleared(true);
+    }
+
+    if (currentExit && newMonsters.length === 0 && newItems.length === 0 && !isTransitioning.current) {
+      const exitBounds = getBounds(currentExit, 'exit');
+      if (exitBounds && rectCollide(currentPlayerBounds, exitBounds)) {
+        goToNextFloor();
       }
-      if (JSON.stringify(newMonsters) !== JSON.stringify(currentMonsters)) setMonsters(newMonsters);
-      if (JSON.stringify(remainingBullets) !== JSON.stringify(currentBullets)) setBullets(remainingBullets);
-      if (JSON.stringify(newItems) !== JSON.stringify(currentItems)) setItems(newItems);
+    }
 
-      frameId = requestAnimationFrame(gameLoop);
-    };
+    // ====================== 更新 React 狀態 ======================
+    if (moved || p.exp !== playerRef.current.exp || p.hp !== playerRef.current.hp || p.level !== playerRef.current.level) {
+      setPlayer({ ...p });
+    }
+    if (JSON.stringify(newMonsters) !== JSON.stringify(currentMonsters)) setMonsters(newMonsters);
+    if (JSON.stringify(remainingBullets) !== JSON.stringify(currentBullets)) setBullets(remainingBullets);
+    if (JSON.stringify(newItems) !== JSON.stringify(currentItems)) setItems(newItems);
+
     frameId = requestAnimationFrame(gameLoop);
-    return () => cancelAnimationFrame(frameId);
-  }, [gamePaused, isGameOver, gameStarted, isLoadingFloor, checkLevelUp, goToNextFloor, onBack, returnUnusedQuestions, showAlert]);
+  };
+
+  frameId = requestAnimationFrame(gameLoop);
+
+  return () => cancelAnimationFrame(frameId);
+}, [gamePaused, isGameOver, gameStarted, isLoadingFloor, checkLevelUp, goToNextFloor, onBack, returnUnusedQuestions, showAlert]);
 
   const handleStartBattle = () => {
     upgradeCountRef.current = 0;

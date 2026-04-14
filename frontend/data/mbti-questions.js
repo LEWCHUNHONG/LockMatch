@@ -27,7 +27,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "思考派對背後的社交意義，想像不同人的故事",
         mbti: { I: 1, N: 2 },
-        icon: "thought-bubble",
+        icon: "thought-bubble-outline", // 修正
         color: "#06D6A0"
       }
     ]
@@ -53,7 +53,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "研究最有效率的路線和最佳性價比方案",
         mbti: { T: 2, J: 1 },
-        icon: "chart-timeline",
+        icon: "chart-timeline-variant", // 修正
         color: "#073B4C"
       },
       {
@@ -73,13 +73,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "分析現有數據，找出最可靠的解決方案",
         mbti: { S: 2, T: 1 },
-        icon: "chart-box",
+        icon: "chart-box-outline", // 修正
         color: "#118AB2"
       },
       {
         text: "跳出框架，提出從未有人想過的全新點子",
         mbti: { N: 2, P: 1 },
-        icon: "lightbulb-on",
+        icon: "lightbulb-on-outline", // 修正
         color: "#FFD166"
       },
       {
@@ -181,13 +181,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "確保每個人都安全，照顧他人情緒",
         mbti: { F: 2, E: 1 },
-        icon: "shield-heart",
+        icon: "shield-outline",
         color: "#FF6B6B"
       },
       {
         text: "觀察細節，尋找最可靠的解決方案",
         mbti: { S: 2, I: 1 },
-        icon: "magnify-scan",
+        icon: "magnify-expand", // 修正
         color: "#4ECDC4"
       }
     ]
@@ -207,13 +207,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "先傾聽，再提出深思熟慮的完整方案",
         mbti: { I: 2, J: 1 },
-        icon: "head-lightbulb",
+        icon: "lightbulb-variant-outline", // 修正
         color: "#06D6A0"
       },
       {
         text: "用具體案例說明想法的可行性",
         mbti: { S: 2, T: 1 },
-        icon: "chart-bell-curve",
+        icon: "chart-bell-curve-cumulative", // 修正
         color: "#118AB2"
       },
       {
@@ -271,7 +271,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "跟隨直覺，選擇感覺最對的那一個",
         mbti: { N: 2, F: 1 },
-        icon: "heart-flash",
+        icon: "heart-pulse", // 修正
         color: "#EF476F"
       },
       {
@@ -309,7 +309,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "親自示範，帶領團隊一起衝刺",
         mbti: { E: 2, S: 1 },
-        icon: "run-fast",
+        icon: "run", // 修正
         color: "#FF6B6B"
       },
       {
@@ -322,7 +322,6 @@ export const MBTI_GAME_SCENES = [
   }
 ];
 
-// 從PDF題目中提取的傳統MBTI問題（可隨機選擇使用）
 export const MBTI_TRADITIONAL_QUESTIONS = [
   {
     id: 101,
@@ -355,7 +354,7 @@ export const MBTI_TRADITIONAL_QUESTIONS = [
       {
         text: "涉及理論的課程",
         mbti: { N: 1 },
-        icon: "thought-bubble-outline",
+        icon: "thought-bubble-outline", // 修正
         color: "#9B59B6"
       }
     ]
@@ -506,7 +505,6 @@ export const MBTI_TRADITIONAL_QUESTIONS = [
   }
 ];
 
-// MBTI類型描述
 export const MBTI_DESCRIPTIONS = {
   ISTJ: {
     name: "檢查員型",
@@ -622,7 +620,6 @@ export const MBTI_DESCRIPTIONS = {
   }
 };
 
-// 從PDF中提取的完整MBTI題庫（簡化版）
 export const MBTI_FULL_QUESTIONS = [
   {
     id: 201,
@@ -661,7 +658,7 @@ export const MBTI_FULL_QUESTIONS = [
     question: "聚焦於實際經驗 vs 聚焦於理想的可能性",
     options: [
       { text: "聚焦於實際經驗", mbti: { S: 1 }, icon: "chart-line", color: "#27AE60" },
-      { text: "聚焦於理想的可能性", mbti: { N: 1 }, icon: "chart-timeline", color: "#9B59B6" }
+      { text: "聚焦於理想的可能性", mbti: { N: 1 }, icon: "chart-timeline-variant", color: "#9B59B6" } // 修正
     ]
   },
   {
@@ -698,7 +695,6 @@ export const MBTI_FULL_QUESTIONS = [
   }
 ];
 
-// 遊戲模式配置
 export const GAME_MODES = {
   SCENARIO: {
     name: "情境遊戲模式",
@@ -720,32 +716,29 @@ export const GAME_MODES = {
   }
 };
 
-// 工具函數：隨機選擇題目
 export const getRandomQuestions = (mode = 'SCENARIO', count = null) => {
   const modeConfig = GAME_MODES[mode] || GAME_MODES.SCENARIO;
   const questions = modeConfig.questions;
   const questionCount = count || modeConfig.questionCount;
   
-  // 隨機打亂並選擇指定數量的題目
   const shuffled = [...questions].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(questionCount, shuffled.length));
 };
 
-// 工具函數：計算MBTI結果
 export const calculateMbtiResult = (scores) => {
-  const ei = scores.E >= scores.I ? 'E' : 'I';
-  const sn = scores.S >= scores.N ? 'S' : 'N';
-  const tf = scores.T >= scores.F ? 'T' : 'F';
-  const jp = scores.J >= scores.P ? 'J' : 'P';
+  const ei = (scores.E || 0) >= (scores.I || 0) ? 'E' : 'I';
+  const sn = (scores.S || 0) >= (scores.N || 0) ? 'S' : 'N';
+  const tf = (scores.T || 0) >= (scores.F || 0) ? 'T' : 'F';
+  const jp = (scores.J || 0) >= (scores.P || 0) ? 'J' : 'P';
   
+  const type = ei + sn + tf + jp;
   return {
-    type: ei + sn + tf + jp,
+    type: type,
     scores: scores,
-    description: MBTI_DESCRIPTIONS[ei + sn + tf + jp] || MBTI_DESCRIPTIONS.ISTJ
+    description: MBTI_DESCRIPTIONS[type] || MBTI_DESCRIPTIONS.ISTJ
   };
 };
 
-// 在檔案最下方加入
 export const getAllQuestions = () => {
   return [
     ...MBTI_GAME_SCENES,

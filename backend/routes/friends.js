@@ -5,7 +5,8 @@ const router = express.Router();
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, io) => {
 
   // 獲取我的好友列表
-  router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
+// 獲取我的好友列表 - 已修正時區問題
+router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
   connection.query(
     `SELECT 
       u.id,
@@ -13,7 +14,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
       u.avatar,
       u.mbti,
       u.status,
-      u.last_active,
+      CONVERT_TZ(u.last_active, @@session.time_zone, '+00:00') as last_active,   -- 強制轉成 UTC + Z
       (TIMESTAMPDIFF(MINUTE, u.last_active, NOW()) < 5) as is_online
     FROM users u
     JOIN friendships f ON (f.user1_id = u.id OR f.user2_id = u.id)
@@ -31,8 +32,12 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
       // 處理頭像URL
       const formattedResults = results.map(friend => ({
         ...friend,
-        avatar: buildAvatarUrl(friend.avatar)
+        avatar: buildAvatarUrl(friend.avatar),
+        // 確保 last_active 是帶 Z 的 ISO 格式
+        last_active: friend.last_active ? new Date(friend.last_active).toISOString() : null
       }));
+      
+      console.log('後端回傳的好友列表（含 last_active）:', formattedResults);
       
       res.json({ success: true, friends: formattedResults });
     }
