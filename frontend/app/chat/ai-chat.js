@@ -64,17 +64,14 @@ export default function AiChat() {
         };
 
         setMessages(prev => [...prev, userMessage]);
+        const sentContent = inputText.trim();
         setInputText('');
         setLoading(true);
 
         try {
-            console.log('📤 發送訊息:', userMessage.content);
-
             const response = await api.post('/api/ai-chat/message', {
-                message: userMessage.content
+                message: sentContent
             });
-
-            console.log('📥 完整回應:', response.data);
 
             if (response.data.success) {
                 const aiMessage = {
@@ -86,11 +83,29 @@ export default function AiChat() {
                 setMessages(prev => [...prev, aiMessage]);
             }
         } catch (error) {
-            console.error('❌ 發送失敗:', error);
-            Alert.alert('錯誤', '發送失敗，請稍後再試');
+            const statusCode = error.response?.status;
+
+            // ✅ 針對 400 錯誤：唔打印 console.error，只彈 Alert
+            if (statusCode === 400) {
+                const errorMsg = error.response?.data?.error || '您的訊息含有不當內容，請重新輸入';
+                Alert.alert(
+                    '訊息被拒絕',
+                    errorMsg,
+                    [{ text: '重新輸入', onPress: () => setInputText(sentContent) }]
+                );
+                // 移除剛才暫存的用戶訊息（因為發送失敗）
+                setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+            } else {
+                // 其他錯誤（例如 500、503、網絡問題）才打印 log
+                console.error('❌ 發送失敗:', error);
+                let errorMessage = '發送失敗，請稍後再試';
+                if (statusCode === 500) errorMessage = '伺服器錯誤，請稍後再試';
+                else if (statusCode === 503) errorMessage = 'AI 服務暫時不可用，請稍後再試';
+                Alert.alert('錯誤', errorMessage, [{ text: '確定' }]);
+                setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
+            }
         } finally {
             setLoading(false);
-            setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
         }
     };
 
@@ -208,6 +223,7 @@ export default function AiChat() {
     );
 }
 
+// Styles 保持不變（同你原本一樣）
 const styles = StyleSheet.create({
     gradient: { flex: 1 },
     container: { flex: 1 },
