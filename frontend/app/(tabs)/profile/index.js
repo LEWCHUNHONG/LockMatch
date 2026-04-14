@@ -423,9 +423,8 @@ const handleUpdateStatus = async (newStatus) => {
 
         {/* 頂部導航 */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.replace('/dashboard')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color="#5c4033" />
-          </TouchableOpacity>
+          
+          <View style={styles.headerLeft} />
           
           <View style={styles.headerTitleContainer}>
             <TouchableOpacity onPress={scrollToTop} activeOpacity={0.6}>
@@ -808,7 +807,11 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
 
-  backButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(244, 199, 171, 0.25)' },
+  headerLeft: {
+  width: 40,
+  padding: 14,           // 讓左右空間對稱
+},
+
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#5c4033' },
   headerRight: { minWidth: 60 },
 

@@ -158,27 +158,25 @@ const onRefresh = () => {
     >
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => router.replace('/dashboard')} 
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={28} color="#5c4033" />
-          </TouchableOpacity>
+{/* Header */}
+<View style={styles.header}>
 
-          <Text style={styles.headerTitle}>討論區</Text>
+  <View style={styles.headerLeft} />
 
-          <View style={styles.headerRight}>
-<TouchableOpacity style={styles.iconButton}
-onPress={() => router.push('/discuss/moments')}
->
-    <Image
-      source={require('../../../assets/icons/group.png')}
-      style={styles.iconImage}
-    />
-  </TouchableOpacity>
-          </View>
-        </View>
+  <Text style={styles.headerTitle}>討論區</Text>
+
+  <View style={styles.headerRight}>
+    <TouchableOpacity 
+      style={styles.iconButton}
+      onPress={() => router.push('/discuss/moments')}
+    >
+      <Image
+        source={require('../../../assets/icons/group.png')}
+        style={styles.iconImage}
+      />
+    </TouchableOpacity>
+  </View>
+</View>
 
         {/* 搜尋欄 */}
         <View style={styles.searchContainer}>
@@ -296,14 +294,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 199, 171, 0.3)',
   },
-  backButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(244, 199, 171, 0.25)',
-  },
+headerLeft: {
+  width: 40,           // 讓左右空間對稱
+},
   headerTitle: {
     fontSize: 24,
     fontWeight: '800',
+    flex: 1,
+    textAlign: 'center',
     color: '#5c4033',
   },
   headerRight: {

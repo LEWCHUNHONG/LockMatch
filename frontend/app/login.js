@@ -196,25 +196,34 @@ export default function LoginScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+<Modal
+  animationType="fade"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => setModalVisible(false)}
+>
+  <TouchableOpacity
+    style={modalStyles.overlay}
+    activeOpacity={1}
+    onPress={() => setModalVisible(false)}   // ← 點擊空白處關閉
+  >
+    <TouchableOpacity
+      style={modalStyles.container}
+      activeOpacity={1}
+      onPress={(e) => e.stopPropagation()}   // ← 防止點擊內容時關閉
+    >
+      <Text style={modalStyles.title}>{modalTitle}</Text>
+      <Text style={modalStyles.message}>{modalMessage}</Text>
+      
+      <TouchableOpacity
+        style={modalStyles.button}
+        onPress={() => setModalVisible(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.container}>
-            <Text style={modalStyles.title}>{modalTitle}</Text>
-            <Text style={modalStyles.message}>{modalMessage}</Text>
-            <TouchableOpacity
-              style={modalStyles.button}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={modalStyles.buttonText}>確定</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <Text style={modalStyles.buttonText}>確定</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  </TouchableOpacity>
+</Modal>
     </>
   );
 }
