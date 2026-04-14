@@ -6,13 +6,13 @@ const modelName = process.env.AZURE_OPENAI_DEPLOYMENT;
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
 const apiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-// 構造完整嘅 baseURL，同 curl 一模一樣
+
 const baseURL = `${endpoint}/openai/deployments/${modelName}`;
 
 const client = new OpenAI({
     apiKey: apiKey,
     baseURL: baseURL,
-    defaultQuery: { 'api-version': apiVersion }  // 仍然保留，確保有 api-version
+    defaultQuery: { 'api-version': apiVersion }
 });
 
 async function main() {
@@ -21,7 +21,7 @@ async function main() {
             messages: [
                 { role: "user", content: "你好！介紹吓你自己，同埋話我知你可以幫我做啲咩？" }
             ],
-            model: '',        // 因為 baseURL 已有 deployment，呢度可以留空
+            model: '',
             max_tokens: 500,
             temperature: 0.7
         });

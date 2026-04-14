@@ -6,7 +6,7 @@ exports.createComment = async (req, res) => {
         const { content, postId } = req.body;
         const userId = req.user.id;
 
-        // 1. 基本驗證
+
         if (!content || content.trim().length === 0) {
             return res.status(400).json({
                 success: false,
@@ -21,7 +21,7 @@ exports.createComment = async (req, res) => {
             });
         }
 
-        // 2. Azure Text Analytics 檢查
+
         const safetyCheck = await textAnalytics.checkContentSafety(content);
 
         if (!safetyCheck.isSafe) {
@@ -36,7 +36,7 @@ exports.createComment = async (req, res) => {
             });
         }
 
-        // 3. 保存到數據庫
+
         const [result] = await db.execute(
             `INSERT INTO comments (user_id, post_id, content, sentiment_score, is_approved, created_at) 
        VALUES (?, ?, ?, ?, ?, NOW())`,
@@ -49,7 +49,7 @@ exports.createComment = async (req, res) => {
             ]
         );
 
-        // 4. 返回成功響應
+
         res.status(201).json({
             success: true,
             message: '評論發佈成功',

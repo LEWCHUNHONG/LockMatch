@@ -9,7 +9,6 @@ const textAnalytics = require('../services/textAnalyticsService');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload) => {
 
 
-// ==================== 香港時間 Helper（最終穩定版） ====================
   const toHKTime = (dateValue) => {
     if (!dateValue) return null;
 
@@ -17,7 +16,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
       let date;
 
       if (typeof dateValue === 'string') {
-        // 直接強制視為香港時間（最可靠）
+        
         const cleanStr = dateValue.replace(' ', 'T');
         date = new Date(cleanStr + '+08:00');
       } else {
@@ -26,7 +25,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
 
       if (isNaN(date.getTime())) return null;
 
-      // 返回簡單的香港時間字串（Expo Go 更友好）
+      
       return date.toLocaleString('sv-SE', { 
         timeZone: 'Asia/Hong_Kong' 
       }).replace(' ', 'T') + '+08:00';
@@ -36,7 +35,6 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
       return null;
     }
   };
-  // =================================================================
   
   // 發佈新帖子（支援文字或媒體）- 帶有內容安全檢查
   router.post('/posts', authMiddleware(JWT_SECRET), postMediaUpload.array('media', 10), async (req, res) => {
@@ -49,13 +47,11 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
 
     // 如果有文字內容，進行安全檢查
     if (content && content.trim().length > 0) {
-      // 移除這裡的 const textAnalytics = require('../services/textAnalyticsService');
-      // 因為已經在頂部導入了
 
       const safetyCheck = await textAnalytics.checkCommentSafety(content, 'post');
 
       if (!safetyCheck.isSafe || safetyCheck.blocked) {
-        // 清理已上傳的檔案
+
         if (req.files) {
           req.files.forEach((file) => fs.unlink(file.path, () => { }));
         }
@@ -163,7 +159,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     const { content } = req.body;
     const userId = req.user.id;
 
-    // 1. 內容安全檢查 - 使用頂部導入的 textAnalytics
+    // 1. 內容安全檢查
     const safetyCheck = await textAnalytics.checkCommentSafety(content, 'comment');
 
     if (!safetyCheck.isSafe || safetyCheck.blocked) {
@@ -272,7 +268,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           content: post.content || '',
           media_urls: media_urls,
           media_types: media_types,
-          created_at: toHKTime(post.created_at),     // ← 修正重點
+          created_at: toHKTime(post.created_at),
           user_id: post.user_id,
           username: post.username,
           avatar: post.avatar,
@@ -370,7 +366,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           return res.status(500).json({ error: '獲取失敗' });
         }
 
-        // 評論也需要轉換時間
+
         const formattedComments = results.map(comment => ({
           ...comment,
           created_at: toHKTime(comment.created_at)
@@ -407,7 +403,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     }
   });
 
-  // 刪除貼文（同時刪除伺服器上的媒體檔案）
+  // 刪除貼文
   router.delete('/posts/:id', authMiddleware(JWT_SECRET), async (req, res) => {
     const postId = req.params.id;
     const userId = req.user.id;
@@ -472,7 +468,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
     }
   });
 
-  // 更新貼文 - 修正版
+  // 更新貼文
   router.put('/posts/:id', authMiddleware(JWT_SECRET), postMediaUpload.array('media', 10), async (req, res) => {
     const postId = req.params.id;
     const { content, removeMedia } = req.body;
@@ -578,7 +574,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
         safetyScore = safetyCheck.score;
       }
 
-      // 7. 更新資料庫 - 修正 SQL，移除 updated_at
+      // 7. 更新資料庫
       await connection.promise().query(
         'UPDATE posts SET content = ?, media_urls = ?, media_types = ?, safety_score = ?, is_approved = ? WHERE id = ?',
         [
@@ -671,7 +667,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
         ...post,
         media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
         media_types: post.media_types ? JSON.parse(post.media_types) : [],
-        created_at: toHKTime(post.created_at)     // ← 修正重點
+        created_at: toHKTime(post.created_at)
       }));
 
       res.json({ success: true, posts: formattedPosts });

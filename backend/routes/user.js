@@ -4,7 +4,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 
-// 假設你已經有這些依賴從 app.js 傳入
+
 module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_SECRET, BASE_URL) => {
 
   // =============================================
@@ -46,7 +46,7 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
               !oldAvatar.includes('default.png') &&
               oldAvatar !== newAvatarPath) {
 
-              const oldFilePath = path.join(process.cwd(), oldAvatar);  // 使用 process.cwd() 確保正確根目錄
+              const oldFilePath = path.join(process.cwd(), oldAvatar);
 
               fs.unlink(oldFilePath, (unlinkErr) => {
                 if (unlinkErr) {
@@ -77,7 +77,7 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
       }
       const currentAvatar = results[0].avatar;
 
-      // 如果當前就是預設頭像，就不用刪
+
       if (!currentAvatar || currentAvatar.includes('default.png')) {
         const defaultUrl = buildAvatarUrl('/uploads/avatars/default.png');
         return res.json({ success: true, message: '已是預設頭像', avatar: defaultUrl });
@@ -110,11 +110,11 @@ module.exports = (connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_
 router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
   const { username, email, status, bio, character } = req.body;
 
-  // 改用 hasOwnProperty 或 in 來判斷是否有傳入任何欄位
+
   const hasUpdate = 
     'username' in req.body ||
     'email' in req.body ||
-    'status' in req.body ||    // 即使是 null 或 "" 也算有更新意圖
+    'status' in req.body ||
     'bio' in req.body ||
     'character' in req.body;
 
@@ -151,7 +151,7 @@ router.put('/update-profile', authMiddleware(JWT_SECRET), (req, res) => {
 if ('character' in req.body) {
     let characterValue = character;
 
-    // 如果是物件，轉成 JSON 字串儲存到資料庫
+
     if (typeof character === 'object' && character !== null) {
       characterValue = JSON.stringify(character);
     }
@@ -174,7 +174,7 @@ if ('character' in req.body) {
 });
 
   // =============================================
-  //  專用 API：更新 MBTI 結果
+  //  更新 MBTI 結果
   //  PUT /api/update-mbti
   // =============================================
   router.put('/update-mbti', authMiddleware(JWT_SECRET), async (req, res) => {
@@ -192,7 +192,7 @@ if ('character' in req.body) {
         });
       }
 
-      // 建議加上這兩行，讓輸入更寬容且資料統一
+
       const normalizedMbti = mbti.trim().toUpperCase();
 
       if (!/^[IE][SN][TF][JP]$/.test(normalizedMbti)) {
@@ -203,7 +203,7 @@ if ('character' in req.body) {
         });
       }
 
-      // 更新 users 表
+ 
       const [updateResult] = await connection.promise().query(
         'UPDATE users SET mbti = ? WHERE id = ?',
         [normalizedMbti, userId]
@@ -216,7 +216,7 @@ if ('character' in req.body) {
         });
       }
 
-      // 記錄到 mbti_history（這部分很重要，會觸發 rewards 的每日任務）
+
       try {
         await connection.promise().query(`
         CREATE TABLE IF NOT EXISTS mbti_history (
@@ -237,7 +237,7 @@ if ('character' in req.body) {
         console.log('✅ MBTI 歷史記錄成功');
       } catch (historyErr) {
         console.warn('⚠️ 記錄 MBTI 歷史失敗:', historyErr.message);
-        // 不影響主流程
+
       }
 
       // 回傳更新後的使用者資訊（跟 /me 類似）
@@ -279,7 +279,7 @@ if ('character' in req.body) {
   router.get('/mbti-matches', authMiddleware(JWT_SECRET), (req, res) => {
     const userId = req.user.id;
 
-    // 先獲取當前用戶的 MBTI
+
     connection.query(
       'SELECT mbti FROM users WHERE id = ?',
       [userId],
@@ -344,7 +344,7 @@ if ('character' in req.body) {
 
       console.log('📝 記錄 MBTI 測試歷史:', { userId, mbtiType, testMode });
 
-      // 創建 mbti_history 表（如果不存在）
+      // 創建 mbti_history 表
       await connection.promise().query(`
       CREATE TABLE IF NOT EXISTS mbti_history (
         id INT AUTO_INCREMENT PRIMARY KEY,

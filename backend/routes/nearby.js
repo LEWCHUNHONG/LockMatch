@@ -1,9 +1,10 @@
+// routes/nearby.js
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
 
-// 輔助函數：查詢 Promise
+
 const query = (sql, params) => {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (err, results) => {

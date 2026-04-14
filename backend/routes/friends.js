@@ -5,7 +5,6 @@ const router = express.Router();
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, io) => {
 
   // 獲取我的好友列表
-// 獲取我的好友列表 - 已修正時區問題
 router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
   connection.query(
     `SELECT 
@@ -33,7 +32,7 @@ router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
       const formattedResults = results.map(friend => ({
         ...friend,
         avatar: buildAvatarUrl(friend.avatar),
-        // 確保 last_active 是帶 Z 的 ISO 格式
+
         last_active: friend.last_active ? new Date(friend.last_active).toISOString() : null
       }));
       
@@ -44,7 +43,7 @@ router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
   );
 });
 
-  // 搜尋用戶（可加為好友）
+  // 搜尋用戶
   router.get('/search-users', authMiddleware(JWT_SECRET), (req, res) => {
  const { query } = req.query;
   
@@ -261,7 +260,7 @@ router.get('/friendship/status/:targetId', authMiddleware(JWT_SECRET), (req, res
   const targetId = req.params.targetId;
   const myId = req.user.id;
 
-  // 可以寫成一個比較完整的查詢，或分段查
+
   connection.query(
     `SELECT 
       CASE 

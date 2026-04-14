@@ -1,3 +1,4 @@
+// routes/scenario.js
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
@@ -16,7 +17,7 @@ async function initExpo() {
     return expoInstance;
 }
 
-// 輔助函數
+
 const query = (sql, params) => {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (err, results) => {
@@ -36,13 +37,13 @@ async function hasActiveScenario(userId) {
     return rows.length > 0;
 }
 async function sendPushNotification(userId, { title, body, data }) {
-    const expo = await initExpo();   // ← 改這裡
+    const expo = await initExpo();
 
     const tokens = await query('SELECT expo_push_token FROM users WHERE id = ?', [userId]);
     if (!tokens[0]?.expo_push_token) return;
 
     const pushToken = tokens[0].expo_push_token;
-    if (!ExpoClass.isExpoPushToken(pushToken)) return;   // 注意這裡也要用 ExpoClass
+    if (!ExpoClass.isExpoPushToken(pushToken)) return;
 
     await expo.sendPushNotificationsAsync([{
         to: pushToken,
@@ -56,14 +57,14 @@ async function sendPushNotification(userId, { title, body, data }) {
 
 
 async function completeScenario(scenarioId, scenarioDataRaw, userA, userB, io) {
-    // 1. 解析 scenarioData
+
     let scenarioData = scenarioDataRaw;
     if (typeof scenarioData === 'string') {
         scenarioData = JSON.parse(scenarioData);
     }
     const keywords = scenarioData.keywords || [];
 
-    // 2. 輸出調試信息
+
     console.log(`\n🔍 結算劇本 ${scenarioId}`);
     console.log(`   用戶A: ${userA} (${typeof userA})`);
     console.log(`   用戶B: ${userB} (${typeof userB})`);
@@ -71,14 +72,14 @@ async function completeScenario(scenarioId, scenarioDataRaw, userA, userB, io) {
         console.log(`   關鍵字 ${idx}: "${k.word}", 監聽者=${k.listener} (${typeof k.listener}), 已完成=${k.completed}`);
     });
 
-    // 3. 統計雙方完成數
+    // 統計雙方完成數
     const userANum = Number(userA);
     const userBNum = Number(userB);
     const countA = keywords.filter(k => Number(k.listener) === userANum && k.completed === true).length;
     const countB = keywords.filter(k => Number(k.listener) === userBNum && k.completed === true).length;
     console.log(`✅ 用戶A完成數: ${countA}, 用戶B完成數: ${countB}`);
 
-    // 4. 計算積分（先定義再使用）
+    // 計算積分（先定義再使用）
     let pointsA = 0, pointsB = 0;
     if (countA === countB) {
         pointsA = pointsB = 50;
@@ -91,7 +92,7 @@ async function completeScenario(scenarioId, scenarioDataRaw, userA, userB, io) {
     }
     console.log(`📢 分配積分: 用戶A得分=${pointsA}, 用戶B得分=${pointsB}`);
 
-    // 5. 更新積分
+    // 更新積分
     if (pointsA > 0) {
         await query('UPDATE users SET points = points + ? WHERE id = ?', [pointsA, userA]);
         await query('INSERT INTO points_history (user_id, points, type, description) VALUES (?, ?, "task_reward", ?)',
@@ -103,10 +104,10 @@ async function completeScenario(scenarioId, scenarioDataRaw, userA, userB, io) {
             [userB, pointsB, `完成劇本「${scenarioData.title}」獎勵`]);
     }
 
-    // 6. 更新劇本狀態
+    // 更新劇本狀態
     await query('UPDATE user_scenarios SET status = "completed", completed_at = NOW() WHERE id = ?', [scenarioId]);
 
-    // 7. 廣播完成事件（使用 scores 對象）
+    // 廣播完成事件（使用 scores 對象）
     console.log(`📡 廣播 scenario-completed 到房間 scenario_${scenarioId}, 數據:`, { scenarioId, scores: { [userANum]: pointsA, [userBNum]: pointsB } });
     io.to(`scenario_${scenarioId}`).emit('scenario-completed', {
         scenarioId,
@@ -116,9 +117,6 @@ async function completeScenario(scenarioId, scenarioDataRaw, userA, userB, io) {
         }
     });
 }
-
-
-
 
 
 router.get('/templates', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
@@ -163,7 +161,6 @@ router.get('/active-scenario', authMiddleware(process.env.JWT_SECRET), async (re
                 title: scenarioData.title,
                 description: scenarioData.backstory,
                 location_name: scenarioData.location_name,
-                // 其他需要顯示的字段
             },
             createdAt: scenario.created_at
         });
@@ -234,7 +231,7 @@ router.get('/active', authMiddleware(process.env.JWT_SECRET), async (req, res) =
     }
 });
 
-// ==================== 發送劇本邀請路由（已修正） ====================
+// ==================== 發送劇本邀請 route ====================
 router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
     const fromUserId = req.user.id;
     const { targetUserId, templateId } = req.body;
@@ -316,7 +313,7 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
         const targetUserRow = await query('SELECT username FROM users WHERE id = ?', [targetUserId]);
         const targetUsername = targetUserRow[0]?.username || '對方';
 
-        // ==================== 關鍵修正：發送 Socket 事件 ====================
+        // ==================== 發送 Socket 事件 ====================
         const io = req.app.get('io');
         if (io) {
             // 發送給被邀請者（targetUserId）
@@ -325,7 +322,7 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
                 fromUserId: fromUserId,
                 fromUsername: fromUsername,
                 scenarioTitle: scenarioData.title,
-                scenarioData: scenarioData   // 可選：如果前端需要更多資訊
+                scenarioData: scenarioData
             });
 
             console.log(`📡 [Socket] 已發送 scenario-invite 給用戶 ${targetUserId}，邀請ID: ${inviteId}`);
@@ -333,7 +330,7 @@ router.post('/invite', authMiddleware(process.env.JWT_SECRET), async (req, res) 
             console.error('❌ io 對象未找到，無法發送 scenario-invite Socket 事件');
         }
 
-        // 保留原本的 Push Notification（作為備用）
+
         await sendPushNotification(targetUserId, {
             title: '新劇本邀請',
             body: `${fromUsername} 邀請你一起玩「${scenarioData.title}」`,
@@ -374,7 +371,7 @@ router.get('/invites/pending', authMiddleware(process.env.JWT_SECRET), async (re
 });
 
 router.post('/invite/accept', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
-    const userId = req.user.id;        // 接受者（B）
+    const userId = req.user.id;
     const { inviteId } = req.body;
 
     try {
@@ -411,21 +408,21 @@ router.post('/invite/accept', authMiddleware(process.env.JWT_SECRET), async (req
 
         const io = req.app.get('io');
         if (io) {
-            // === 修正重點：發送給邀請方（A） ===
+
             io.to(`user_${invite.from_user_id}`).emit('scenario-started', {
                 scenarioId: newScenarioId,
-                fromUserId: invite.from_user_id,     // ← 關鍵：告訴 A 「我是發送方」
-                fromUsername: '你',                  // A 自己看到時顯示「對方」
+                fromUserId: invite.from_user_id,    
+                fromUsername: '你',                  
                 scenarioTitle: scenarioData.title || '未知劇本',
-                type: 'accepted'                     // 可選標記
+                type: 'accepted'                     
             });
 
             console.log(`📡 已向邀請方 ${invite.from_user_id} 發送 scenario-started（對方已接受）`);
 
-            // 可選：也發送給接受方（B），讓 B 直接進入
+
             io.to(`user_${userId}`).emit('scenario-started', {
                 scenarioId: newScenarioId,
-                fromUserId: invite.from_user_id,     // B 收到的 fromUserId 是 A
+                fromUserId: invite.from_user_id,
                 scenarioTitle: scenarioData.title || '未知劇本',
             });
         }
@@ -433,7 +430,7 @@ router.post('/invite/accept', authMiddleware(process.env.JWT_SECRET), async (req
         // 4. 更新邀請狀態
         await query('UPDATE scenario_invites SET status = "accepted" WHERE id = ?', [inviteId]);
 
-        // 5. Push Notification（可保留）
+        // 5. Push Notification
         await sendPushNotification(invite.from_user_id, {
             title: '劇本邀請已接受',
             body: '對方已接受你的劇本邀請',
@@ -560,7 +557,7 @@ router.post('/complete-keyword', authMiddleware(process.env.JWT_SECRET), async (
         }
 
 
-        // 更新後
+        
         const check = await query('SELECT scenario_data FROM user_scenarios WHERE id = ?', [scenarioId]);
         console.log('更新後的 scenario_data:', check[0].scenario_data);
 

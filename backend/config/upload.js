@@ -106,9 +106,9 @@ const chatMediaStorage = multer.diskStorage({
 
 const chatMediaUpload = multer({
   storage: chatMediaStorage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 聊天媒體允許較大，50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // 可根據需求再嚴格限制允許的類型
+    
     cb(null, true);
   }
 });
@@ -135,7 +135,7 @@ const postMediaStorage = multer.diskStorage({
 
 const postMediaUpload = multer({
   storage: postMediaStorage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 貼文允許更大一點，100MB
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['image/', 'video/'];
     if (allowed.some(type => file.mimetype.startsWith(type))) {

@@ -7,12 +7,10 @@ const WEEKLY_LIMIT = 1000;
 
 module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
 
-  // =============================================
-  // 初始化：確保 points_history 的 type 欄位支援 'game_reward'
-  // =============================================
+
   const ensurePointsHistoryType = async () => {
     try {
-      // 檢查資料表是否存在
+
       const [tables] = await connection.promise().query(
         "SHOW TABLES LIKE 'points_history'"
       );
@@ -24,17 +22,17 @@ module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
       if (columns.length === 0) return;
 
       const columnType = columns[0].Type;
-      // 如果是 ENUM 類型且不包含 'game_reward'
+
       if (columnType.startsWith('enum')) {
         if (!columnType.includes("'game_reward'")) {
-          // 擴充 ENUM 選項
+
           await connection.promise().query(
             `ALTER TABLE points_history MODIFY COLUMN type ENUM('task_reward', 'purchase', 'game_reward') NOT NULL DEFAULT 'task_reward'`
           );
           console.log('✅ 已更新 points_history.type 支援 game_reward');
         }
       } else if (columnType !== 'varchar(50)' && columnType !== 'varchar(100)') {
-        // 若非 ENUM 且不是 VARCHAR，也轉為 VARCHAR(50) 以容納更多類型
+
         await connection.promise().query(
           `ALTER TABLE points_history MODIFY COLUMN type VARCHAR(50) NOT NULL DEFAULT 'task_reward'`
         );
@@ -45,7 +43,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
     }
   };
 
-  // 在路由載入時執行一次
+
   ensurePointsHistoryType();
 
   // =============================================
@@ -61,7 +59,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
   });
 
   // =============================================
-  // 上傳遊戲結果（核心修正）
+  // 上傳遊戲結果
   // =============================================
   router.post('/game/upload-result', authMiddleware(JWT_SECRET), async (req, res) => {
     try {
@@ -126,15 +124,15 @@ module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
       const isEndless = levelIdStr === 'endless' || game_type === 'endless';
       const isCustom = levelIdStr.startsWith('custom_') || /^\d+$/.test(levelIdStr);
 
-      // 主線關卡首次完成獎勵積分
+
       if (isPreset) {
-        // 使用安全的 IN 子句寫法
+
         const placeholders = PRESET_LEVEL_IDS.map(() => '?').join(',');
         const [existing] = await connection.promise().query(
           `SELECT id FROM mbti_game_results WHERE user_id = ? AND level_id IN (${placeholders})`,
           [userId, ...PRESET_LEVEL_IDS]
         );
-        // 如果只有一條記錄（剛插入的這條），說明是首次完成
+
         if (existing.length === 1) {
           pointsEarned = 100;
           console.log(`🏆 主線關卡首次完成，獎勵 100 分`);
@@ -200,7 +198,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, BASE_URL) => {
       let finalMbti = null;
       let totalScores = null;
 
-      // 查詢使用者所有主線關卡的記錄（安全 IN 子句）
+      // 查詢使用者所有主線關卡的記錄
       const placeholders = PRESET_LEVEL_IDS.map(() => '?').join(',');
       const [allPresetResults] = await connection.promise().query(
         `SELECT level_id, play_data FROM mbti_game_results 

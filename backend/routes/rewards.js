@@ -237,7 +237,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET) => {
                     return { success: false, message: '未知任務' };
             }
 
-            // 4. 對於每日任務，重置狀態（如果不是今天完成的）
+            // 4. 對於每日任務，重置狀態
             if (task.task_type === 'daily') {
                 const today = new Date().toISOString().split('T')[0];
 
@@ -363,7 +363,6 @@ module.exports = (connection, authMiddleware, JWT_SECRET) => {
         }
     }
 
-    // ==================== 新增：記錄 MBTI 測試歷史 ====================
 
     // 記錄 MBTI 測試完成
     router.post('/record-mbti-test', authMiddleware(JWT_SECRET), async (req, res) => {
@@ -466,7 +465,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET) => {
         );
     });
 
-    // ==================== 更新的任務API ====================
+    // ==================== 任務API ====================
 
     // 獲取任務列表（帶動態狀態更新）
     router.get('/tasks', authMiddleware(JWT_SECRET), async (req, res) => {

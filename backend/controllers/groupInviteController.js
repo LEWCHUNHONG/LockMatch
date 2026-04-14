@@ -115,7 +115,7 @@ exports.acceptGroupInvite = (req, res) => {
                         [group_id, userId],
                         (err) => {
                             if (err) {
-                                // 如果重複加入（理論上不應發生），忽略
+
                                 console.error('加入群組失敗:', err);
                             }
 

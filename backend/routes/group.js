@@ -122,7 +122,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
           return res.status(500).json({ error: '獲取成員失敗' });
         }
 
-        // 格式化時間
+
         const formatTimeAgo = (timestamp) => {
           if (!timestamp) return '未知';
           const date = new Date(timestamp);
@@ -239,7 +239,6 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
   });
 
   // 移除群組成員
-  // 移除群組成員
   router.post('/remove-group-member', authMiddleware(JWT_SECRET), (req, res) => {
     const { roomId, userId } = req.body;
 
@@ -247,7 +246,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
       return res.status(400).json({ error: '缺少必要參數' });
     }
 
-    // 禁止踢自己（應由 leave-group 處理）
+    // 禁止踢自己
     if (userId == req.user.id) {
       return res.status(400).json({ error: '不能移除自己，請使用退出功能' });
     }
@@ -303,7 +302,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
                       );
                     });
 
-                    // 可選：刪除訊息
+                    // 刪除訊息
                     // deletePromise = deletePromise.then(() => new Promise(r => {
                     //   connection.query('DELETE FROM messages WHERE room_id = ?', [roomId], () => r());
                     // }));
@@ -329,7 +328,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
                             roomId,
                             userId,
                             removedBy: req.user.id,
-                            username: '某成員' // 可再查詢真實 username
+                            username: '某成員'
                           });
                         }
 
@@ -435,7 +434,7 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
                           );
                         });
 
-                        // 可選：同時刪除該群組所有歷史訊息（視需求決定是否開啟）
+                        // 同時刪除該群組所有歷史訊息
                         deleteRoomPromise = deleteRoomPromise.then(() => new Promise((resolve) => {
                           connection.query('DELETE FROM messages WHERE room_id = ?', [roomId], () => resolve());
                         }));
@@ -449,7 +448,6 @@ module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_U
                             }
 
                             // 6. 發送通知
-                            // 通知自己（無論群組是否刪除）
                             io.to(`user_${req.user.id}`).emit('left-group', {
                               roomId,
                               roomName,

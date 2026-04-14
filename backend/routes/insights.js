@@ -1,13 +1,13 @@
-// routes/insights.js (修正版)
+// routes/insights.js
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-const { initAzureOpenAI } = require('../config/azureOpenAI'); // 引入你嘅客戶端
+const { initAzureOpenAI } = require('../config/azureOpenAI');
 
-const azureAI = initAzureOpenAI(); // 初始化一次
+const azureAI = initAzureOpenAI();
 
-// 輔助函數：將 connection.query 包裝成 Promise
+
 function queryPromise(sql, params) {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (err, results) => {
@@ -128,7 +128,7 @@ ${activeHourText || '未有數據'}
             { role: 'user', content: userPrompt }
         ];
 
-        // 調用 Azure OpenAI（改用你嘅客戶端）
+        // 調用 Azure OpenAI
         const result = await azureAI.invoke(messages);
         const report = result.content;
 
@@ -178,7 +178,7 @@ router.post('/diary', authMiddleware(process.env.JWT_SECRET), async (req, res) =
             connection.query(diaryQuery, [userId], async (err, diaries) => {
                 if (err) console.error('❌ 獲取日記歷史失敗:', err);
 
-                // 獲取用戶MBTI歷史（可選）
+                // 獲取用戶MBTI歷史
                 const mbtiQuery = 'SELECT mbti_type, created_at FROM mbti_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 5';
                 connection.query(mbtiQuery, [userId], async (err, mbtiHistory) => {
                     // 構建 prompt

@@ -4,7 +4,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
 
-// 輔助函數：將 query 包裝成 Promise
+
 const query = (sql, params) => {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (err, results) => {

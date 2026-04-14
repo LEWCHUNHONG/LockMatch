@@ -1,10 +1,10 @@
 // controllers/tempChatController.js
 const connection = require('../db/connection');
-// 正確引入計數器（socket.js 將 tempChatMessageCount 掛在 module.exports 上）
+
 const socketModule = require('../socket/socket');
 const tempChatMessageCount = socketModule.tempChatMessageCount;
 
-// 輔助函數
+
 const query = (sql, params) => {
     return new Promise((resolve, reject) => {
         connection.query(sql, params, (err, results) => {

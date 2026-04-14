@@ -11,7 +11,7 @@ const query = (sql, params) => new Promise((resolve, reject) => {
     });
 });
 
-// ====================== 動態載入 Expo (解決 ESM 錯誤) ======================
+
 let ExpoClass = null;
 let expoInstance = null;
 
@@ -23,7 +23,7 @@ async function getExpo() {
     }
     return { Expo: ExpoClass, expo: expoInstance };
 }
-// ===========================================================================
+
 
 // 發送推送通知的輔助函數
 async function sendPushNotification(targetUserId, notification) {
@@ -209,7 +209,7 @@ router.post('/end', authMiddleware(process.env.JWT_SECRET), async (req, res) => 
             [roomId]
         );
 
-        // 真正刪除臨時聊天室（最乾淨）
+
         await query(
             'DELETE FROM chat_rooms WHERE id = ? AND is_temp = 1',
             [roomId]

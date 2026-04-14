@@ -34,7 +34,7 @@ exports.acceptFriendRequest = (req, res) => {
                         return res.status(500).json({ success: false, error: '更新失敗' });
                     }
 
-                    // 3. 建立好友關係（避免重複）
+                    // 3. 建立好友關係
                     db.query(
                         `INSERT INTO friendships (user1_id, user2_id, status) 
                          SELECT ?, ?, "accepted" FROM DUAL
@@ -107,8 +107,8 @@ exports.acceptFriendRequest = (req, res) => {
 
 // 直接用兩個 user id 接受請求（不用傳 requestId）
 exports.acceptByUsers = (req, res) => {
-  const myId = req.user.id;              // 接受者（目前登入者）
-  const { fromUserId } = req.body;       // 發送請求的那一方
+  const myId = req.user.id;
+  const { fromUserId } = req.body;
 
   if (!fromUserId || fromUserId == myId) {
     return res.status(400).json({ 
@@ -219,7 +219,7 @@ exports.declineFriendRequest = (req, res) => {
                         return res.status(500).json({ success: false, error: '拒絕失敗' });
                     }
 
-                    // 可選：Socket通知
+
                     const io = req.app.get('io');
                     if (io) {
                         io.to(`user_${request.from_user_id}`).emit('friend-request-declined', {

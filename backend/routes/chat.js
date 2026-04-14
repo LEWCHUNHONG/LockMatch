@@ -60,7 +60,7 @@ router.get('/chat-rooms', authMiddleware(JWT_SECRET), (req, res) => {
     JOIN chat_room_members crm ON cr.id = crm.room_id
     LEFT JOIN messages m ON cr.id = m.room_id
     WHERE crm.user_id = ?
-      AND (cr.is_temp = 0 OR cr.is_temp IS NULL)     -- ←←← 這裡新增這一行
+      AND (cr.is_temp = 0 OR cr.is_temp IS NULL)
     GROUP BY cr.id
     ORDER BY COALESCE(cr.last_activity, cr.created_at) DESC`,
       [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id],
@@ -325,7 +325,7 @@ router.get('/chat-rooms', authMiddleware(JWT_SECRET), (req, res) => {
                           });
                         }
 
-                        // 可選：通過 socket 通知對方
+
                         if (io) {
                           io.to(`user_${targetUserId}`).emit('temp-chat-created', {
                             roomId,

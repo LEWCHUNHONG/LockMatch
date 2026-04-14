@@ -6,7 +6,7 @@ const { OpenAI } = require('openai');
 
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-const textAnalyticsService = require('../services/textAnalyticsService');  // 👈 引入過濾服務
+const textAnalyticsService = require('../services/textAnalyticsService');
 
 // 初始化 Azure OpenAI 用戶端
 const openai = new OpenAI({
@@ -45,7 +45,6 @@ router.get('/history', authMiddleware(process.env.JWT_SECRET), (req, res) => {
 });
 
 // 發送訊息
-// 發送訊息
 router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
   try {
     const { message } = req.body;
@@ -57,7 +56,7 @@ router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res)
       return res.status(400).json({ success: false, error: '請輸入訊息' });
     }
 
-    // 🔍 1. 先檢查訊息是否安全（整合 textAnalyticsService）
+    // 先檢查訊息是否安全
     let safetyCheck;
     try {
       safetyCheck = await textAnalyticsService.checkCommentSafety(message, 'chat_message');
@@ -75,7 +74,6 @@ router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res)
       });
     }
 
-    // ✅ 2. 安全，繼續處理
     // 獲取用戶資料
     const userQuery = 'SELECT username, mbti, bio FROM users WHERE id = ?';
     connection.query(userQuery, [userId], async (err, results) => {

@@ -1,5 +1,5 @@
 // services/testContentSafety.js
-const textAnalytics = require('./textAnalyticsService');  // 正確：同目錄引用
+const textAnalytics = require('./textAnalyticsService');
 
 async function testContentSafety() {
     console.log('🚀 開始內容安全測試...\n');

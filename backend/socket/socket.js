@@ -2,7 +2,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 
-// 全域計數器：儲存每個臨時聊天室的消息數量
+
 const tempChatMessageCount = new Map(); // key: roomId, value: current count
 
 const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
@@ -37,7 +37,7 @@ const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
 
     socket.on('instant-chat-message', ({ roomId, message }) => {
       console.log(`📩 收到 instant-chat-message: room=${roomId}, sender=${socket.userId}, content=${message.content}`);
-      // 強制將 senderId 設置為當前用戶的 ID
+
       message.senderId = socket.userId;
       socket.to(roomId).emit('instant-chat-message', message);
     });
@@ -45,7 +45,7 @@ const initSocket = (httpServer, connection, BASE_URL, JWT_SECRET) => {
     // 檢查是否有待通知的已接受邀請（作為發送方）
     (async () => {
       try {
-        // 查詢該用戶作為發送方且 notify_sender = TRUE 的已接受邀請
+
         const rows = await new Promise((resolve, reject) => {
           connection.query(
             `SELECT ti.id, ti.room_id, ti.to_user_id, u.username as with_username

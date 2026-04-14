@@ -5,13 +5,13 @@ const { createServer } = require('http');
 require('dotenv').config();
 const os = require('os');
 
-const connection = require('./db/connection');  // ✅ 1. 先定義 connection
-const authMiddleware = require('./middleware/auth');  // ✅ 2. 再定義 authMiddleware
+const connection = require('./db/connection');
+const authMiddleware = require('./middleware/auth');
 const { upload, avatarUpload, chatMediaUpload, postMediaUpload } = require('./config/upload');
 const { buildAvatarUrl } = require('./utils/helpers');
 const initSocket = require('./socket/socket');
 
-// 然後才引入 routes（要用到上面嘅變數）
+
 const aiChatRouter = require('./routes/aiChat');
 const aiMatchingRouter = require('./routes/aiMatching');
 const friendRoutes = require('./routes/friendRoutes');
@@ -33,8 +33,8 @@ const chatRoutes = require('./routes/chat');
 const groupRoutes = require('./routes/group');
 const rewardsRoutes = require('./routes/rewards');
 const discussRoutes = require('./routes/discuss');
-const gameRoutes = require('./routes/game');  // ✅ 添加遊戲路由引入
-const customLevelsRoutes = require('./routes/customLevels'); // ✅ 添加自定義關卡路由引入
+const gameRoutes = require('./routes/game');
+const customLevelsRoutes = require('./routes/customLevels');
 
 const path = require('path');
 const app = express();
@@ -68,7 +68,7 @@ availableIPs.forEach(ip => {
   console.log(`    http://${ip}:${PORT}`);
 });
 
-// CORS 和其他中間件
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -157,10 +157,10 @@ app.use('/api', rewardsRoutes(connection, authMiddleware, JWT_SECRET));
 // discuss 路由
 app.use('/api', discussRoutes(connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload));
 
-// ✅ 遊戲路由 - 重要:必須啟用
+// 遊戲路由 - 重要:必須啟用
 app.use('/api', gameRoutes(connection, authMiddleware, JWT_SECRET, BASE_URL));
 
-// ✅ 自定義關卡路由
+// 自定義關卡路由
 app.use('/api/custom-levels', customLevelsRoutes(connection, authMiddleware, JWT_SECRET));
 
 // 健康檢查路由
@@ -218,7 +218,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log('');
 });
 
-// 優雅關閉
+// 關閉
 process.on('SIGTERM', () => {
   console.log('📛 收到 SIGTERM 信號，準備關閉伺服器...');
   httpServer.close(() => {

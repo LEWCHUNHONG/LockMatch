@@ -11,16 +11,16 @@ class SimpleAzureOpenAI {
 
     async invoke(messages) {
         try {
-            // 確保 endpoint 冇尾部斜線
+
             const baseUrl = this.endpoint.replace(/\/$/, '');
-            // 構建完整 URL，同你 curl 一模一樣
+
             const url = `${baseUrl}/openai/deployments/${this.deployment}/chat/completions?api-version=${this.apiVersion}`;
 
-            console.log('🔗 請求 URL:', url); // 印出 URL 確認
+            console.log('🔗 請求 URL:', url);
             console.log('📦 請求 messages:', messages);
 
             const response = await axios.post(url, {
-                messages: messages,  // 直接傳入 messages array
+                messages: messages,
                 max_tokens: 2000,
                 temperature: 0.7
             }, {
@@ -52,7 +52,7 @@ const initAzureOpenAI = () => {
     console.log(`  Endpoint: ${process.env.AZURE_OPENAI_ENDPOINT}`);
     console.log(`  Deployment: ${process.env.AZURE_OPENAI_DEPLOYMENT}`);
     console.log(`  API Version: ${process.env.AZURE_OPENAI_API_VERSION}`);
-    // 唔好印 API Key 出嚟
+
     return new SimpleAzureOpenAI();
 };
 
