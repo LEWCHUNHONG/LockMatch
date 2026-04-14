@@ -183,20 +183,20 @@ export default function PostDetail() {
   };
 
   // 時間格式化
-  // ==================== 強化版 timeAgo（解決 Expo Go 問題） ====================
+
   const timeAgo = (dateString) => {
     if (!dateString) return '未知時間';
 
     let date;
     try {
       if (typeof dateString === 'string') {
-        // 情況1: 後端返回帶 +08:00 的格式
+
         if (dateString.includes('+08:00')) {
           date = new Date(dateString);
         } 
-        // 情況2: 純日期時間字串（Expo Go 最容易出問題的地方）
+
         else if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
-          // 強制 +08:00，這一行是解決 Expo Go 的關鍵
+
           date = new Date(dateString.replace(' ', 'T') + '+08:00');
         } 
         else {
@@ -222,7 +222,7 @@ export default function PostDetail() {
       const diffHrs = Math.floor(diffMins / 60);
       if (diffHrs < 24) return `${diffHrs}小時前`;
 
-      // 超過一天顯示日期時間
+
       return date.toLocaleString('zh-TW', {
         year: 'numeric',
         month: 'short',
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingBottom: 100, // 為底部輸入欄預留空間
+    paddingBottom: 100,
   },
 
   bottomInputContainer: {
@@ -563,7 +563,7 @@ const modalStyles = StyleSheet.create({
     borderRadius: 28,
     paddingVertical: 32,
     paddingHorizontal: 24,
-    marginHorizontal: 32,           // 稍微縮小外邊距，增加內部空間
+    marginHorizontal: 32,
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 8 },
@@ -587,15 +587,15 @@ const modalStyles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 16,                        // 兩個按鈕間距加大一點
+    gap: 16,
     justifyContent: 'center',
   },
   // 共用按鈕基礎樣式
   actionButton: {
-    paddingHorizontal: 32,          // 左右內距決定按鈕寬度
+    paddingHorizontal: 32,
     paddingVertical: 14,
-    minWidth: 120,                  // 保證至少這個寬，不會太窄
-    maxWidth: 180,                  // 防止太大頂到邊
+    minWidth: 120,
+    maxWidth: 180,
     minHeight: 52,
     borderRadius: 26,
     justifyContent: 'center',

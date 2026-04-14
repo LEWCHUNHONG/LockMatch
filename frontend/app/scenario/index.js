@@ -1,4 +1,4 @@
-// index.js
+// app/scenario/index.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -28,7 +28,7 @@ export default function ScenarioList() {
 
     const hideAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
 
-    // 每次返回此頁面時自動刷新一次（重點修改）
+
     useFocusEffect(
         useCallback(() => {
             console.log('🔄 劇本大廳頁面獲得焦點，執行刷新');
@@ -40,7 +40,7 @@ export default function ScenarioList() {
     useEffect(() => {
         loadAllData();
 
-        // 每30秒更新邀請數量（可選）
+        // 每30秒更新邀請數量
         const interval = setInterval(loadInviteCount, 30000);
         return () => clearInterval(interval);
     }, []);

@@ -12,7 +12,7 @@ import {
 import { GestureHandlerRootView, Gesture } from 'react-native-gesture-handler';
 import VirtualJoystick from '../../components/mbti-game/VirtualJoystick';
 import ScenarioDialog from '../../components/mbti-game/scenario-dialog';
-import CustomAlertModal from './CustomAlertModal';   // ← 新增
+import CustomAlertModal from './CustomAlertModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PLAYER_SIZE = 40;
@@ -318,7 +318,7 @@ export default function ShootingGameEngine({
     onBack();
   }, [returnUnusedQuestions, onBack]);
 
-// ====================== 主遊戲迴圈（已修正速度不一致問題） ======================
+// ====================== 主遊戲迴圈 ======================
 useEffect(() => {
   if (gamePaused || isGameOver || !gameStarted || isLoadingFloor) return;
 
@@ -326,7 +326,7 @@ useEffect(() => {
   let frameId;
 
   const gameLoop = (currentTime) => {
-    const deltaTime = Math.min((currentTime - lastTime) / 16.67, 3); // 限制最大 delta，防止卡頓時飛太遠
+    const deltaTime = Math.min((currentTime - lastTime) / 16.67, 3);
     lastTime = currentTime;
 
     const p = playerRef.current;
@@ -337,7 +337,7 @@ useEffect(() => {
     const currentItems = itemsRef.current;
     const currentExit = exitRef.current;
 
-    // ====================== 玩家移動（已修正） ======================
+    // ====================== 玩家移動 ======================
     let dx = dir.x * p.moveSpeed * deltaTime;
     let dy = dir.y * p.moveSpeed * deltaTime;
 
@@ -362,7 +362,7 @@ useEffect(() => {
       p.y = newY;
     }
 
-    // ====================== 子彈更新（已修正） ======================
+    // ====================== 子彈更新 ======================
     const updatedBullets = currentBullets.map(b => {
       const moveDistance = BULLET_SPEED * deltaTime;
       const newX = b.x + b.dir.x * moveDistance;
@@ -434,13 +434,13 @@ useEffect(() => {
       checkLevelUp();
     }
 
-    // ====================== 怪物移動（已修正） ======================
+    // ====================== 怪物移動 ======================
     newMonsters.forEach(m => {
       const dx = p.x - m.x;
       const dy = p.y - m.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 1) {
-        const speed = (m.speed || MONSTER_SPEED) * deltaTime;   // ← 關鍵修正
+        const speed = (m.speed || MONSTER_SPEED) * deltaTime;
         let moveX = (dx / dist) * speed;
         let moveY = (dy / dist) * speed;
 

@@ -1,8 +1,8 @@
-// app/mbti-game/visual-effects/lottie-config.js
+// app/components/mbti-game/visual-effects/lottie-config.js
 import LottieView from 'lottie-react-native';
 import { useEffect, useRef } from 'react';
 
-// 預定義的遊戲動畫
+
 export const GAME_ANIMATIONS = {
   COLLECT_ITEM: require('../../../assets/animations/collect-star.json'),
   LEVEL_COMPLETE: require('../../../assets/animations/level-complete.json'),
@@ -40,7 +40,7 @@ export const LottieAnimation = ({
   );
 };
 
-// 組合動畫組件
+
 export const CollectEffect = ({ position, onComplete }) => {
   return (
     <LottieAnimation

@@ -119,7 +119,7 @@ export default function TabLayout() {
             </Pressable>
           ),
 
-          // ── 新增這段：隱藏這個頁面的 tab bar ──
+          // ── 隱藏這個頁面的 tab bar ──
           tabBarStyle: { display: 'none' },
         }}
 

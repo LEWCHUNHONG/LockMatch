@@ -21,7 +21,7 @@ export default function ScenarioDialog({
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
 
   useEffect(() => {
-    // 进场动画
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -38,7 +38,7 @@ export default function ScenarioDialog({
   }, []);
 
   const handleClose = () => {
-    // 退场动画
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -83,7 +83,7 @@ export default function ScenarioDialog({
           { transform: [{ translateY: slideAnim }] }
         ]}
       >
-        {/* 对话框标题 */}
+
         <View style={styles.header}>
           <MaterialCommunityIcons 
             name="chat-question" 
@@ -99,12 +99,12 @@ export default function ScenarioDialog({
           </TouchableOpacity>
         </View>
 
-        {/* 问题文本 */}
+
         <View style={styles.questionContainer}>
           <Text style={styles.questionText}>{scenario.question}</Text>
         </View>
 
-        {/* 选项列表 */}
+
         <View style={styles.optionsContainer}>
           {scenario.options?.map((option, index) => (
             <TouchableOpacity
@@ -137,7 +137,7 @@ export default function ScenarioDialog({
           ))}
         </View>
 
-        {/* 提示文字 */}
+
         <View style={styles.hintContainer}>
           <MaterialCommunityIcons 
             name="information" 

@@ -591,16 +591,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 30,
     gap: 8,
-    marginBottom: 12, // 與下方卡片拉開距離
+    marginBottom: 12,
   },
   mbtiText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 
 emptyPostsContainer: {
   alignItems: 'center',
   justifyContent: 'center',
-  marginTop: 40,           // 從上方拉開一點距離
+  marginTop: 40,
   paddingVertical: 30,
-  gap: 16,                 // icon 與文字之間的間距
+  gap: 16,
 },
 
 noPostsText: {
@@ -610,19 +610,19 @@ noPostsText: {
   opacity: 0.7,
 },
 
-// 兩個小卡片也壓縮一點
+
   extraInfoContainer: {
     width: '100%',
-    marginTop: 8,                     // ← 從 16 降到 12
+    marginTop: 8,
     marginBottom: 0,
-    gap: 10,                           // ← 從 16 降到 12
+    gap: 10,
   },
 
   extraInfoCard: {
     backgroundColor: 'rgba(255, 245, 237, 1)',
-    borderRadius: 14,                  // ← 圓角小一點
-    paddingVertical: 10,               // ← 從 16 降到 12
-    paddingHorizontal: 14,             // ← 從 20 降到 16
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: 'rgba(244, 199, 171, 0.5)',
     shadowColor: '#8b5e3c',
@@ -634,10 +634,10 @@ noPostsText: {
   },
 
   cardTitle: {
-    fontSize: 13,                      // ← 從 15 降到 14，更精簡
+    fontSize: 13,
     fontWeight: '700',
     color: '#6b4e3a',
-    marginBottom: 4,                   // ← 從 10 降到 6
+    marginBottom: 4,
     letterSpacing: 0.3,
     flexDirection: 'row',
     alignItems: 'center',
@@ -645,8 +645,8 @@ noPostsText: {
   },
 
   cardContent: {
-    fontSize: 14,                      // ← 從 15.5 降到 15
-    lineHeight: 20,                    // ← 行高也稍微壓縮
+    fontSize: 14,
+    lineHeight: 20,
     color: '#4a2c1f',
     textAlign: 'center',
     letterSpacing: 0.2,
@@ -678,7 +678,7 @@ postsSection: {
   paddingHorizontal: 20,
   paddingVertical: 9,
   borderRadius: 30,
-  backgroundColor: 'rgba(244, 199, 171, 0.15)', // 非常淡的暖灰底
+  backgroundColor: 'rgba(244, 199, 171, 0.15)',
   borderWidth: 1,
   borderColor: 'rgba(244, 199, 171, 0.3)',
   gap: 8,
@@ -686,7 +686,7 @@ postsSection: {
 },
 
 mbtiPlaceholderText: {
-  color: '#a68a7c',           // 灰棕色，比較低調
+  color: '#a68a7c',
   fontSize: 15,
   fontWeight: '600',
   letterSpacing: 0.3,

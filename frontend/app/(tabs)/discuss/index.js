@@ -41,7 +41,7 @@ export default function Discuss() {
   const [isRefreshingSilently, setIsRefreshingSilently] = useState(false);
   const flashListRef = useRef(null);
 
-  // 獲取當前用戶 ID
+
   const loadCurrentUser = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -60,7 +60,7 @@ export default function Discuss() {
   useCallback(() => {
     loadCurrentUser();
     
-    // 每次切回討論區都自動刷新並回到頂端
+
     fetchPosts(true);
     
   }, [loadCurrentUser, fetchPosts])
@@ -90,13 +90,13 @@ const fetchPosts = useCallback(async (isRefresh = false) => {
       setPage(1);
       setHasMore(newPosts.length >= 15);
 
-      // ===== 自動回到頂端 =====
+
       setTimeout(() => {
         flashListRef.current?.scrollToOffset({ 
           offset: 0, 
           animated: true 
         });
-      }, 200);   // 延遲一點確保資料更新完成
+      }, 200);
     } else {
       setPosts(prev => [...prev, ...newPosts]);
       setPage(currentPage + 1);
@@ -116,7 +116,7 @@ const fetchPosts = useCallback(async (isRefresh = false) => {
 
 const onRefresh = () => {
   setHasMore(true);
-  setRefreshing(true);        // 只有用戶主動下拉時才顯示動畫
+  setRefreshing(true);
   fetchPosts(true);
 };
 
@@ -232,7 +232,7 @@ const onRefresh = () => {
             ) : null
           }
           ListEmptyComponent={() => {
-            // 正在第一次載入，且還沒有任何資料
+
             if (loading && posts.length === 0) {
               return (
                 <View style={styles.emptyContainer}>
@@ -242,7 +242,7 @@ const onRefresh = () => {
               );
             }
 
-            // 載入完成，或搜尋結果為空
+
             if (filteredPosts.length === 0) {
               return (
                 <View style={styles.emptyContainer}>
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(244, 199, 171, 0.3)',
   },
 headerLeft: {
-  width: 40,           // 讓左右空間對稱
+  width: 40,
 },
   headerTitle: {
     fontSize: 24,

@@ -17,8 +17,8 @@ const PRESET_LEVEL_IDS = ['ei-dimension', 'sn-dimension', 'tf-dimension', 'jp-di
 export default function LevelSelect({
   builtinLevels = [],
   customLevels = [],
-  completedLevels = {},          // 來自 useLevelManager（本地，可能不準確）
-  completedPresetLevels = [],    // ✅ 新增：從後端獲取的已完成預設關卡列表
+  completedLevels = {},
+  completedPresetLevels = [],
   onSelectLevel,
   onSelectEndless,
   onBack,
@@ -39,11 +39,11 @@ export default function LevelSelect({
     }
   };
 
-  // ✅ 判斷關卡是否已完成（優先使用後端數據）
+
   const isLevelCompleted = (level) => {
     if (!level || !level.id) return false;
     
-    // 如果是預設關卡，使用 completedPresetLevels
+
     if (PRESET_LEVEL_IDS.includes(level.id) || 
         (level.originalId && PRESET_LEVEL_IDS.includes(level.originalId))) {
       const targetId = level.originalId || level.id;

@@ -53,7 +53,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "研究最有效率的路線和最佳性價比方案",
         mbti: { T: 2, J: 1 },
-        icon: "chart-timeline-variant", // 修正
+        icon: "chart-timeline-variant",
         color: "#073B4C"
       },
       {
@@ -73,13 +73,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "分析現有數據，找出最可靠的解決方案",
         mbti: { S: 2, T: 1 },
-        icon: "chart-box-outline", // 修正
+        icon: "chart-box-outline",
         color: "#118AB2"
       },
       {
         text: "跳出框架，提出從未有人想過的全新點子",
         mbti: { N: 2, P: 1 },
-        icon: "lightbulb-on-outline", // 修正
+        icon: "lightbulb-on-outline",
         color: "#FFD166"
       },
       {
@@ -187,7 +187,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "觀察細節，尋找最可靠的解決方案",
         mbti: { S: 2, I: 1 },
-        icon: "magnify-expand", // 修正
+        icon: "magnify-expand",
         color: "#4ECDC4"
       }
     ]
@@ -207,13 +207,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "先傾聽，再提出深思熟慮的完整方案",
         mbti: { I: 2, J: 1 },
-        icon: "lightbulb-variant-outline", // 修正
+        icon: "lightbulb-variant-outline",
         color: "#06D6A0"
       },
       {
         text: "用具體案例說明想法的可行性",
         mbti: { S: 2, T: 1 },
-        icon: "chart-bell-curve-cumulative", // 修正
+        icon: "chart-bell-curve-cumulative",
         color: "#118AB2"
       },
       {
@@ -271,7 +271,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "跟隨直覺，選擇感覺最對的那一個",
         mbti: { N: 2, F: 1 },
-        icon: "heart-pulse", // 修正
+        icon: "heart-pulse",
         color: "#EF476F"
       },
       {
@@ -309,7 +309,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "親自示範，帶領團隊一起衝刺",
         mbti: { E: 2, S: 1 },
-        icon: "run", // 修正
+        icon: "run",
         color: "#FF6B6B"
       },
       {
@@ -354,7 +354,7 @@ export const MBTI_TRADITIONAL_QUESTIONS = [
       {
         text: "涉及理論的課程",
         mbti: { N: 1 },
-        icon: "thought-bubble-outline", // 修正
+        icon: "thought-bubble-outline",
         color: "#9B59B6"
       }
     ]

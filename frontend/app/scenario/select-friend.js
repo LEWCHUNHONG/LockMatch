@@ -1,4 +1,4 @@
-// select-friend.js
+// app/scenario/select-friend.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, TextInput, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';

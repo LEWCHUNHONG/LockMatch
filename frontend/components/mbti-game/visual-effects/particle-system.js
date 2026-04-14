@@ -1,4 +1,4 @@
-// app/mbti-game/visual-effects/particle-system.js
+// app/components/mbti-game/visual-effects/particle-system.js
 import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
@@ -42,7 +42,7 @@ export const Particle = ({
     const x = startPosition.x + (endPosition.x - startPosition.x) * progress.value;
     const y = startPosition.y + (endPosition.y - startPosition.y) * progress.value;
     
-    // 添加一些隨機曲線
+    // 隨機曲線
     const curve = Math.sin(progress.value * Math.PI) * 30;
     
     return {

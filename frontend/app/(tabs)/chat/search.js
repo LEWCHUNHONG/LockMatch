@@ -25,7 +25,7 @@ export default function SearchScreen() {
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(true);
   const [sendingRequest, setSendingRequest] = useState(null);
 
-  // Modal 狀態
+
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
@@ -76,7 +76,7 @@ export default function SearchScreen() {
       if (res.data.success) {
         showModal('好友請求已送出', '對方會在收到通知後決定是否接受～', 'success');
 
-        // 更新該用戶狀態：變成「已送出請求」
+
         setUsers(prev => prev.map(u =>
           u.id === userId 
             ? { ...u, isRequestPending: true } 
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // 加好友按鈕樣式
+
   addButton: {
     backgroundColor: '#f4c7ab',
     paddingHorizontal: 16,
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: '#d9d9d9',     // 改成灰色
+    backgroundColor: '#d9d9d9',
     opacity: 0.75,
   },
   addButtonText: {

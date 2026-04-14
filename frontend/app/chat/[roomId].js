@@ -27,7 +27,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// 移除 NetInfo 導入，先不使用
 import { chatAPI, socketAPI, fixImageUrl, API_URL } from '../../utils/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -36,7 +35,6 @@ export default function ChatRoom() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // 確保 roomId 是正確的
   let roomId = params.roomId;
 
   const [message, setMessage] = useState('');
@@ -61,8 +59,8 @@ export default function ChatRoom() {
   const typingTimeoutRef = useRef(null);
   const reconnectAttemptRef = useRef(0);
   const maxReconnectAttempts = 5;
-  const pendingMessagesRef = useRef({}); // 改為對象用於追蹤臨時消息
-  const lastMessageTimeRef = useRef(0); // 用於防止重複發送
+  const pendingMessagesRef = useRef({});
+  const lastMessageTimeRef = useRef(0);
 
   useEffect(() => {
     // 再次驗證 roomId
@@ -161,7 +159,7 @@ export default function ChatRoom() {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        // 確保 ID 是字串型別
+
         parsedUser.id = String(parsedUser.id);
         setUser(parsedUser);
         userRef.current = parsedUser;
@@ -263,8 +261,6 @@ export default function ChatRoom() {
 
       // 監聽用戶加入房間
       socket.on('user-joined', (data) => {
-        //console.log('用戶加入房間:', data);
-        // 可以顯示通知或更新UI
       });
 
       // 監聽錯誤
@@ -336,7 +332,7 @@ export default function ChatRoom() {
   };
 
   const loadMessages = async (showLoading = true) => {
-    // 確保用戶已載入
+
     if (!userRef.current || !userRef.current.id) {
       console.log('用戶未載入，等待載入...');
       await loadUser();
@@ -353,7 +349,7 @@ export default function ChatRoom() {
 
       if (response.data.success) {
         const formattedMessages = response.data.messages.map(msg => {
-          // 確保比較時都是字串
+
           const senderIdStr = String(msg.sender_id);
           const userIdStr = String(userRef.current.id);
           const isOwn = senderIdStr === userIdStr;
@@ -456,14 +452,14 @@ export default function ChatRoom() {
   };
 
   const handleNewMessage = (newMessage, isOwnMessage = false) => {
-    // 防止過於頻繁的處理
+
     const now = Date.now();
     if (now - lastMessageTimeRef.current < 100) {
       return;
     }
     lastMessageTimeRef.current = now;
 
-    // 確保 ID 是字串
+
     const messageId = String(newMessage.id);
     const senderIdStr = String(newMessage.sender_id);
     const userIdStr = userRef.current?.id;
@@ -483,8 +479,7 @@ export default function ChatRoom() {
       let tempIdToRemove = null;
       for (const tempId in pendingMessagesRef.current) {
         const tempMessage = pendingMessagesRef.current[tempId];
-        // 對於圖片消息，我們無法直接比較內容，因為本地URI和伺服器URL不同
-        // 我們使用時間戳和發送者來判斷
+
         if (tempMessage.type === newMessage.message_type &&
           tempMessage.senderId === senderIdStr) {
 
@@ -716,7 +711,7 @@ export default function ChatRoom() {
     try {
       setSending(true);
 
-      // 使用新的getFileInfo函數獲取文件信息
+
       const fileInfo = await getFileInfo(fileUri);
 
       const fileSize = fileInfo?.size || 0;
@@ -736,13 +731,13 @@ export default function ChatRoom() {
         isSending: true,
         isFailed: false,
         type: fileType,
-        content: fileUri, // 本地URI
-        imageUrl: fileUri, // 本地URI，用於顯示
+        content: fileUri,
+        imageUrl: fileUri,
         fileName: fileName || 'file',
         fileSize: fileSize,
         status: 'sending',
         tempId: tempId,
-        localUri: fileUri, // 保存本地URI
+        localUri: fileUri,
       };
 
       // 添加到待處理消息
@@ -882,7 +877,7 @@ export default function ChatRoom() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.7, // 降低質量以減少文件大小
+        quality: 0.7,
         base64: false,
       });
 
@@ -904,7 +899,7 @@ export default function ChatRoom() {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7, // 降低質量以減少文件大小
+        quality: 0.7,
         base64: false,
       });
 
@@ -939,10 +934,10 @@ export default function ChatRoom() {
     setShowAttachmentMenu(false);
   };
 
-  // 修改：只設置狀態，不導航
+
   const handleViewImage = (imageUri) => {
     let uri = imageUri;
-    // 如果是相對路徑，則使用 fixImageUrl 修復
+
     if (uri && !uri.startsWith('http') && !uri.startsWith('file://')) {
       uri = fixImageUrl(uri);
     }
@@ -1034,9 +1029,9 @@ export default function ChatRoom() {
                 defaultSource={require('../../assets/placeholder.png')}
                 onError={(e) => {
                   console.log('圖片載入失敗:', e.nativeEvent.error, '圖片URI:', imageUri);
-                  // 如果是伺服器URL載入失敗，嘗試使用本地URI
+
                   if (!isLocalImage && item.localUri) {
-                    // 這裡可以設置重試邏輯，但我們先記錄日誌
+
                   }
                 }}
               />
@@ -1207,21 +1202,6 @@ export default function ChatRoom() {
       </TouchableOpacity>
 
       <View style={styles.headerActions}>
-
-        {/* 
-             網路狀態指示器
-
-        <View style={styles.connectionStatus}>
-          <View style={[
-            styles.connectionDot,
-            isConnected ? styles.connectedDot : styles.disconnectedDot
-          ]} />
-          <Text style={styles.connectionText}>
-            {isConnected ? '連線' : '離線'}
-          </Text>
-        </View> 
-        
-        */}
 
         {/* 多媒體查看按鈕 */}
         <TouchableOpacity
@@ -1477,24 +1457,6 @@ export default function ChatRoom() {
                 onFocus={() => handleTyping(true)}
                 onBlur={() => handleTyping(false)}
               />
-
-              {/* 
-
-              <TouchableOpacity
-                style={styles.emojiButton}
-                onPress={() => {
-                  // 表情符號功能
-                  Alert.alert('提示', '表情符號功能將在後續版本添加');
-                }}
-              >
-                <MaterialCommunityIcons 
-                  name="emoticon-happy-outline" 
-                  size={24} 
-                  color="#8b5e3c" 
-                />
-              </TouchableOpacity>
-
-               */}
 
             </View>
 

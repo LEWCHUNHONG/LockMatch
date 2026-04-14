@@ -607,10 +607,10 @@ const gameAPI = {
   // 獲取本週已用積分（無限模式）
   getWeeklyPoints: () => api.get('/api/game/weekly-points'),
 
-  // ✅ 新增：獲取 MBTI 累計分數與已完成預設關卡
+  // 獲取 MBTI 累計分數與已完成預設關卡
   getMbtiScores: () => api.get('/api/game/mbti-scores'),
 
-  // ✅ 新增：重置 MBTI 進度
+  // 重置 MBTI 進度
   resetMbti: () => api.post('/api/game/reset-mbti'),
 };
 
@@ -632,7 +632,7 @@ const customLevelAPI = {
   delete: (id) => api.delete(`/api/custom-levels/${id}`),
 };
 
-// 臨時聊天相關 API 函數（新增）
+// 臨時聊天相關 API 函數
 const tempChatAPI = {
   // 發送臨時聊天邀請
   sendInvite: (targetUserId) => {
@@ -681,7 +681,7 @@ export {
   mbtiAPI,
   gameAPI,
   customLevelAPI,
-  tempChatAPI,      // 新增導出
+  tempChatAPI,
   socketAPI,
   heartbeatAPI,
   API_URL,

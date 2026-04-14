@@ -50,7 +50,7 @@ export default function Profile() {
 
   const router = useRouter();
 
-  // Android 實體返回鍵處理
+
   useEffect(() => {
     const backAction = () => {
       router.back();
@@ -61,7 +61,7 @@ export default function Profile() {
     return () => backHandler.remove();
   }, [router]);
 
-  // 載入使用者資料並確保 avatar URL 帶有 cache buster
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -69,7 +69,7 @@ export default function Profile() {
         if (storedUser) {
           let parsed = JSON.parse(storedUser);
 
-          // 確保 avatar 是完整 URL 並刷新 cache buster
+
           if (parsed.avatar) {
             parsed.avatar = refreshCacheBuster(parsed.avatar);
             await AsyncStorage.setItem('user', JSON.stringify(parsed));
@@ -96,13 +96,13 @@ const refreshCacheBuster = (url) => {
 
   const cacheBuster = Date.now();
 
-  // 先移除舊的 cb 參數（無論是 ?cb= 或 &cb=）
+
   let cleanUrl = url.replace(/[?&]cb=\d+(&?)/g, (match, amp) => amp ? '&' : '');
 
-  // 移除可能的尾巴 & 或 ?
+
   cleanUrl = cleanUrl.replace(/[?&]$/, '');
 
-  // 判斷要用 ? 還是 &
+
   const hasQuery = cleanUrl.includes('?');
   const separator = hasQuery ? '&' : '?';
 
@@ -221,11 +221,11 @@ const handleUploadAvatar = async () => {
               method: 'POST',
               headers: {
                 Authorization: token ? `Bearer ${token}` : '',
-                // 重要：不要手動設定 Content-Type，讓 fetch 自動處理 multipart
+
               },
               body: formData,
             },
-            20000 // 20秒 timeout
+            20000
           );
 
           if (!response.ok) {

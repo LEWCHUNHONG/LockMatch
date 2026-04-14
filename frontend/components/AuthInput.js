@@ -1,3 +1,4 @@
+//app/components/AuthInput.js
 import { View, TextInput, Text, StyleSheet } from 'react-native';
 
 export default function AuthInput({ placeholder, value, onChangeText, secureTextEntry = false, error }) {

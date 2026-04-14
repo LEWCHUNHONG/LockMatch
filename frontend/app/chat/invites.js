@@ -17,7 +17,7 @@ import { chatAPI, fixImageUrl } from '../../utils/api';
 
 export default function Invites() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState('friend'); // 'friend' 或 'group'
+    const [activeTab, setActiveTab] = useState('friend');
     const [friendRequests, setFriendRequests] = useState([]);
     const [groupInvites, setGroupInvites] = useState([]);
     const [loading, setLoading] = useState(false);

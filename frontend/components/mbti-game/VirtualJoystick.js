@@ -41,7 +41,7 @@ export default function VirtualJoystick({ onMove, simultaneousWith }) {
       runOnJS(onMove)({ x: 0, y: 0 });
     });
 
-  // 設定同時手勢（如果提供了 external 手勢）
+  // 設定同時手勢
   if (simultaneousWith) {
     pan.simultaneousWithExternalGesture(simultaneousWith);
   }

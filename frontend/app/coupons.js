@@ -1,3 +1,4 @@
+// app/coupons.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';

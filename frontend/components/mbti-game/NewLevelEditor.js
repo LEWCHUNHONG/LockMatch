@@ -289,7 +289,7 @@ export default function NewLevelEditor({
       delete levelToSave.id;
       onSave(levelToSave, action, existingCustomId);
     } else if (action === 'saveToPreset') {
-      // 這個選項已被禁用，但保留以防萬一
+  
       levelToSave.id = initialLevel.id;
       onSave(levelToSave, action, null);
     }
@@ -638,7 +638,7 @@ export default function NewLevelEditor({
         </View>
       </Modal>
 
-      {/* ✅ 修改重點：儲存選項對話框，已移除「儲存至原關卡」按鈕 */}
+
       <Modal visible={showSaveOptions} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.optionModal}>
@@ -671,7 +671,7 @@ export default function NewLevelEditor({
               </TouchableOpacity>
             )}
 
-            {/* ❌「儲存至原關卡（覆蓋預設）」按鈕已移除 */}
+
 
             <TouchableOpacity
               style={[styles.optionButton, styles.cancelOption]}
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   updateButton: {
     backgroundColor: '#9b59b6',
   },
-  // 移除 presetSaveButton 相關樣式（可保留但不會用到）
+
   cancelOption: {
     backgroundColor: '#e74c3c',
   },

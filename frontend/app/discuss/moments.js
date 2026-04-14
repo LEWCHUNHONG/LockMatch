@@ -37,7 +37,7 @@ export default function Moments() {
   const [hasMore, setHasMore] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  const flashListRef = useRef(null);   // ← 新增：用來控制滾動
+  const flashListRef = useRef(null);
 
   const loadCurrentUser = useCallback(async () => {
     try {
@@ -77,7 +77,7 @@ export default function Moments() {
         setPage(1);
         setHasMore(newPosts.length >= 15);
 
-        // ===== 切換回來或刷新時自動回到頂端 =====
+
         setTimeout(() => {
           flashListRef.current?.scrollToOffset({ 
             offset: 0, 
@@ -103,7 +103,7 @@ export default function Moments() {
   useFocusEffect(
     useCallback(() => {
       loadCurrentUser();
-      fetchPosts(true);     // 每次切回來都刷新 + 置頂
+      fetchPosts(true);
     }, [loadCurrentUser, fetchPosts])
   );
 
@@ -191,7 +191,7 @@ export default function Moments() {
 
         {/* 貼文列表 */}
         <FlashList
-          ref={flashListRef}          // ← 新增 ref
+          ref={flashListRef}
           data={filteredPosts}
           keyExtractor={item => item.id.toString()}
           renderItem={({ item }) => (

@@ -31,7 +31,7 @@ import { socketAPI } from '../../utils/api';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 
-// 可重用的按壓卡片組件（獨立動畫）
+// 可重用的按壓卡片組件
 const AnimatedCard = ({ icon, title, desc, buttonText, onPress, cardWidth }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
@@ -135,7 +135,7 @@ export default function Dashboard() {
   const horizontalPadding = 40;
   const cardWidth = (screenWidth - horizontalPadding - gap) / 2;
 
-  // ---------- 原生模組測試函數 (可選直接使用，但現改為導航) ----------
+
   const testLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -163,7 +163,7 @@ export default function Dashboard() {
       if (response.data && response.data.user) {
         let latestUser = response.data.user;
 
-        // 確保頭像有完整的URL
+
         if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
           if (latestUser.avatar.startsWith('/')) {
             latestUser.avatar = `${api.defaults.baseURL}${latestUser.avatar}`;
@@ -172,7 +172,7 @@ export default function Dashboard() {
           }
         }
 
-        // 添加cache buster確保頭像刷新
+
         if (latestUser.avatar) {
           latestUser.avatar = `${latestUser.avatar.split('?')[0]}?cb=${Date.now()}`;
         }
@@ -182,7 +182,7 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('從後端獲取用戶信息失敗:', error);
-      // 如果API失敗，嘗試使用緩存數據
+
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         let parsed = JSON.parse(storedUser);
@@ -306,7 +306,6 @@ export default function Dashboard() {
   };
 
 // 處理任務操作
-// 處理任務操作
 const handleTaskAction = async (task) => {
   if (processingTask === task.id) return;
   setProcessingTask(task.id);
@@ -338,7 +337,7 @@ const handleTaskAction = async (task) => {
       }
     } 
     else if (task.user_status === 'in_progress') {
-      // 檢查任務進度（解決你原本「只有任務進度四個字」的問題）
+      // 檢查任務進度
       const response = await api.post('/api/check-task-progress', { taskId: task.id });
       
       if (response.data.success) {
@@ -466,7 +465,7 @@ const handleTaskAction = async (task) => {
     setRefreshing(false);
   };
 
-  // 載入用戶（每次 focus 重新載入）
+  // 載入用戶
   const loadUser = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
 
@@ -692,7 +691,7 @@ const handleTaskAction = async (task) => {
               </View>
             </View>
 
-            {/* 每日簽到 - 大按鈕 */}
+            {/* 每日簽到按鈕 */}
             <TouchableOpacity
               style={[
                 styles.checkinButton,
@@ -910,7 +909,7 @@ const handleTaskAction = async (task) => {
         </View>
       </Modal>
 
-            {/* 任務提示 Modal（取代原本的 Alert） */}
+            {/* 任務提示 Modal */}
       <Modal 
         isVisible={showTaskModal} 
         onBackdropPress={() => setShowTaskModal(false)}

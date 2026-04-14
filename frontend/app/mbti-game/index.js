@@ -22,7 +22,7 @@ import { MBTI_DESCRIPTIONS, calculateMbtiResult, getAllQuestions } from '../../d
 import { gameAPI, customLevelAPI, userAPI, mbtiAPI } from '../../utils/api';
 import { MBTI_DIMENSION_LEVELS } from '../../data/levels';
 import { useRouter } from 'expo-router';
-import CustomAlertModal from '../../components/mbti-game/CustomAlertModal';   // ← 新增
+import CustomAlertModal from '../../components/mbti-game/CustomAlertModal';
 
 const WEEKLY_LIMIT = 1000;
 const PRESET_LEVEL_IDS = ['ei-dimension', 'sn-dimension', 'tf-dimension', 'jp-dimension'];

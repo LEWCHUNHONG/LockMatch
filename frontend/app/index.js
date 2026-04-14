@@ -19,11 +19,11 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // 縮放控制（調整得更保守）
+
   const scale = Math.min(width / 375, 1.06);
   const s = (size) => Math.round(size * scale);
 
-  // Android 返回鍵
+
   useEffect(() => {
     if (Platform.OS !== 'android') return;
     const backHandler = () => {
@@ -55,13 +55,13 @@ export default function WelcomeScreen() {
             </View>
           </TouchableOpacity>
 
-          {/* 整個標語區改成一張圖片 */}
+
           <View style={styles.sloganContainer}>
             <Image
-              source={require('../assets/welcome-slogan.png')}   // ← 改成你的圖片實際路徑
+              source={require('../assets/welcome-slogan.png')}
               style={[styles.sloganImage, { 
-                width: s(450),     // 可調整這個數字來控制大小
-                height: s(165)     // 高度自動保持比例
+                width: s(450),
+                height: s(165)
               }]}
               resizeMode="contain"
             />
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 20,
   },
-  // 新增的圖片樣式
+
   sloganImage: {
     marginBottom: 10,
   },

@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 80, // 為 FAB 預留底部空間，避免被遮擋
+    paddingBottom: 80,
   },
   roomItem: {
     flexDirection: 'row',
@@ -514,7 +514,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 
-  // ── 新增：右下角浮動按鈕樣式 ──
   fab: {
     position: 'absolute',
     right: 24,

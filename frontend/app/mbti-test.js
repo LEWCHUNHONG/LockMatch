@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
-// 導入題庫
+
 import {
   GAME_MODES,
   getRandomQuestions,
@@ -27,13 +27,13 @@ import {
   MBTI_DESCRIPTIONS
 } from '../data/mbti-questions';
 
-// 導入 API
+
 import { mbtiAPI } from '../utils/api';
 
 export default function MbtiTestGame() {
   const router = useRouter();
   
-  // 狀態管理
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [mbtiScores, setMbtiScores] = useState({
@@ -51,13 +51,13 @@ export default function MbtiTestGame() {
   const [user, setUser] = useState(null);
   const [testCompleted, setTestCompleted] = useState(false);
   
-  // 動畫值
+
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(1)).current;
 
-  // 載入用戶信息
+
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -65,12 +65,12 @@ export default function MbtiTestGame() {
         if (storedUser) {
           const parsed = JSON.parse(storedUser);
           
-          // 確保頭像有完整的URL
+
           if (parsed.avatar && !parsed.avatar.startsWith('http')) {
             parsed.avatar = `${BASE_URL}${parsed.avatar.startsWith('/') ? parsed.avatar : '/' + parsed.avatar}`;
           }
           
-          // 檢查是否有已完成的測試
+
           if (parsed.mbti) {
             setTestCompleted(true);
           }
@@ -84,7 +84,7 @@ export default function MbtiTestGame() {
     loadUser();
   }, []);
 
-  // 初始化遊戲
+
   useEffect(() => {
     if (!showModeSelection) {
       const selectedQuestions = getRandomQuestions(gameMode);
@@ -97,7 +97,7 @@ export default function MbtiTestGame() {
     ? ((currentQuestionIndex + 1) / questions.length) * 100 
     : 0;
 
-  // 進度條動畫
+
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progress,
@@ -114,10 +114,10 @@ export default function MbtiTestGame() {
   };
 
   const handleAnswer = async (option) => {
-    // 觸覺回饋
+
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // 按鈕點擊動畫
+
     Animated.sequence([
       Animated.timing(cardScale, {
         toValue: 0.95,
@@ -131,7 +131,7 @@ export default function MbtiTestGame() {
       })
     ]).start();
     
-    // 更新答案
+
     const newAnswers = [...answers, {
       questionId: currentQuestion.id,
       question: currentQuestion.question,
@@ -140,14 +140,14 @@ export default function MbtiTestGame() {
     }];
     setAnswers(newAnswers);
     
-    // 更新分數
+
     const newScores = { ...mbtiScores };
     Object.entries(option.mbti).forEach(([key, value]) => {
       newScores[key] = (newScores[key] || 0) + value;
     });
     setMbtiScores(newScores);
     
-    // 淡出動畫
+
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -161,10 +161,10 @@ export default function MbtiTestGame() {
       })
     ]).start(() => {
       if (currentQuestionIndex < questions.length - 1) {
-        // 下一題
+
         setCurrentQuestionIndex(prev => prev + 1);
         
-        // 重置動畫
+
         slideAnim.setValue(50);
         Animated.parallel([
           Animated.timing(fadeAnim, {
@@ -180,11 +180,11 @@ export default function MbtiTestGame() {
           })
         ]).start();
       } else {
-        // 計算結果
+
         const result = calculateMbtiResult(newScores);
         setMbtiResult(result);
         
-        // 顯示結果的動畫
+
         setTimeout(() => {
           setShowResult(true);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -193,13 +193,13 @@ export default function MbtiTestGame() {
     });
   };
 
-  // 保存 MBTI 結果到後端
+
   const saveMbtiResult = async () => {
     if (!mbtiResult || isSubmitting) return;
     
     setIsSubmitting(true);
     try {
-      // 1. 立即更新本地存儲（讓用戶立即看到效果）
+
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
         const user = JSON.parse(storedUser);
@@ -207,21 +207,21 @@ export default function MbtiTestGame() {
           ...user,
           mbti: mbtiResult.type,
           status: '已測試',
-          // 添加cache buster確保頭像刷新
+
           avatar: user.avatar ? `${user.avatar.split('?cb=')[0]}?cb=${Date.now()}` : user.avatar
         };
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
       }
       
-      // 2. 使用專用的 MBTI API 更新結果
+
       const response = await mbtiAPI.updateMbti(mbtiResult.type);
       
       if (response.data.success) {
-        // 3. 如果後端有返回更新後的用戶，使用它
+
         if (response.data.user) {
           const latestUser = response.data.user;
-          // 確保頭像有完整的URL
+
           if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
             latestUser.avatar = `${BASE_URL}${latestUser.avatar.startsWith('/') ? latestUser.avatar : '/' + latestUser.avatar}`;
           }
@@ -232,7 +232,7 @@ export default function MbtiTestGame() {
         
         setTestCompleted(true);
         
-        // 4. 顯示成功對話框
+
         Alert.alert(
           '測試完成！🎉',
           `你的 MBTI 類型是 ${mbtiResult.type}\n\n${mbtiResult.description.description}`,
@@ -240,7 +240,7 @@ export default function MbtiTestGame() {
             {
               text: '查看個人檔案',
               onPress: () => {
-                // 延遲導航確保狀態已更新
+
                 setTimeout(() => {
                   router.push('/profile');
                 }, 100);
@@ -270,7 +270,7 @@ export default function MbtiTestGame() {
     } catch (error) {
       console.error('保存 MBTI 失敗:', error);
       
-      // 如果專用 API 失敗，嘗試使用通用更新 API
+
       try {
         const token = await AsyncStorage.getItem('token');
         
@@ -287,7 +287,7 @@ export default function MbtiTestGame() {
         });
         
         if (response.ok) {
-          // 獲取更新後的用戶信息
+
           const userResponse = await fetch('${BASE_URL}/api/me', {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -298,7 +298,7 @@ export default function MbtiTestGame() {
             const userData = await userResponse.json();
             if (userData.user) {
               const updatedUser = userData.user;
-              // 確保頭像有完整的URL
+
               if (updatedUser.avatar && !updatedUser.avatar.startsWith('http')) {
                 updatedUser.avatar = `${BASE_URL}${updatedUser.avatar.startsWith('/') ? updatedUser.avatar : '/' + updatedUser.avatar}`;
               }
@@ -329,7 +329,7 @@ export default function MbtiTestGame() {
             ]
           );
         } else {
-          // 即使後端保存失敗，也要保留本地記錄
+
           Alert.alert(
             '部分保存成功',
             `你的 MBTI 類型 ${mbtiResult.type} 已保存在本地。\n\n由於網絡問題，結果可能未同步到服務器，建議稍後重新登錄確認。`,
@@ -349,7 +349,7 @@ export default function MbtiTestGame() {
       } catch (fallbackError) {
         console.error('備用保存方法失敗:', fallbackError);
         
-        // 即使所有保存方法都失敗，也要保留本地記錄
+
         Alert.alert(
           '本地保存成功',
           `你的 MBTI 類型 ${mbtiResult.type} 已保存在本地。\n\n由於網絡問題，結果可能未同步到服務器，建議檢查網絡後重新測試或稍後重新登錄。`,
@@ -389,13 +389,13 @@ export default function MbtiTestGame() {
     progressAnim.setValue(0);
   };
 
-  // MBTI 顏色映射
+
   const getMbtiColor = (mbtiType) => {
     const mbtiInfo = MBTI_DESCRIPTIONS[mbtiType];
     return mbtiInfo ? mbtiInfo.color : '#f4c7ab';
   };
 
-  // 模式選擇界面
+
   if (showModeSelection) {
     return (
       <LinearGradient
@@ -424,7 +424,7 @@ export default function MbtiTestGame() {
               </Text>
             </View>
 
-            {/* 如果用戶已有 MBTI，顯示當前類型 */}
+
             {user?.mbti && testCompleted && (
               <View style={styles.currentMbtiCard}>
                 <View style={styles.currentMbtiHeader}>
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(244, 199, 171, 0.25)',
   },
-  // 模式選擇樣式
+
   modeSelectionContainer: {
     padding: 20,
     paddingBottom: 40,
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  // 當前 MBTI 顯示
+
   currentMbtiCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 100,
   },
-  // 遊戲進行中樣式
+
   sceneContainer: {
     flex: 1,
     padding: 20,
@@ -1110,7 +1110,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#5c4033',
   },
-  // 結果頁面樣式
+
   resultContainer: {
     padding: 20,
     paddingBottom: 40,

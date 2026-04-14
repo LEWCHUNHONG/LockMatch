@@ -40,7 +40,7 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  // 新增：狀態與簡介編輯相關
+
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [tempStatus, setTempStatus] = useState('');
@@ -258,7 +258,7 @@ const loadUser = useCallback(async () => {
         const newStatus = res.data.user?.status ?? tempStatus.trim();
         setUser(prev => ({ ...prev, status: newStatus }));
 
-        // 更新 AsyncStorage
+
         const stored = await AsyncStorage.getItem('user');
         if (stored) {
           const parsed = JSON.parse(stored);
@@ -280,12 +280,12 @@ const handleSaveBio = async () => {
   if (saving) return;
   setSaving(true);
   try {
-    const payload = { bio: tempBio.trim() };  // 故意傳空字串也行，後端會處理成 null
+    const payload = { bio: tempBio.trim() };
 
     const res = await api.put('/api/update-profile', payload);
 
     if (res.data.success) {
-      const newBio = res.data.user?.bio ?? tempBio.trim();  // 優先用後端回傳
+      const newBio = res.data.user?.bio ?? tempBio.trim();
 
       setUser(prev => {
         const updated = { ...prev, bio: newBio };
@@ -309,14 +309,14 @@ const handleUpdateStatus = async (newStatus) => {
   try {
     setSaving(true);
 
-    // 明確定義要傳送的 payload
+
     let payload = {};
     
-    // 處理清除狀態的情況（null 或空字串都視為清空）
+
     if (newStatus === null || newStatus === '' || (typeof newStatus === 'string' && newStatus.trim() === '')) {
-      payload.status = null;  // 建議傳 null，讓後端明確存為 NULL
+      payload.status = null;
     } else {
-      // 正常狀態更新，trim 並限制長度
+
       const trimmedStatus = newStatus.trim().slice(0, 255);
       payload.status = trimmedStatus;
     }
@@ -327,10 +327,10 @@ const handleUpdateStatus = async (newStatus) => {
     });
 
     if (res.data.success) {
-      // 優先使用後端回傳的 user.status（如果有），否則用我們計算的值
+
       let updatedStatus = '';
       if (res.data.user?.status !== undefined) {
-        updatedStatus = res.data.user.status || '';  // 後端回 null 時顯示為 ''
+        updatedStatus = res.data.user.status || '';
       } else {
         updatedStatus = (newStatus === null || newStatus === '') ? '' : (newStatus?.trim() || '');
       }
@@ -353,7 +353,7 @@ const handleUpdateStatus = async (newStatus) => {
       }
 
     } else {
-      // 後端明確說 success: false
+
       throw new Error(res.data.error || res.data.message || '後端回應失敗');
     }
   } catch (err) {
@@ -362,7 +362,7 @@ const handleUpdateStatus = async (newStatus) => {
     let errorMessage = '更新狀態失敗，請稍後再試';
     
     if (err.response) {
-      // 有 HTTP 回應，但不是 2xx
+
       console.error('[handleUpdateStatus] HTTP 狀態碼:', err.response.status);
       console.error('[handleUpdateStatus] 後端回傳錯誤資料:', err.response.data);
       
@@ -370,11 +370,11 @@ const handleUpdateStatus = async (newStatus) => {
         || err.response.data?.message 
         || `伺服器錯誤 (${err.response.status})`;
     } else if (err.request) {
-      // 請求發出去了，但沒收到回應（網路問題、timeout）
+
       console.error('[handleUpdateStatus] 無回應，可能網路問題');
       errorMessage = '無法連線到伺服器，請檢查網路';
     } else {
-      // 其他錯誤（例如程式碼錯誤）
+
       console.error('[handleUpdateStatus] 其他錯誤:', err.message);
       errorMessage = err.message || '發生未知錯誤';
     }
@@ -752,7 +752,7 @@ const handleUpdateStatus = async (newStatus) => {
         }}
         onPress={async () => {
           const newStatus = option.isClear ? '' : option.label;
-          // 這裡呼叫 API 更新
+
           await handleUpdateStatus(newStatus);
           setShowStatusModal(false);
         }}
@@ -809,7 +809,7 @@ const styles = StyleSheet.create({
 
   headerLeft: {
   width: 40,
-  padding: 14,           // 讓左右空間對稱
+  padding: 14,
 },
 
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#5c4033' },
@@ -949,7 +949,6 @@ const modalStyles = StyleSheet.create({
   },
 });
 
-// 新增的編輯相關樣式
 const localStyles = StyleSheet.create({
   input: {
     width: '100%',

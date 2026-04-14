@@ -147,7 +147,6 @@ export default function LoginScreen() {
                     </View>
                   </View>
 
-                  {/* 新增的忘記密碼按鈕 */}
                   <TouchableOpacity 
                     style={styles.forgotPasswordContainer}
                     onPress={() => showModal('忘記密碼？', '請聯繫管理員重設密碼：\nadmin@lockmatch.com')}
@@ -205,12 +204,12 @@ export default function LoginScreen() {
   <TouchableOpacity
     style={modalStyles.overlay}
     activeOpacity={1}
-    onPress={() => setModalVisible(false)}   // ← 點擊空白處關閉
+    onPress={() => setModalVisible(false)}
   >
     <TouchableOpacity
       style={modalStyles.container}
       activeOpacity={1}
-      onPress={(e) => e.stopPropagation()}   // ← 防止點擊內容時關閉
+      onPress={(e) => e.stopPropagation()}
     >
       <Text style={modalStyles.title}>{modalTitle}</Text>
       <Text style={modalStyles.message}>{modalMessage}</Text>
@@ -317,7 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
-  // 忘記密碼樣式
+
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
     marginBottom: 24,

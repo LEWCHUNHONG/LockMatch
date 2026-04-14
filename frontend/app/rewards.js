@@ -48,7 +48,7 @@ export default function RewardsScreen() {
   const [taskModalMessage, setTaskModalMessage] = useState('');
   const [taskModalButtons, setTaskModalButtons] = useState([]);
 
-  // 新增：兌換確認 Modal 的狀態
+
   const [showConfirmRedeemModal, setShowConfirmRedeemModal] = useState(false);
   const [redeemItemToConfirm, setRedeemItemToConfirm] = useState(null);
 
@@ -58,7 +58,7 @@ export default function RewardsScreen() {
     try {
       setLoading(true);
 
-      // 平行加載所有資料
+
       const [pointsRes, tasksRes, checkinRes] = await Promise.all([
         api.get('/api/user-points').catch(() => ({ data: { success: false } })),
         api.get('/api/tasks').catch(() => ({ data: { success: false } })),
@@ -81,7 +81,7 @@ export default function RewardsScreen() {
         setCheckinStatus(checkinRes.data);
       }
 
-      // 如果當前是商店標籤，加載商店資料
+
       if (activeTab === 'shop') {
         const shopRes = await api.get('/api/shop-items').catch(() => ({ data: { success: false } }));
         if (shopRes.data.success) {
@@ -104,7 +104,7 @@ export default function RewardsScreen() {
     setShowTaskModal(true);
   };
 
-  // 修改後的 handleRedeem：先彈出確認視窗，不直接兌換
+
   const handleRedeem = (item) => {
     if (userPoints.points < item.points_required) {
       showTaskAlert('積分不足', '你的積分不夠兌換這個商品');
@@ -115,7 +115,7 @@ export default function RewardsScreen() {
     setShowConfirmRedeemModal(true);
   };
 
-  // 新增：確認後才執行兌換
+
   const confirmRedeem = async () => {
     const item = redeemItemToConfirm;
     setShowConfirmRedeemModal(false);
@@ -691,7 +691,7 @@ export default function RewardsScreen() {
         </View>
       </Modal>
 
-      {/* 新增：兌換前確認 Modal */}
+
       <Modal
         isVisible={showConfirmRedeemModal}
         onBackdropPress={() => {

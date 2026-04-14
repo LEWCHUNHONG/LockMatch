@@ -33,12 +33,12 @@ export default function RegisterScreen() {
   const router = useRouter();
   const scaleValue = new Animated.Value(1);
 
-  // 攔截系統返回手勢，強制回到首頁
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         router.replace('/');
-        return true; // 阻止預設行為
+        return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  // 新增：返回按鈕樣式
+
   backButton: {
     position: 'absolute',
     top: 56,

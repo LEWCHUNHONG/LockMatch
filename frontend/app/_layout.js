@@ -44,7 +44,7 @@ export default function Layout() {
 
 const getMyUserId = async () => {
   try {
-    // 先檢查有沒有 token，沒有就直接跳過（避免不必要的 401）
+
     const token = await AsyncStorage.getItem('token');
     if (!token) {
       console.log('👋 未登入狀態，跳過 /api/me 請求（正常）');
@@ -60,14 +60,14 @@ const getMyUserId = async () => {
       console.log('✅ 取得當前用戶 ID:', id);
     }
   } catch (error) {
-    // 只處理 401 為「正常未登入」，其他錯誤才真的印錯誤
+
     if (error.response?.status === 401) {
       console.log('👋 未登入或 token 失效（正常情況）');
       setMyUserId(null);
       return;
     }
 
-    // 其他錯誤（404、500、網路問題等）才真的當錯誤處理
+
     console.error('取得用戶ID失敗', error);
   }
 };
@@ -137,7 +137,7 @@ const getMyUserId = async () => {
           router.push(`/instant-chat/${data.roomId}?otherUserId=${data.withUserId}`);
         });
 
-        // ★★★ 最終版：劇本已開始 ★★★
+
         socket.on('scenario-started', (data) => {
           console.log('🎭 收到 scenario-started 事件:', data);
 
@@ -148,7 +148,7 @@ const getMyUserId = async () => {
           const isInviter = String(fromUserId) === String(myUserId);
 
           if (isInviter) {
-            // 邀請方（A）看到的 Alert → 只顯示「立即進入劇本」，移除「稍後再看」
+
             showAlert(
               '劇本已開始',
               `對方已接受您的邀請！\n\n劇本：${scenarioTitle}`,
@@ -162,7 +162,7 @@ const getMyUserId = async () => {
               "#2ecc71"
             );
           } else {
-            // 接受方（B）直接進入劇本，不顯示任何 Alert
+
             router.push(`/scenario/${scenarioId}`);
           }
         });

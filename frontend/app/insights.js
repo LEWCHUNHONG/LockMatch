@@ -1,3 +1,4 @@
+//app/insights.js
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -12,12 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';  // ✅ 加入 router hook
+import { useRouter } from 'expo-router';
 import api from '../utils/api';
 
 export default function InsightsScreen() {
-    const router = useRouter();  // ✅ 定義 router
-    const [activeTab, setActiveTab] = useState('diary'); // 'diary' or 'report'
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState('diary');
     const [diaryContent, setDiaryContent] = useState('');
     const [diaryMood, setDiaryMood] = useState('');
     const [analysis, setAnalysis] = useState('');
@@ -41,7 +42,7 @@ export default function InsightsScreen() {
                 setAnalysis(response.data.analysis || '日記已儲存，稍後可查看分析。');
                 setDiaryContent('');
                 setDiaryMood('');
-                setReport(''); // 🔥 清空報告，下次查看時會重新生成
+                setReport('');
             } else {
                 Alert.alert('錯誤', response.data.error || '提交失敗');
             }

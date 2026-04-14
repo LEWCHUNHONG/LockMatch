@@ -65,7 +65,7 @@ export default function FriendsList() {
     const socket = socketAPI.getSocket();
     if (socket) {
       socket.on('new-friend-request', () => {
-        fetchPendingCount(); // 收到新請求時刷新數量
+        fetchPendingCount();
       });
       return () => {
         socket.off('new-friend-request');
@@ -96,11 +96,11 @@ export default function FriendsList() {
       const response = await chatAPI.getFriends();
       if (response.data.success) {
 const formattedFriends = response.data.friends.map(friend => {
-  // 調試日誌
+
   console.log('好友原始數據:', friend);
   console.log('好友頭像路徑:', friend.avatar);
 
-  // === 修正時區：強制視為香港時間 ===
+
   let lastActiveDate;
   if (friend.last_active) {
     if (typeof friend.last_active === 'string' && 
@@ -140,7 +140,7 @@ const formattedFriends = response.data.friends.map(friend => {
     isOnline: friend.is_online || false,
     avatar: fixedAvatar,
     status: friend.status || '最近活躍',
-    lastActive: formatLastActive(friend.last_active),   // ← 使用修正後的函數
+    lastActive: formatLastActive(friend.last_active),
     isFriend: true,
   };
 });
@@ -166,28 +166,28 @@ const formattedFriends = response.data.friends.map(friend => {
         console.log('待處理請求 API 返回:', response.data);
 
         const formattedRequests = response.data.requests.map(request => {
-          // 使用通用方式處理用戶數據，適應兩種可能的數據結構
+
           const userData = request.from_user || request;
 
           // 修復頭像URL
           let fixedAvatar = userData.avatar;
 
           if (userData.avatar) {
-            // 如果已經是完整URL，直接使用
+
             if (userData.avatar.startsWith('http')) {
               fixedAvatar = userData.avatar;
             }
-            // 如果是相對路徑，添加基礎URL
+
             else if (userData.avatar.startsWith('/')) {
               fixedAvatar = `${BASE_URL}${userData.avatar}`;
             }
-            // 如果是沒有斜杠的相對路徑，加上斜杠
+
             else if (userData.avatar.includes('uploads/')) {
               fixedAvatar = `${BASE_URL}/${userData.avatar}`;
             }
           }
 
-          // 添加時間戳防止緩存
+
           if (fixedAvatar) {
             fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
           }
@@ -218,14 +218,14 @@ const formattedFriends = response.data.friends.map(friend => {
     }
   };
 
-// 修正版：明確處理 UTC 時間（帶 Z）
+
 const formatLastActive = (timestamp) => {
   if (!timestamp) return '很久以前';
 
-  // 直接 new Date() 即可，因為後端已經回傳帶 Z 的 ISO 字串
+
   const date = new Date(timestamp);
   
-  // 防呆：如果日期無效
+
   if (isNaN(date.getTime())) {
     console.warn('無效的 last_active 時間:', timestamp);
     return '很久以前';
@@ -579,9 +579,6 @@ const formatTime = (timestamp) => {
   );
 }
 
-// ======================
-//       STYLES
-// ======================
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },

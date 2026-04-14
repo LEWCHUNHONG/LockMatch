@@ -40,7 +40,7 @@ export default function CreatePost() {
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      // 保持原有权限提示逻辑
+
       setMessageTitle('需要權限');
       setMessageText('請允許存取相簿');
       setModalType('error');
@@ -52,7 +52,7 @@ export default function CreatePost() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsMultipleSelection: true,          // 允许多选
+        allowsMultipleSelection: true,
         selectionLimit: MAX_IMAGES - images.length,
         quality: 0.92,
         base64: false,
@@ -71,8 +71,6 @@ export default function CreatePost() {
     }
   };
 
-  // 编辑/裁剪特定图片
-// 單張重新挑選 + 開啟內建裁剪（適用於 iOS 和 Android）
 const editImage = async (index) => {
   const img = images[index];
   if (!img) return;
@@ -88,8 +86,8 @@ const editImage = async (index) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsMultipleSelection: false,   // 單張
-      allowsEditing: true,              // 開啟內建裁剪器
+      allowsMultipleSelection: false,
+      allowsEditing: true,
       quality: 0.92,
     });
 
@@ -98,13 +96,13 @@ const editImage = async (index) => {
 
       const newImages = [...images];
 
-      // 如果是舊圖片（來自伺服器），記錄要刪除
+
       const oldImg = newImages[index];
       if (!oldImg.isNew && oldImg.serverUrl) {
         setRemovedImages((prev) => [...new Set([...prev, oldImg.serverUrl])]);
       }
 
-      // 替換成裁剪後的新圖片
+
       newImages[index] = {
         uri: croppedAsset.uri,
         originalUri: croppedAsset.uri,
@@ -122,7 +120,7 @@ const editImage = async (index) => {
   }
 };
 
-  // 删除特定图片
+
   const deleteImage = (index) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
@@ -204,11 +202,11 @@ const editImage = async (index) => {
         setShowMessageModal(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // 重置表单
+
         setContent('');
         setImages([]);
       } else {
-        // ❌ 處理 API 返回的失敗情況
+  
         let errorMsg = '發文失敗，請稍後再試';
         let errorTitle = '發文失敗';
 
@@ -219,7 +217,7 @@ const editImage = async (index) => {
           errorMsg = data.message;
         }
 
-        // 處理內容審核失敗
+
         if (response.status === 403 || (data.error && data.error.includes('審核'))) {
           errorTitle = '內容不恰當';
           errorMsg = data.message || '您的言論包含不當內容，無法發佈';
@@ -240,18 +238,18 @@ const editImage = async (index) => {
     } catch (err) {
       console.error('發文失敗:', err);
 
-      // 處理錯誤
+
       let errorTitle = '發文失敗';
       let errorMessage = err.message || '請稍後再試';
 
-      // 特殊處理網路錯誤
+
       if (err.message.includes('Network request failed') ||
         err.message.includes('Network') ||
         err.message.includes('fetch')) {
         errorMessage = '網路連線不穩定，請檢查網路後再試';
       }
 
-      // 特殊處理伺服器錯誤
+
       if (err.message.includes('伺服器') || err.message.includes('500')) {
         errorMessage = '伺服器暫時出現問題，請稍後再試';
       }
@@ -337,7 +335,7 @@ const editImage = async (index) => {
         </View>
       </LinearGradient>
 
-      {/* 簡單彈窗 */}
+
       <Modal
         isVisible={showMessageModal}
         onBackdropPress={() => setShowMessageModal(false)}

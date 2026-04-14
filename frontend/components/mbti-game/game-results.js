@@ -15,10 +15,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function GameResults({ gameData, level, onRestart, onBack, onNextLevel, character }) {
-  const { isFinal = false, finalMbti } = gameData;   // 新增 finalMbti
+  const { isFinal = false, finalMbti } = gameData;
 
   const calculateMBTI = () => {
-    // 如果提供了 finalMbti，直接使用（避免因本地分數不完整而出錯）
+
     if (finalMbti) return finalMbti;
 
     const { scores } = gameData;
@@ -140,7 +140,7 @@ export default function GameResults({ gameData, level, onRestart, onBack, onNext
           <Text style={styles.hintText}>
             完成四個維度關卡後，你將獲得完整的 MBTI 性格分析！
           </Text>
-          {/* 移除提前顯示 MBTI 類型的區塊 */}
+
         </View>
       )}
 
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   hintTitle: { fontSize: 20, fontWeight: '800', color: '#5c4033', marginTop: 8, marginBottom: 8 },
   hintText: { fontSize: 14, color: '#8b5e3c', textAlign: 'center', marginBottom: 12 },
-  // miniMbti 樣式已不再使用，但為了避免樣式缺失可保留定義（可選）
+
   miniMbti: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   miniMbtiText: { fontSize: 16, fontWeight: '700', color: '#5c4033' },
   statsCard: {

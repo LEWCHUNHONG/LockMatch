@@ -29,7 +29,7 @@ export default function EditPost() {
   const id = params.id || params.postId || params.post_id;
 
   const [content, setContent] = useState('');
-  const [images, setImages] = useState([]); // { uri, originalUri, isNew, serverUrl }
+  const [images, setImages] = useState([]);
   const [removedImages, setRemovedImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +43,7 @@ export default function EditPost() {
   const baseURL = api.defaults.baseURL;
   const MAX_IMAGES = 10;
 
-  // 載入現有貼文資料
+
   useEffect(() => {
     if (!id) {
       Alert.alert('錯誤', '找不到貼文編號');
@@ -110,7 +110,7 @@ export default function EditPost() {
     loadPost();
   }, [id]);
 
-  // 選擇新圖片（可多選）
+
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -147,8 +147,7 @@ export default function EditPost() {
     }
   };
 
-  // ==================== 裁剪功能（從 create.js 移植並適配） ====================
-// 單張重新挑選 + 開啟內建裁剪（適用於 iOS 和 Android）
+
 const editImage = async (index) => {
   const img = images[index];
   if (!img) return;
@@ -164,8 +163,8 @@ const editImage = async (index) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsMultipleSelection: false,   // 單張
-      allowsEditing: true,              // 開啟內建裁剪器
+      allowsMultipleSelection: false,
+      allowsEditing: true,
       quality: 0.92,
     });
 
@@ -174,13 +173,13 @@ const editImage = async (index) => {
 
       const newImages = [...images];
 
-      // 如果是舊圖片（來自伺服器），記錄要刪除
+
       const oldImg = newImages[index];
       if (!oldImg.isNew && oldImg.serverUrl) {
         setRemovedImages((prev) => [...new Set([...prev, oldImg.serverUrl])]);
       }
 
-      // 替換成裁剪後的新圖片
+
       newImages[index] = {
         uri: croppedAsset.uri,
         originalUri: croppedAsset.uri,
@@ -198,7 +197,7 @@ const editImage = async (index) => {
   }
 };
 
-  // 刪除圖片
+
   const deleteImage = (index) => {
     const img = images[index];
     const newImages = images.filter((_, i) => i !== index);
@@ -210,7 +209,7 @@ const editImage = async (index) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  // 提交更新
+
   const handleSubmit = async () => {
     if (!content.trim() && images.length === 0) {
       Alert.alert('提示', '至少要寫點文字或選張圖片哦～');
@@ -225,12 +224,12 @@ const editImage = async (index) => {
 
       formData.append('content', content.trim() || '');
 
-      // 傳送要刪除的舊圖片
+
       if (removedImages.length > 0) {
         formData.append('removeMedia', JSON.stringify(removedImages));
       }
 
-      // 只上傳新圖片（包含裁剪後的圖片）
+
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
         if (img.isNew) {
@@ -294,7 +293,7 @@ const editImage = async (index) => {
     }
   };
 
-  // Loading 畫面
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>

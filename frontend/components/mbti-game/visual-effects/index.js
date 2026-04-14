@@ -1,4 +1,4 @@
-// app/mbti-game/visual-effects/index.js
+// app/components/mbti-game/visual-effects/index.js
 import { useRef, useState, useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, {
@@ -31,7 +31,7 @@ export const useVisualEffects = () => {
     
     setActiveEffects(prev => [...prev, effect]);
     
-    // 自動清理效果
+
     const cleanupTime = config.duration || 2000;
     setTimeout(() => {
       removeEffect(id);
@@ -48,7 +48,7 @@ export const useVisualEffects = () => {
     setActiveEffects([]);
   };
 
-  // 預定義的效果觸發器
+  
   const triggerCollectEffect = (position, itemType) => {
     return addEffect('collect', {
       position,
@@ -85,7 +85,7 @@ export const useVisualEffects = () => {
     });
   };
 
-  // 渲染所有活動效果
+
   const renderEffects = () => {
     return (
       <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
@@ -178,7 +178,7 @@ export const useVisualEffects = () => {
   };
 };
 
-// 屏幕震動效果
+
 export const ScreenShake = ({ intensity = 10, duration = 300, children }) => {
   const shake = useSharedValue(0);
   

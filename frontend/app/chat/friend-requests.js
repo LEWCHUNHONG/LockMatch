@@ -46,7 +46,7 @@ export default function FriendRequests() {
         setProcessingId(requestId);
         try {
             const res = await chatAPI.acceptFriendRequest(requestId);
-            console.log('接受請求回應:', res.data); // 👈 檢查 roomId
+            console.log('接受請求回應:', res.data); // 檢查 roomId
             if (res.data.success && res.data.roomId) {
                 router.push(`/chat/${res.data.roomId}`);
             } else {
@@ -75,15 +75,15 @@ export default function FriendRequests() {
     };
 
 const renderRequestItem = (item) => {
-    // 先用 fixImageUrl 處理
+
     let avatarUri = fixImageUrl(item.avatar);
 
-    // 如果還是 localhost，就用從 api.js 拿到的 API_URL 替換
+
     if (avatarUri && avatarUri.includes('localhost:3000')) {
         avatarUri = avatarUri.replace(/http:\/\/localhost:3000/g, API_URL);
     }
 
-    // 如果是相對路徑，補上 API_URL
+
     if (avatarUri && !avatarUri.startsWith('http')) {
         avatarUri = avatarUri.startsWith('/') 
             ? `${API_URL}${avatarUri}` 

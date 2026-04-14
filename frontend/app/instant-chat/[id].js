@@ -105,9 +105,8 @@ export default function InstantChat() {
     setEndModalTitle(title);
     setEndModalMessage(message);
     setEndModalVisible(true);
-    // 如果有 onConfirm，點擊確定後執行
+
     if (onConfirm) {
-      // 這裡我們用一個臨時變數儲存，點擊確定時呼叫
       global.tempConfirm = onConfirm;
     }
   };

@@ -1,3 +1,4 @@
+//app/scenario/template/[id].js
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,7 +33,7 @@ export default function TemplateDetail() {
     };
 
     const handleInvite = () => {
-        // 跳轉到選擇好友頁面，並傳入模板ID
+
         router.push(`/scenario/select-friend?templateId=${id}`);
     };
 

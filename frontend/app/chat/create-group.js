@@ -57,18 +57,10 @@ export default function CreateGroup() {
 
           return {
             ...friend,
-            avatar: avatarUrl,   // now a full URL or null
+            avatar: avatarUrl,
             isSelected: false,
           };
         });
-
-        // Optional: debug log (remove in production)
-        // console.log('Formatted friends avatars (first 3):', 
-        //   formattedFriends.slice(0, 3).map(f => ({ 
-        //     username: f.username, 
-        //     avatar: f.avatar 
-        //   }))
-        // );
 
         setFriends(formattedFriends);
       }

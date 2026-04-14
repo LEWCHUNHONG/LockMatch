@@ -117,7 +117,7 @@ export default function GroupDetails() {
       const response = await chatAPI.sendGroupInvite(roomId, userId);
       if (response.data.success) {
         showNotificationModal('success', '邀請已發送');
-        // 從搜尋結果中移除該用戶（避免重複點擊）
+
         setSearchResults(prev => prev.filter(u => u.id !== userId));
       } else {
         showNotificationModal('error', response.data.message || '邀請發送失敗');
