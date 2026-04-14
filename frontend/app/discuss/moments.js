@@ -15,7 +15,7 @@ import {
   Image,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
@@ -28,8 +28,7 @@ const { width } = Dimensions.get('window');
 
 export default function Moments() {
   const router = useRouter();
-  const pathname = usePathname();
-
+  
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,8 +37,7 @@ export default function Moments() {
   const [hasMore, setHasMore] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
 
-  const nearbyScale = useRef(new Animated.Value(1)).current;
-  const nearbyBackgroundOpacity = useRef(new Animated.Value(0)).current;
+  const flashListRef = useRef(null);   // ← 新增：用來控制滾動
 
   const loadCurrentUser = useCallback(async () => {
     try {
@@ -58,8 +56,11 @@ export default function Moments() {
   const fetchPosts = useCallback(async (isRefresh = false) => {
     if (!isRefresh && (!hasMore || loading)) return;
 
-    setLoading(true);
-    if (isRefresh) setRefreshing(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
     const currentPage = isRefresh ? 0 : page;
 
@@ -74,29 +75,35 @@ export default function Moments() {
       if (isRefresh) {
         setPosts(newPosts);
         setPage(1);
+        setHasMore(newPosts.length >= 15);
+
+        // ===== 切換回來或刷新時自動回到頂端 =====
+        setTimeout(() => {
+          flashListRef.current?.scrollToOffset({ 
+            offset: 0, 
+            animated: true 
+          });
+        }, 120);
       } else {
         setPosts(prev => [...prev, ...newPosts]);
         setPage(currentPage + 1);
+        setHasMore(newPosts.length >= 15);
       }
-
-      setHasMore(newPosts.length >= 15);
     } catch (err) {
       console.error('載入朋友圈失敗:', err);
       Alert.alert('載入失敗', '無法載入朋友圈內容，請檢查網路後再試');
+      if (isRefresh) setPosts([]);
       setHasMore(false);
-      if (isRefresh) {
-        setPosts([]);
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [page, hasMore]);
+  }, [page, hasMore, loading]);
 
   useFocusEffect(
     useCallback(() => {
       loadCurrentUser();
-      fetchPosts(true);
+      fetchPosts(true);     // 每次切回來都刷新 + 置頂
     }, [loadCurrentUser, fetchPosts])
   );
 
@@ -136,20 +143,6 @@ export default function Moments() {
     setPosts(prev => prev.filter(p => p.id !== deletedId));
   };
 
-  const handleNearbyPressIn = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 0.93, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
-    ]).start();
-  };
-
-  const handleNearbyPressOut = () => {
-    Animated.parallel([
-      Animated.spring(nearbyScale, { toValue: 1, friction: 8, tension: 100, useNativeDriver: true }),
-      Animated.timing(nearbyBackgroundOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start();
-  };
-
   return (
     <LinearGradient
       colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
@@ -165,7 +158,6 @@ export default function Moments() {
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
 
-          {/* 標題絕對置中 */}
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>朋友圈</Text>
           </View>
@@ -199,6 +191,7 @@ export default function Moments() {
 
         {/* 貼文列表 */}
         <FlashList
+          ref={flashListRef}          // ← 新增 ref
           data={filteredPosts}
           keyExtractor={item => item.id.toString()}
           renderItem={({ item }) => (
@@ -221,18 +214,8 @@ export default function Moments() {
           onEndReached={() => fetchPosts(false)}
           onEndReachedThreshold={0.5}
           estimatedItemSize={340}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="account-group-outline" size={80} color="#f4c7ab" />
-              <Text style={styles.emptyText}>還沒有朋友貼文</Text>
-              <Text style={styles.emptySubtext}>
-                {searchQuery ? "試試其他關鍵字吧～" : "快去和朋友互動吧！"}
-              </Text>
-            </View>
-          )}
           contentContainerStyle={styles.listContent}
         />
-
 
         {/* FAB - 發文按鈕 */}
         <TouchableOpacity
@@ -313,22 +296,6 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
   },
 
-  footerLoading: {
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerEnd: {
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerText: {
-    color: '#a0785e',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -347,11 +314,6 @@ const styles = StyleSheet.create({
     color: '#8b5e3c',
     textAlign: 'center',
     marginTop: 8,
-  },
-  loadingText: {
-    marginTop: 20,
-    color: '#8b5e3c',
-    fontSize: 16,
   },
 
   fab: {

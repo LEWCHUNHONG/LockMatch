@@ -56,8 +56,17 @@ export default function Discuss() {
     }
   }, []);
 
+  useFocusEffect(
+  useCallback(() => {
+    loadCurrentUser();
+    
+    // 每次切回討論區都自動刷新並回到頂端
+    fetchPosts(true);
+    
+  }, [loadCurrentUser, fetchPosts])
+);
+
 const fetchPosts = useCallback(async (isRefresh = false) => {
-  // 防止重複請求
   if (!isRefresh && (!hasMore || loading)) return;
 
   if (isRefresh) {
@@ -77,17 +86,17 @@ const fetchPosts = useCallback(async (isRefresh = false) => {
     const newPosts = res.data.posts || [];
 
     if (isRefresh) {
-      setPosts(newPosts);        // 直接替換成最新資料
+      setPosts(newPosts);
       setPage(1);
       setHasMore(newPosts.length >= 15);
 
-      // 資料更新後自動滾動到最頂端
+      // ===== 自動回到頂端 =====
       setTimeout(() => {
         flashListRef.current?.scrollToOffset({ 
           offset: 0, 
           animated: true 
         });
-      }, 80);
+      }, 200);   // 延遲一點確保資料更新完成
     } else {
       setPosts(prev => [...prev, ...newPosts]);
       setPage(currentPage + 1);
@@ -96,9 +105,7 @@ const fetchPosts = useCallback(async (isRefresh = false) => {
   } catch (err) {
     console.error('載入討論區失敗:', err);
     Alert.alert('載入失敗', '無法載入討論區內容，請檢查網路後再試');
-    if (isRefresh) {
-      setPosts([]);
-    }
+    if (isRefresh) setPosts([]);
     setHasMore(false);
   } finally {
     setLoading(false);
@@ -106,16 +113,6 @@ const fetchPosts = useCallback(async (isRefresh = false) => {
     setRefreshing(false);
   }
 }, [page, hasMore, loading]);
-
-useFocusEffect(
-  useCallback(() => {
-    loadCurrentUser();
-    
-    // 每次切回討論區都自動刷新（靜默）
-    fetchPosts(true);
-    
-  }, [loadCurrentUser, fetchPosts])
-);
 
 const onRefresh = () => {
   setHasMore(true);
