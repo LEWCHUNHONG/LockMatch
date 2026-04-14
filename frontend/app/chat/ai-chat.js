@@ -9,7 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
-    Alert,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +23,12 @@ export default function AiChat() {
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(true);
+
+    // Modal 狀態
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
+    const [modalButtons, setModalButtons] = useState([]);
 
     const flatListRef = useRef(null);
     const router = useRouter();
@@ -46,11 +52,18 @@ export default function AiChat() {
             }
         } catch (error) {
             console.error('❌ 載入歷史失敗:', error);
-            // 不彈 Alert，靜靜失敗
         } finally {
             setLoadingHistory(false);
             setTimeout(() => flatListRef.current?.scrollToEnd(), 200);
         }
+    };
+
+    // 顯示自訂 Modal
+    const showModal = (title, message, buttons) => {
+        setModalTitle(title);
+        setModalMessage(message);
+        setModalButtons(buttons);
+        setModalVisible(true);
     };
 
     const sendMessage = async () => {
@@ -85,23 +98,34 @@ export default function AiChat() {
         } catch (error) {
             const statusCode = error.response?.status;
 
-            // ✅ 針對 400 錯誤：唔打印 console.error，只彈 Alert
             if (statusCode === 400) {
                 const errorMsg = error.response?.data?.error || '您的訊息含有不當內容，請重新輸入';
-                Alert.alert(
+                
+                showModal(
                     '訊息被拒絕',
                     errorMsg,
-                    [{ text: '重新輸入', onPress: () => setInputText(sentContent) }]
+                    [
+                        { 
+                            text: '重新輸入', 
+                            onPress: () => setInputText(sentContent) 
+                        }
+                    ]
                 );
-                // 移除剛才暫存的用戶訊息（因為發送失敗）
+
+                // 移除失敗的用戶訊息
                 setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
             } else {
-                // 其他錯誤（例如 500、503、網絡問題）才打印 log
                 console.error('❌ 發送失敗:', error);
                 let errorMessage = '發送失敗，請稍後再試';
                 if (statusCode === 500) errorMessage = '伺服器錯誤，請稍後再試';
                 else if (statusCode === 503) errorMessage = 'AI 服務暫時不可用，請稍後再試';
-                Alert.alert('錯誤', errorMessage, [{ text: '確定' }]);
+
+                showModal(
+                    '錯誤',
+                    errorMessage,
+                    [{ text: '確定' }]
+                );
+
                 setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
             }
         } finally {
@@ -218,12 +242,49 @@ export default function AiChat() {
                         </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
+
+                {/* 自訂 Modal */}
+                <Modal
+                    animationType="fade"
+                    transparent={true}
+                    visible={modalVisible}
+                    onRequestClose={() => setModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>{modalTitle}</Text>
+                            <Text style={styles.modalMessage}>{modalMessage}</Text>
+
+                            <View style={styles.modalButtonContainer}>
+                                {modalButtons.map((button, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.modalButton,
+                                            index === modalButtons.length - 1 && styles.modalButtonPrimary
+                                        ]}
+                                        onPress={() => {
+                                            setModalVisible(false);
+                                            button.onPress?.();
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.modalButtonText,
+                                            index === modalButtons.length - 1 && styles.modalButtonPrimaryText
+                                        ]}>
+                                            {button.text}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </SafeAreaView>
         </LinearGradient>
     );
 }
 
-// Styles 保持不變（同你原本一樣）
 const styles = StyleSheet.create({
     gradient: { flex: 1 },
     container: { flex: 1 },
@@ -376,5 +437,65 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#d4b5a0',
+    },
+
+    // ==================== Modal 樣式 ====================
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        width: '85%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 24,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+        elevation: 15,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#5c4033',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: 16,
+        color: '#8b5e3c',
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 28,
+    },
+    modalButtonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 12,
+        width: '100%',
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#f4c7ab',
+        alignItems: 'center',
+    },
+    modalButtonPrimary: {
+        backgroundColor: '#8e44ad',
+        borderColor: '#8e44ad',
+    },
+    modalButtonText: {
+        fontSize: 16,
+        color: '#8e44ad',
+        fontWeight: '600',
+    },
+    modalButtonPrimaryText: {
+        color: '#fff',
     },
 });
