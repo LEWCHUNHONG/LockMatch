@@ -242,7 +242,7 @@ const handleUploadAvatar = async () => {
             await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
             setUser(updatedUser);
 
-            // 可選：顯示成功提示
+
             showModal('上傳成功', '頭像已更新', 'success');
             return;
           } else {
@@ -253,7 +253,7 @@ const handleUploadAvatar = async () => {
           console.log(`上傳嘗試 ${attempt} 失敗:`, err.message);
 
           if (attempt <= retries) {
-            // 等待一小段時間再重試（可防止伺服器被打爆）
+            // 等待一小段時間再重試
             await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             console.log(`將進行第 ${attempt + 1} 次重試...`);
           }
@@ -332,9 +332,7 @@ const handleUpdate = async () => {
     return;
   }
 
-  // === 新增的密碼驗證邏輯 ===
   if (newPassword || confirmPassword || currentPassword) {
-    // 如果有填任何一個密碼欄位，就必須完整填寫三個
     if (!currentPassword) {
       showModal('錯誤', '修改密碼時必須輸入目前密碼');
       return;
@@ -356,7 +354,6 @@ const handleUpdate = async () => {
       return;
     }
   }
-  // ========================
 
   setLoading(true);
 
@@ -368,7 +365,6 @@ const handleUpdate = async () => {
 
     await api.put('/api/update-profile', profileData);
 
-    // 只有當 newPassword 有值時才呼叫變更密碼 API
     if (newPassword && currentPassword) {
       await api.post('/api/change-password', {
         currentPassword,
@@ -387,7 +383,6 @@ const handleUpdate = async () => {
 
     showModal('更新成功！', '您的個人資料已成功儲存', 'success');
 
-    // 清空密碼欄位
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
