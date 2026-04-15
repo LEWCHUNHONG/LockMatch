@@ -332,9 +332,19 @@ const handleUpdate = async () => {
     return;
   }
 
-  if (newPassword) {
+  // === 新增的密碼驗證邏輯 ===
+  if (newPassword || confirmPassword || currentPassword) {
+    // 如果有填任何一個密碼欄位，就必須完整填寫三個
     if (!currentPassword) {
       showModal('錯誤', '修改密碼時必須輸入目前密碼');
+      return;
+    }
+    if (!newPassword) {
+      showModal('錯誤', '請輸入新密碼');
+      return;
+    }
+    if (!confirmPassword) {
+      showModal('錯誤', '請輸入確認新密碼');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -346,11 +356,11 @@ const handleUpdate = async () => {
       return;
     }
   }
+  // ========================
 
   setLoading(true);
 
   try {
-
     const profileData = {
       username: username.trim(),
       email: email.trim(),
@@ -358,7 +368,7 @@ const handleUpdate = async () => {
 
     await api.put('/api/update-profile', profileData);
 
-
+    // 只有當 newPassword 有值時才呼叫變更密碼 API
     if (newPassword && currentPassword) {
       await api.post('/api/change-password', {
         currentPassword,
@@ -377,7 +387,7 @@ const handleUpdate = async () => {
 
     showModal('更新成功！', '您的個人資料已成功儲存', 'success');
 
-
+    // 清空密碼欄位
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -477,6 +487,7 @@ const handleUpdate = async () => {
                 autoCapitalize="none"
               />
 
+              {/* MBTI 顯示區域 */}
               <View style={styles.mbtiInputContainer}>
                 <View style={styles.mbtiLabelContainer}>
                   <Text style={styles.label}>MBTI 類型</Text>
@@ -484,20 +495,35 @@ const handleUpdate = async () => {
                     <Ionicons name="information-circle-outline" size={20} color="#8b5e3c" />
                   </TouchableOpacity>
                 </View>
-                <View style={styles.mbtiInputRow}>
-                  <TextInput
-                    style={[styles.input, styles.mbtiInput]}
-                    value={mbti}
-                    onChangeText={setMbti}
-                    placeholder="例如: INFJ"
-                    maxLength={4}
-                    autoCapitalize="characters"
-                  />
-                  <TouchableOpacity style={styles.mbtiTestButton} onPress={handleMbtiTest}>
-                    <MaterialCommunityIcons name="gamepad-variant" size={20} color="#5c4033" />
-                    <Text style={styles.mbtiTestButtonText}>測試</Text>
+
+                {user.mbti ? (
+                  // 已擁有 MBTI
+                  <TouchableOpacity
+                    style={[styles.mbtiBadge, { backgroundColor: getMbtiColor(user.mbti), marginTop: 16 }]}
+                    onPress={() => setShowMbtiInfoModal(true)}
+                  >
+                    <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
+                    <Text style={styles.mbtiBadgeText}>{user.mbti}</Text>
+                    <Ionicons name="information-circle" size={18} color="#fff" />
                   </TouchableOpacity>
-                </View>
+                ) : (
+                  // 尚未測試時顯示兩個並排按鈕（增加間距）
+                  <View style={styles.mbtiButtonRow}>
+                    {/* 灰色不可點擊按鈕 */}
+                    <View style={styles.mbtiDisabledButton}>
+                      <Text style={styles.mbtiDisabledText}>尚未進行測試</Text>
+                    </View>
+
+                    {/* 可點擊的測試按鈕 */}
+                    <TouchableOpacity 
+                      style={styles.mbtiTestButton} 
+                      onPress={handleMbtiTest}
+                    >
+                      <MaterialCommunityIcons name="gamepad-variant" size={20} color="#5c4033" />
+                      <Text style={styles.mbtiTestButtonText}>進行測試</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               <Text style={styles.label}>目前密碼（更改密碼時必填）</Text>
@@ -750,6 +776,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+    textAlign : 'center',
   },
   mbtiEmpty: {
     flexDirection: 'row',
@@ -775,7 +802,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mbtiInputContainer: {
-    marginBottom: 8,
+
   },
   mbtiInputRow: {
     flexDirection: 'row',
@@ -814,6 +841,61 @@ const styles = StyleSheet.create({
   eyeButton: { paddingHorizontal: 16, paddingVertical: 16 },
   saveBtn: { backgroundColor: '#f4c7ab', paddingVertical: 18, borderRadius: 24, alignItems: 'center', marginTop: 40 },
   saveText: { color: '#5c4033', fontSize: 18, fontWeight: '700' },
+    // 新增的 MBTI 樣式
+  mbtiNotTestedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#f4c7ab',
+  },
+  mbtiNotTestedText: {
+    color: '#8b5e3c',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+    // MBTI 兩個按鈕並排樣式
+  mbtiButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  mbtiDisabledButton: {
+    flex: 1,
+    backgroundColor: '#e0d5c7',        // 灰色背景
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#d4c4b0',
+    alignItems: 'center',
+  },
+  mbtiDisabledText: {
+    color: '#8b5e3c',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  mbtiTestButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f4c7ab',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    gap: 8,
+  },
+  mbtiTestButtonText: {
+    color: '#5c4033',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });
 
 const modalStyles = StyleSheet.create({
