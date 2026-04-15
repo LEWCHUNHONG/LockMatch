@@ -285,14 +285,7 @@ export default function LocationCheckin() {
           <Text style={styles.headerTitle}>附近的人</Text>
 
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {activeChat && (
-              <TouchableOpacity
-                onPress={() => router.push(`/instant-chat/${activeChat.roomId}?otherUserId=${activeChat.otherUserId}`)}
-                style={styles.chatButton}
-              >
-                <MaterialCommunityIcons name="chat" size={28} color="#5c4033" />
-              </TouchableOpacity>
-            )}
+
             <TouchableOpacity onPress={() => setInfoModalVisible(true)} style={styles.infoButton}>
               <MaterialCommunityIcons name="information" size={28} color="#5c4033" />
             </TouchableOpacity>
