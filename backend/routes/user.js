@@ -173,6 +173,74 @@ if ('character' in req.body) {
   });
 });
 
+// =============================================
+//  修改密碼 API
+//  POST /api/change-password
+// =============================================
+router.post('/change-password', authMiddleware(JWT_SECRET), async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '目前密碼和新密碼都必須填寫' 
+    });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '新密碼至少需要 6 個字元' 
+    });
+  }
+
+  try {
+    const bcrypt = require('bcrypt');
+
+    // 查詢用戶目前密碼
+    const [users] = await connection.promise().query(
+      'SELECT password FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, error: '用戶不存在' });
+    }
+
+    const storedPassword = users[0].password;
+
+    // 驗證目前密碼
+    const isMatch = await bcrypt.compare(currentPassword, storedPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: '目前密碼錯誤' });
+    }
+
+    // 加密新密碼
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // 更新密碼
+    await connection.promise().query(
+      'UPDATE users SET password = ? WHERE id = ?',
+      [hashedNewPassword, userId]
+    );
+
+    console.log(`🔑 用戶 ${userId} 已成功修改密碼`);
+
+    res.json({
+      success: true,
+      message: '密碼修改成功'
+    });
+
+  } catch (err) {
+    console.error('修改密碼失敗:', err);
+    res.status(500).json({
+      success: false,
+      error: '伺服器錯誤，請稍後再試'
+    });
+  }
+});
+
   // =============================================
   //  更新 MBTI 結果
   //  PUT /api/update-mbti

@@ -326,69 +326,76 @@ const handleUploadAvatar = async () => {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!username.trim() || !email.trim()) {
-      showModal('錯誤', '使用者名稱和信箱不能為空');
+const handleUpdate = async () => {
+  if (!username.trim() || !email.trim()) {
+    showModal('錯誤', '使用者名稱和信箱不能為空');
+    return;
+  }
+
+  if (newPassword) {
+    if (!currentPassword) {
+      showModal('錯誤', '修改密碼時必須輸入目前密碼');
       return;
     }
-
-    if (newPassword && newPassword !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       showModal('錯誤', '新密碼與確認密碼不一致');
       return;
     }
-
-    if (newPassword && newPassword.length < 6) {
-      showModal('錯誤', '新密碼至少 6 個字元');
+    if (newPassword.length < 6) {
+      showModal('錯誤', '新密碼至少需要 6 個字元');
       return;
     }
+  }
 
-    if (mbti.trim() && !/^[IE][SN][TF][JP]$/i.test(mbti.trim())) {
-      showModal('錯誤', 'MBTI 格式錯誤，應為四個字母（如 INFJ）');
-      return;
+  setLoading(true);
+
+  try {
+
+    const profileData = {
+      username: username.trim(),
+      email: email.trim(),
+    };
+
+    await api.put('/api/update-profile', profileData);
+
+
+    if (newPassword && currentPassword) {
+      await api.post('/api/change-password', {
+        currentPassword,
+        newPassword,
+      });
     }
 
-    setLoading(true);
+    const updatedUser = {
+      ...user,
+      username: username.trim(),
+      email: email.trim(),
+    };
 
-    try {
-      const dataToSend = {
-        username: username.trim(),
-        email: email.trim(),
-        currentPassword: currentPassword || undefined,
-        newPassword: newPassword || undefined,
-        mbti: mbti.trim().toUpperCase() || undefined,
-      };
+    await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
 
-      await api.put('/api/update-profile', dataToSend);
+    showModal('更新成功！', '您的個人資料已成功儲存', 'success');
 
-      const updatedUser = {
-        ...user,
-        username: username.trim(),
-        email: email.trim(),
-        mbti: mbti.trim().toUpperCase() || user.mbti,
-      };
 
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
 
-      showModal('更新成功！', '您的個人資料已成功儲存', 'success');
+  } catch (error) {
+    let errorMessage = '請稍後再試';
 
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error) {
-      let errorMessage = '請稍後再試';
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-        if (errorMessage.includes('目前密碼錯誤')) errorMessage = '目前密碼輸入錯誤';
-        if (errorMessage.includes('已被使用')) errorMessage = '此使用者名稱或信箱已被使用';
-      } else if (error.request) {
-        errorMessage = '網路連線失敗，請檢查您的網路';
-      }
-      showModal('更新失敗', errorMessage);
-    } finally {
-      setLoading(false);
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
     }
-  };
+
+    showModal('更新失敗', errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleModalConfirm = () => {
     setModalVisible(false);
@@ -501,6 +508,7 @@ const handleUploadAvatar = async () => {
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showCurrentPassword}
                   placeholder="留空表示不更改"
+                  placeholderTextColor="#c9a88a"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
@@ -518,6 +526,7 @@ const handleUploadAvatar = async () => {
                   onChangeText={setNewPassword}
                   secureTextEntry={!showNewPassword}
                   placeholder="至少 6 個字元"
+                  placeholderTextColor="#c9a88a"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
@@ -534,7 +543,8 @@ const handleUploadAvatar = async () => {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPassword}
-                  placeholder=""
+                  placeholder="確認新密碼"
+                  placeholderTextColor="#c9a88a"
                 />
                 <TouchableOpacity
                   style={styles.eyeButton}
@@ -798,8 +808,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#f4c7ab',
+    color: '#5c4033',
   },
-  passwordInput: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16 },
+  passwordInput: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#5c4033' },
   eyeButton: { paddingHorizontal: 16, paddingVertical: 16 },
   saveBtn: { backgroundColor: '#f4c7ab', paddingVertical: 18, borderRadius: 24, alignItems: 'center', marginTop: 40 },
   saveText: { color: '#5c4033', fontSize: 18, fontWeight: '700' },
