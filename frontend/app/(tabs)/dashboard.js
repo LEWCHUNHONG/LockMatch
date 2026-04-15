@@ -672,7 +672,7 @@ const handleTaskAction = async (task) => {
                         paddingHorizontal: 12,
                         paddingVertical: 6
                       }]}
-                      onPress={() => router.push('/mbti-test')}
+                      onPress={() => router.push('/mbti-game')}
                     >
                       <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
                       <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>

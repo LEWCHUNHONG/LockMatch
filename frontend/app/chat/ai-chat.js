@@ -244,43 +244,51 @@ export default function AiChat() {
                     </View>
                 </KeyboardAvoidingView>
 
-                {/* 自訂 Modal */}
-                <Modal
-                    animationType="fade"
-                    transparent={true}
-                    visible={modalVisible}
-                    onRequestClose={() => setModalVisible(false)}
-                >
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.modalContainer}>
-                            <Text style={styles.modalTitle}>{modalTitle}</Text>
-                            <Text style={styles.modalMessage}>{modalMessage}</Text>
+{/* 自訂 Modal */}
+<Modal
+    animationType="fade"
+    transparent={true}
+    visible={modalVisible}
+    onRequestClose={() => setModalVisible(false)}
+>
+    <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setModalVisible(false)}
+    >
+        <TouchableOpacity 
+            style={styles.modalContainer}
+            activeOpacity={1}
+            onPress={() => {}}
+        >
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
+            <Text style={styles.modalMessage}>{modalMessage}</Text>
 
-                            <View style={styles.modalButtonContainer}>
-                                {modalButtons.map((button, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.modalButton,
-                                            index === modalButtons.length - 1 && styles.modalButtonPrimary
-                                        ]}
-                                        onPress={() => {
-                                            setModalVisible(false);
-                                            button.onPress?.();
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.modalButtonText,
-                                            index === modalButtons.length - 1 && styles.modalButtonPrimaryText
-                                        ]}>
-                                            {button.text}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
+            <View style={styles.modalButtonContainer}>
+                {modalButtons.map((button, index) => (
+                    <TouchableOpacity
+                        key={index}
+                        style={[
+                            styles.modalButton,
+                            index === modalButtons.length - 1 && styles.modalButtonPrimary
+                        ]}
+                        onPress={() => {
+                            setModalVisible(false);
+                            button.onPress?.();
+                        }}
+                    >
+                        <Text style={[
+                            styles.modalButtonText,
+                            index === modalButtons.length - 1 && styles.modalButtonPrimaryText
+                        ]}>
+                            {button.text}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+        </TouchableOpacity>
+    </TouchableOpacity>
+</Modal>
             </SafeAreaView>
         </LinearGradient>
     );
