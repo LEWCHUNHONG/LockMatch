@@ -9,32 +9,24 @@ const textAnalytics = require('../services/textAnalyticsService');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload) => {
 
 
-  const toHKTime = (dateValue) => {
-    if (!dateValue) return null;
+const toHKTime = (dateValue) => {
+  if (!dateValue) return null;
 
-    try {
-      let date;
+  try {
+    let date = new Date(dateValue);
 
-      if (typeof dateValue === 'string') {
-        
-        const cleanStr = dateValue.replace(' ', 'T');
-        date = new Date(cleanStr + '+08:00');
-      } else {
-        date = new Date(dateValue);
-      }
-
-      if (isNaN(date.getTime())) return null;
-
-      
-      return date.toLocaleString('sv-SE', { 
-        timeZone: 'Asia/Hong_Kong' 
-      }).replace(' ', 'T') + '+08:00';
-
-    } catch (e) {
-      console.error('toHKTime 錯誤:', e);
+    if (isNaN(date.getTime())) {
+      console.warn('無效的日期:', dateValue);
       return null;
     }
-  };
+
+    return date.toISOString().replace('Z', '+08:00');
+
+  } catch (e) {
+    console.error('toHKTime 錯誤:', e, '原始值:', dateValue);
+    return null;
+  }
+};
   
   // 發佈新帖子（支援文字或媒體）- 帶有內容安全檢查
   router.post('/posts', authMiddleware(JWT_SECRET), postMediaUpload.array('media', 10), async (req, res) => {
