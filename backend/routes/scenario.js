@@ -153,6 +153,12 @@ router.get('/active-scenario', authMiddleware(process.env.JWT_SECRET), async (re
         const scenario = rows[0];
         let scenarioData = scenario.scenario_data;
         if (typeof scenarioData === 'string') scenarioData = JSON.parse(scenarioData);
+
+        // === 新增：計算剩餘時間（秒）===
+        const createdAt = new Date(scenario.created_at);
+        const elapsed = Math.floor((Date.now() - createdAt.getTime()) / 1000);
+        const remainingSeconds = Math.max(0, 600 - elapsed);
+
         res.json({
             success: true,
             hasActive: true,
@@ -162,6 +168,7 @@ router.get('/active-scenario', authMiddleware(process.env.JWT_SECRET), async (re
                 description: scenarioData.backstory,
                 location_name: scenarioData.location_name,
             },
+            remainingSeconds,
             createdAt: scenario.created_at
         });
     } catch (error) {
@@ -580,11 +587,16 @@ router.get('/:id', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
         const rows = await query('SELECT * FROM user_scenarios WHERE id = ?', [scenarioId]);
         if (rows.length === 0) return res.status(404).json({ success: false, error: '劇本不存在' });
         const scenario = rows[0];
-        if (scenario.user_id !== userId && scenario.target_user_id !== userId) return res.status(403).json({ success: false, error: '無權訪問' });
+        if (scenario.user_id !== userId && scenario.target_user_id !== userId) 
+            return res.status(403).json({ success: false, error: '無權訪問' });
 
         let scenarioData = scenario.scenario_data;
         if (typeof scenarioData === 'string') scenarioData = JSON.parse(scenarioData);
         scenario.scenario_data = scenarioData;
+
+        const createdAt = new Date(scenario.created_at);
+        const elapsedSeconds = Math.floor((Date.now() - createdAt.getTime()) / 1000);
+        const remainingSeconds = Math.max(0, 600 - elapsedSeconds);
 
         const verifications = await query('SELECT task_index, user_id, type FROM task_verifications WHERE scenario_id = ?', [scenarioId]);
         if (scenario.scenario_data.tasks) {
@@ -607,7 +619,8 @@ router.get('/:id', authMiddleware(process.env.JWT_SECRET), async (req, res) => {
             status: scenario.status,
             user_id: scenario.user_id,
             target_user_id: scenario.target_user_id,
-            created_at: scenario.created_at
+            created_at: scenario.created_at,
+            remainingSeconds: remainingSeconds
         });
     } catch (error) {
         console.error('獲取劇本詳情錯誤:', error);

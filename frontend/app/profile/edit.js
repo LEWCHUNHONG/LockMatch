@@ -22,6 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import api from '../../utils/api';
+import MbtiTestChoiceModal from '../../components/MbtiTestChoiceModal';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -47,6 +48,7 @@ export default function Profile() {
 
   const [showAvatarActionModal, setShowAvatarActionModal] = useState(false);
   const [showMbtiInfoModal, setShowMbtiInfoModal] = useState(false);
+  const [showMbtiChoiceModal, setShowMbtiChoiceModal] = useState(false);
 
   const router = useRouter();
 
@@ -409,10 +411,6 @@ const handleUpdate = async () => {
     }
   };
 
-  const handleMbtiTest = () => {
-    router.push('/mbti-game');
-  };
-
   if (!user) return null;
 
   return (
@@ -461,7 +459,7 @@ const handleUpdate = async () => {
                     <Ionicons name="information-circle" size={18} color="#fff" />
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={styles.mbtiEmpty} onPress={handleMbtiTest}>
+                  <TouchableOpacity style={styles.mbtiEmpty} onPress={() => setShowMbtiChoiceModal(true)}>
                     <MaterialCommunityIcons name="account-question" size={20} color="#8b5e3c" />
                     <Text style={styles.mbtiEmptyText}>進行 MBTI 測試</Text>
                   </TouchableOpacity>
@@ -512,7 +510,7 @@ const handleUpdate = async () => {
                     {/* 可點擊的測試按鈕 */}
                     <TouchableOpacity 
                       style={styles.mbtiTestButton} 
-                      onPress={handleMbtiTest}
+                      onPress={() => setShowMbtiChoiceModal(true)}
                     >
                       <MaterialCommunityIcons name="gamepad-variant" size={20} color="#5c4033" />
                       <Text style={styles.mbtiTestButtonText}>進行測試</Text>
@@ -706,6 +704,12 @@ const handleUpdate = async () => {
           </TouchableOpacity>
         </View>
       </Modal>
+
+            <MbtiTestChoiceModal 
+  visible={showMbtiChoiceModal} 
+  onClose={() => setShowMbtiChoiceModal(false)} 
+/>
+
     </LinearGradient>
   );
 }
@@ -862,7 +866,7 @@ const styles = StyleSheet.create({
   },
   mbtiDisabledButton: {
     flex: 1,
-    backgroundColor: '#e0d5c7',        // 灰色背景
+    backgroundColor: '#e0d5c7',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 16,

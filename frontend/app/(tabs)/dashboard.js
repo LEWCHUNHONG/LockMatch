@@ -26,6 +26,7 @@ import Modal from 'react-native-modal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import api from '../../utils/api';
 import { socketAPI } from '../../utils/api';
+import MbtiTestChoiceModal from '../../components/MbtiTestChoiceModal';
 
 
 import * as Location from 'expo-location';
@@ -116,6 +117,7 @@ export default function Dashboard() {
   const [taskModalTitle, setTaskModalTitle] = useState('');
   const [taskModalMessage, setTaskModalMessage] = useState('');
   const [taskModalButtons, setTaskModalButtons] = useState([]);
+  const [showMbtiChoiceModal, setShowMbtiChoiceModal] = useState(false);
 
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
@@ -672,11 +674,11 @@ const handleTaskAction = async (task) => {
                         paddingHorizontal: 12,
                         paddingVertical: 6
                       }]}
-                      onPress={() => router.push('/mbti-game')}
+                      onPress={() => setShowMbtiChoiceModal(true)}
                     >
                       <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
                       <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
-                        開始 MBTI 遊戲測試
+                        開始 MBTI 測試
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -744,7 +746,7 @@ const handleTaskAction = async (task) => {
               {/* MBTI 重新測試 / 開始測試 */}
               <TouchableOpacity
                 style={styles.smallToolItem}
-                onPress={() => router.push('/mbti-game')}
+                onPress={() => setShowMbtiChoiceModal(true)}
               >
                 <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
                 <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
@@ -968,6 +970,11 @@ const handleTaskAction = async (task) => {
         </View>
       </Modal>
       
+      <MbtiTestChoiceModal 
+  visible={showMbtiChoiceModal} 
+  onClose={() => setShowMbtiChoiceModal(false)} 
+/>
+
     </LinearGradient>
   );
 }

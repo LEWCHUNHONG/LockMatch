@@ -25,6 +25,7 @@ import Modal from 'react-native-modal';
 
 import api from '../../../utils/api';
 import PostCard from '../../../app/discuss/components/PostCard';
+import MbtiTestChoiceModal from '../../../components/MbtiTestChoiceModal';
 
 export default function Profile() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function Profile() {
   const [tempBio, setTempBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showMbtiChoiceModal, setShowMbtiChoiceModal] = useState(false);
 
   const STATUS_OPTIONS = [
   { id: 'happy',    label: '開心 😊',       emoji: '😊' },
@@ -484,7 +486,7 @@ const handleUpdateStatus = async (newStatus) => {
                   ) : (
                     <TouchableOpacity 
                       style={styles.mbtiTagEmpty}
-                      onPress={() => router.push('/mbti-game')}
+                      onPress={() => setShowMbtiChoiceModal(true)}
                     >
                       <MaterialCommunityIcons name="brain" size={18} color="#f4c7ab" />
                       <Text style={styles.mbtiTextEmpty}>完成 MBTI 測試</Text>
@@ -769,6 +771,11 @@ const handleUpdateStatus = async (newStatus) => {
     ))}
   </View>
 </Modal>
+
+      <MbtiTestChoiceModal 
+  visible={showMbtiChoiceModal} 
+  onClose={() => setShowMbtiChoiceModal(false)} 
+/>
 
       </SafeAreaView>
     </LinearGradient>

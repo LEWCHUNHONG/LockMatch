@@ -103,32 +103,34 @@ export default function ScenarioDetail() {
         return null;
     };
 
-    const loadScenario = async (currentUserId) => {
-        try {
-            const res = await api.get(`/api/scenario/${id}`);
-            if (res.data.success) {
-                setScenario(res.data.scenario);
-                setKeywords(res.data.scenario.keywords || []);
-                const startTime = new Date(res.data.created_at).getTime();
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const remaining = 600 - elapsed;
-                if (remaining > 0) {
-                    setTimeLeft(remaining);
-                    startTimer(remaining);
-                } else {
-                    completeScenario();
-                }
+const loadScenario = async (currentUserId) => {
+    try {
+        const res = await api.get(`/api/scenario/${id}`);
+        if (res.data.success) {
+            setScenario(res.data.scenario);
+            setKeywords(res.data.scenario.keywords || []);
+
+            const remaining = res.data.remainingSeconds !== undefined 
+                ? res.data.remainingSeconds 
+                : 600;
+
+            if (remaining > 0) {
+                setTimeLeft(remaining);
+                startTimer(remaining);
             } else {
-                showAlert('錯誤', '無法載入劇本');
-                router.back();
+                completeScenario();
             }
-        } catch (error) {
-            showAlert('錯誤', '載入失敗');
+        } else {
+            showAlert('錯誤', '無法載入劇本');
             router.back();
-        } finally {
-            setLoading(false);
         }
-    };
+    } catch (error) {
+        showAlert('錯誤', '載入失敗');
+        router.back();
+    } finally {
+        setLoading(false);
+    }
+};
 
     const startTimer = (initialSeconds) => {
         const interval = setInterval(() => {
