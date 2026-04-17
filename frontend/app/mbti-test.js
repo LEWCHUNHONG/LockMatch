@@ -51,7 +51,7 @@ export default function MbtiTestGame() {
   const [modalMessage, setModalMessage] = useState('');
   const [modalButtons, setModalButtons] = useState([]);
   const [isCopying, setIsCopying] = useState(false);
-  const [isDismissible, setIsDismissible] = useState(true); // 控制是否可點擊空白處關閉
+  const [isDismissible, setIsDismissible] = useState(true);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -98,19 +98,19 @@ export default function MbtiTestGame() {
     }).start();
   }, [progress]);
 
-  // ==================== Modal 控制 ====================
+
   const showCustomModal = (title, message, buttons, dismissible = true) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalButtons(buttons);
-    setIsDismissible(dismissible);   // 控制是否可點擊空白處關閉
+    setIsDismissible(dismissible);
     setModalVisible(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   };
 
   const hideModal = () => setModalVisible(false);
 
-  // 複製到剪貼簿
+
   const copyToClipboard = async (text) => {
     setIsCopying(true);
     try {
@@ -211,7 +211,7 @@ export default function MbtiTestGame() {
 
       setTestCompleted(true);
 
-      // 保存成功 Modal：不可點擊空白處關閉（重要提示）
+
       showCustomModal(
         '測試完成！🎉',
         `你的 MBTI 類型是 ${mbtiResult.type}\n\n${mbtiResult.description.description}`,
@@ -220,7 +220,7 @@ export default function MbtiTestGame() {
           { text: '尋找匹配夥伴', onPress: () => { hideModal(); setTimeout(() => router.push('/chat/search'), 150); } },
           { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } }
         ],
-        false   // ← 不可點擊空白處關閉
+        false
       );
     } catch (error) {
       console.error('保存 MBTI 失敗:', error);
@@ -231,7 +231,7 @@ export default function MbtiTestGame() {
           { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } },
           { text: '確定', onPress: hideModal }
         ],
-        true   // 可點擊空白處關閉
+        true
       );
     } finally {
       setIsSubmitting(false);
@@ -269,11 +269,11 @@ export default function MbtiTestGame() {
         { text: '複製到剪貼簿', isPrimary: true, onPress: () => copyToClipboard(shareText) },
         { text: '取消', onPress: hideModal }
       ],
-      true   // 可點擊空白處關閉
+      true
     );
   };
 
-  // 自訂 Modal 元件（支援點擊空白處關閉）
+
   const CustomModal = () => (
     <Modal
       transparent={true}
@@ -283,7 +283,7 @@ export default function MbtiTestGame() {
     >
       <TouchableWithoutFeedback 
         onPress={() => {
-          if (isDismissible) hideModal();   // 只有可關閉的 Modal 才能點空白處關閉
+          if (isDismissible) hideModal();
         }}
       >
         <View style={styles.modalOverlay}>
@@ -329,7 +329,7 @@ export default function MbtiTestGame() {
     </Modal>
   );
 
-  // ==================== 模式選擇畫面 ====================
+
   if (showModeSelection) {
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
@@ -377,7 +377,7 @@ export default function MbtiTestGame() {
                 onPress={() => startGame(key)}
                 activeOpacity={0.8}
               >
-                {/* modeCard 內容保持不變 */}
+
                 <View style={styles.modeHeader}>
                   <View style={styles.modeIconContainer}>
                     <MaterialCommunityIcons 
@@ -427,7 +427,7 @@ export default function MbtiTestGame() {
     );
   }
 
-  // ==================== 測試結果畫面 ====================
+
   if (showResult && mbtiResult) {
     const mbtiInfo = mbtiResult.description;
     const mbtiColor = getMbtiColor(mbtiResult.type);
@@ -446,7 +446,7 @@ export default function MbtiTestGame() {
                     { text: '取消', onPress: hideModal },
                     { text: '確定', onPress: restartTest }
                   ],
-                  true   // 可點擊空白處關閉
+                  true
                 )}
               >
                 <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
@@ -540,7 +540,7 @@ export default function MbtiTestGame() {
     );
   }
 
-  // 載入中
+
   if (!currentQuestion) {
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
@@ -552,7 +552,7 @@ export default function MbtiTestGame() {
     );
   }
 
-  // ==================== 測試進行中 ====================
+
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
       <SafeAreaView style={styles.container}>
@@ -566,7 +566,7 @@ export default function MbtiTestGame() {
                 { text: '取消', onPress: hideModal },
                 { text: '確定', onPress: () => router.back() }
               ],
-              true   // 可點擊空白處關閉
+              true
             )}
           >
             <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
@@ -653,7 +653,7 @@ export default function MbtiTestGame() {
   );
 }
 
-// ==================== 樣式 ====================
+
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
   container: { flex: 1 },
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   progressBarFill: { height: '100%', backgroundColor: '#f4c7ab', borderRadius: 4 },
   hintButton: { padding: 8, borderRadius: 20, backgroundColor: 'rgba(244, 199, 171, 0.25)' },
 
-  // Mode Selection Styles（保持不變）
+
   modeSelectionContainer: { padding: 20, paddingBottom: 40 },
   introCard: {
     backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center', marginBottom: 32,
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
 
   loadingText: { fontSize: 18, color: '#8b5e3c', textAlign: 'center', marginTop: 100 },
 
-  // 測試進行中樣式
+
   sceneContainer: { flex: 1, padding: 20 },
   sceneHeader: { alignItems: 'center', marginBottom: 30 },
   sceneNumber: { backgroundColor: '#f4c7ab', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginBottom: 12 },
@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
   footerHint: { fontSize: 14, color: '#8b5e3c', textAlign: 'center', marginBottom: 12 },
   footerCounter: { fontSize: 14, fontWeight: '600', color: '#5c4033' },
 
-  // 結果頁面樣式
+
   resultContainer: { padding: 20, paddingBottom: 40 },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
   resultTitle: { fontSize: 28, fontWeight: '800', color: '#5c4033' },
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   restartButton: { backgroundColor: '#f4c7ab' },
   restartButtonText: { fontSize: 18, fontWeight: '700', color: '#5c4033' },
 
-  // Modal 樣式
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(92, 64, 51, 0.75)',
