@@ -333,7 +333,7 @@ export default function MbtiTestGame() {
   if (showModeSelection) {
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
@@ -434,7 +434,7 @@ export default function MbtiTestGame() {
     
     return (
       <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           <ScrollView contentContainerStyle={styles.resultContainer}>
             <View style={styles.resultHeader}>
               <TouchableOpacity 
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   startButtonText: { fontSize: 16, fontWeight: '600', color: '#5c4033', marginRight: 8 },
   tipsCard: { flexDirection: 'row', backgroundColor: 'rgba(244, 199, 171, 0.15)', borderRadius: 16, padding: 20, alignItems: 'flex-start', marginTop: 12 },
   tipsText: { flex: 1, fontSize: 14, color: '#8b5e3c', marginLeft: 12, lineHeight: 20 },
-
+  safeArea: { flex: 1 },
   loadingText: { fontSize: 18, color: '#8b5e3c', textAlign: 'center', marginTop: 100 },
 
 

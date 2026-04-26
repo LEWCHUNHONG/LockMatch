@@ -124,6 +124,7 @@ export default function Dashboard() {
 
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
 
+  const [showResetSuccessModal, setShowResetSuccessModal] = useState(false);
 
   // 登出按鈕動畫
   const logoutScale = useRef(new Animated.Value(1)).current;
@@ -304,6 +305,35 @@ export default function Dashboard() {
       }
     } finally {
       setIsCheckingIn(false);
+    }
+  };
+
+  // 重置 MBTI 類型與遊戲進度
+  const handleResetMBTI = async () => {
+    try {
+      const response = await api.post('/api/game/reset-mbti');
+
+      if (response.data.success) {
+
+        setUser(prev => prev ? { ...prev, mbti: null } : null);
+        
+
+        await loadUser(false);
+
+
+        setShowResetSuccessModal(true);
+
+        // 震動反饋
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Alert.alert('重置失敗', response.data.message || '請稍後再試');
+      }
+    } catch (error) {
+      console.error('重置 MBTI 失敗:', error);
+      const errorMsg = error.response?.data?.error || 
+                      error.response?.data?.message || 
+                      '網路連線異常，請檢查網路後再試';
+      Alert.alert('重置失敗', errorMsg);
     }
   };
 
@@ -970,10 +1000,53 @@ const handleTaskAction = async (task) => {
         </View>
       </Modal>
       
+            {/* MBTI 重置成功 Modal */}
+      <Modal 
+        isVisible={showResetSuccessModal} 
+        onBackdropPress={() => setShowResetSuccessModal(false)}
+        onBackButtonPress={() => setShowResetSuccessModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.5}
+      >
+        <View style={modalStyles.container}>
+          <MaterialCommunityIcons 
+            name="check-circle" 
+            size={68} 
+            color="#2ecc71" 
+            style={{ marginBottom: 20 }} 
+          />
+          
+          <Text style={[modalStyles.title, { fontSize: 22 }]}>
+            重置成功 ✅
+          </Text>
+          
+          <Text style={[modalStyles.message, { 
+            fontSize: 16, 
+            lineHeight: 26,
+            textAlign: 'center'
+          }]}>
+            你的 MBTI 類型與遊戲關卡分數已清除！{'\n\n'}
+            現在可以重新開始測試囉～
+          </Text>
+
+          <TouchableOpacity 
+            style={[modalStyles.checkinSuccessButton, { backgroundColor: '#2ecc71' }]} 
+            onPress={() => setShowResetSuccessModal(false)}
+          >
+            <Text style={[modalStyles.checkinSuccessButtonText, { color: '#fff' }]}>
+              好的，我知道了
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+      
       <MbtiTestChoiceModal 
-  visible={showMbtiChoiceModal} 
-  onClose={() => setShowMbtiChoiceModal(false)} 
-/>
+        visible={showMbtiChoiceModal} 
+        onClose={() => setShowMbtiChoiceModal(false)}
+        hasMBTIType={!!user?.mbti}
+        onResetMBTI={handleResetMBTI}
+      />
 
     </LinearGradient>
   );
