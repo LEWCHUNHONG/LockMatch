@@ -516,7 +516,7 @@ const handleUpdate = async () => {
                 </View>
 
                 {user.mbti ? (
-                  // 已擁有 MBTI - 讓 Badge 寬度與其他輸入框一致
+
                   <View style={styles.mbtiInputWrapper}>
                     <TouchableOpacity
                       style={[styles.mbtiBadgeFullWidth, { backgroundColor: getMbtiColor(user.mbti) }]}
@@ -527,7 +527,7 @@ const handleUpdate = async () => {
                       <Ionicons name="information-circle" size={18} color="#fff" />
                     </TouchableOpacity>
 
-                    {/* 編輯按鈕（鉛筆） */}
+                    {/* 編輯按鈕 */}
                     <TouchableOpacity
                       style={styles.mbtiEditButton}
                       onPress={() => setShowResetConfirmModal(true)}
@@ -536,7 +536,7 @@ const handleUpdate = async () => {
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  // 尚未測試時顯示兩個並排按鈕（增加間距）
+                  // 尚未測試時顯示兩個並排按鈕）
                   <View style={styles.mbtiButtonRow}>
                     {/* 灰色不可點擊按鈕 */}
                     <View style={styles.mbtiDisabledButton}>
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
   eyeButton: { paddingHorizontal: 16, paddingVertical: 16 },
   saveBtn: { backgroundColor: '#f4c7ab', paddingVertical: 18, borderRadius: 24, alignItems: 'center', marginTop: 40 },
   saveText: { color: '#5c4033', fontSize: 18, fontWeight: '700' },
-    // 新增的 MBTI 樣式
+
   mbtiNotTestedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-    // MBTI 兩個按鈕並排樣式
+
   mbtiButtonRow: {
     flexDirection: 'row',
     alignItems: 'center',
