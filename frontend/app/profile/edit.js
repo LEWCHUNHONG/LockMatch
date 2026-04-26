@@ -50,6 +50,8 @@ export default function Profile() {
   const [showMbtiInfoModal, setShowMbtiInfoModal] = useState(false);
   const [showMbtiChoiceModal, setShowMbtiChoiceModal] = useState(false);
 
+  const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
+
   const router = useRouter();
 
 
@@ -411,6 +413,30 @@ const handleUpdate = async () => {
     }
   };
 
+    // 重置 MBTI
+  const handleResetMBTI = async () => {
+    setShowResetConfirmModal(false);
+    
+    try {
+      const response = await api.post('/api/game/reset-mbti');
+
+      if (response.data.success) {
+        // 更新本地狀態
+        const updatedUser = { ...user, mbti: null };
+        setUser(updatedUser);
+        setMbti('');
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+
+        showModal('重置成功', 'MBTI 已清除，你可以重新進行測試', 'success');
+      } else {
+        showModal('重置失敗', response.data.message || '請稍後再試', 'error');
+      }
+    } catch (error) {
+      console.error('重置 MBTI 失敗:', error);
+      showModal('重置失敗', '網路連線異常，請稍後再試', 'error');
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -490,15 +516,25 @@ const handleUpdate = async () => {
                 </View>
 
                 {user.mbti ? (
-                  // 已擁有 MBTI
-                  <TouchableOpacity
-                    style={[styles.mbtiBadge, { backgroundColor: getMbtiColor(user.mbti), marginTop: 16 }]}
-                    onPress={() => setShowMbtiInfoModal(true)}
-                  >
-                    <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
-                    <Text style={styles.mbtiBadgeText}>{user.mbti}</Text>
-                    <Ionicons name="information-circle" size={18} color="#fff" />
-                  </TouchableOpacity>
+                  // 已擁有 MBTI - 讓 Badge 寬度與其他輸入框一致
+                  <View style={styles.mbtiInputWrapper}>
+                    <TouchableOpacity
+                      style={[styles.mbtiBadgeFullWidth, { backgroundColor: getMbtiColor(user.mbti) }]}
+                      onPress={() => setShowMbtiInfoModal(true)}
+                    >
+                      <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
+                      <Text style={styles.mbtiBadgeText}>{user.mbti} 型</Text>
+                      <Ionicons name="information-circle" size={18} color="#fff" />
+                    </TouchableOpacity>
+
+                    {/* 編輯按鈕（鉛筆） */}
+                    <TouchableOpacity
+                      style={styles.mbtiEditButton}
+                      onPress={() => setShowResetConfirmModal(true)}
+                    >
+                      <MaterialCommunityIcons name="delete" size={22} color="#e74c3c" />
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   // 尚未測試時顯示兩個並排按鈕（增加間距）
                   <View style={styles.mbtiButtonRow}>
@@ -705,6 +741,54 @@ const handleUpdate = async () => {
         </View>
       </Modal>
 
+      {/* MBTI 重置確認 Modal */}
+      <Modal
+        isVisible={showResetConfirmModal}
+        onBackdropPress={() => setShowResetConfirmModal(false)}
+        onBackButtonPress={() => setShowResetConfirmModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.6}
+      >
+        <View style={modalStyles.container}>
+          <MaterialCommunityIcons 
+            name="alert-circle-outline" 
+            size={60} 
+            color="#e74c3c" 
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Text style={[modalStyles.title, { color: '#5c4033', fontSize: 22 }]}>
+            重置 MBTI？
+          </Text>
+          
+          <Text style={modalStyles.message}>
+            確定要重置你的 MBTI 類型嗎？{'\n\n'}
+            這將會：{'\n'}
+            • 清除目前的 MBTI 結果{'\n'}
+            • 把遊戲關卡分數歸零{'\n'}
+            • 歷史記錄會保留{'\n\n'}
+            重置後你可以重新進行測試。
+          </Text>
+
+          <View style={styles.resetConfirmButtonRow}>
+            <TouchableOpacity
+              style={styles.resetCancelButton}
+              onPress={() => setShowResetConfirmModal(false)}
+            >
+              <Text style={styles.resetCancelText}>取消</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.resetConfirmButton}
+              onPress={handleResetMBTI}
+            >
+              <Text style={styles.resetConfirmText}>確定重置</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
             <MbtiTestChoiceModal 
   visible={showMbtiChoiceModal} 
   onClose={() => setShowMbtiChoiceModal(false)} 
@@ -894,6 +978,68 @@ const styles = StyleSheet.create({
     color: '#5c4033',
     fontWeight: '700',
     fontSize: 16,
+  },
+mbtiInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 12,
+  },
+  mbtiBadgeFullWidth: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mbtiEditButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fffaf5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
+  },
+
+  resetConfirmButtonRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  resetCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: '#f4c7ab',
+    alignItems: 'center',
+  },
+  resetConfirmButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 20,
+    backgroundColor: '#e74c3c',
+    alignItems: 'center',
+  },
+  resetCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5c4033',
+  },
+  resetConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
 
