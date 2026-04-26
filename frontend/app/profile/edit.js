@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Modal from 'react-native-modal';
@@ -413,28 +414,39 @@ const handleUpdate = async () => {
     }
   };
 
-    // 重置 MBTI
-  const handleResetMBTI = async () => {
+    // 點擊重置按鈕
+const handleResetPress = () => {
+    setShowMbtiChoiceModal(false);
+    setTimeout(() => {
+      setShowResetConfirmModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }, 350);
+  };
+  
+  // 重置 MBTI
+const handleResetMBTI = async () => {
     setShowResetConfirmModal(false);
-    
-    try {
-      const response = await api.post('/api/game/reset-mbti');
 
-      if (response.data.success) {
-        // 更新本地狀態
-        const updatedUser = { ...user, mbti: null };
-        setUser(updatedUser);
-        setMbti('');
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    setTimeout(async () => {
+      try {
+        const response = await api.post('/api/game/reset-mbti');
 
-        showModal('重置成功', 'MBTI 已清除，你可以重新進行測試', 'success');
-      } else {
-        showModal('重置失敗', response.data.message || '請稍後再試', 'error');
+        if (response.data.success) {
+          const updatedUser = { ...user, mbti: null };
+          setUser(updatedUser);
+          setMbti('');
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          showModal('重置成功 ✅', 'MBTI 類型與遊戲關卡分數已清除！\n\n現在可以重新進行測試。', 'success');
+        } else {
+          showModal('重置失敗', response.data.message || '請稍後再試', 'error');
+        }
+      } catch (error) {
+        console.error('重置 MBTI 失敗:', error);
+        showModal('重置失敗', '網路連線異常，請稍後再試', 'error');
       }
-    } catch (error) {
-      console.error('重置 MBTI 失敗:', error);
-      showModal('重置失敗', '網路連線異常，請稍後再試', 'error');
-    }
+    }, 450);
   };
 
   if (!user) return null;
@@ -527,10 +539,10 @@ const handleUpdate = async () => {
                       <Ionicons name="information-circle" size={18} color="#fff" />
                     </TouchableOpacity>
 
-                    {/* 編輯按鈕 */}
+                    {/* 編輯按鈕 - 重置 MBTI */}
                     <TouchableOpacity
                       style={styles.mbtiEditButton}
-                      onPress={() => setShowResetConfirmModal(true)}
+                      onPress={handleResetPress}
                     >
                       <MaterialCommunityIcons name="delete" size={22} color="#e74c3c" />
                     </TouchableOpacity>

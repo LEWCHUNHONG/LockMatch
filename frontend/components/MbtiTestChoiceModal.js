@@ -37,17 +37,20 @@ const MbtiTestChoiceModal = ({
 
 
   const handleResetPress = () => {
-    setShowResetConfirmModal(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onClose();
+    
+    setTimeout(() => {
+      setShowResetConfirmModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }, 400);
   };
 
-  // 確認重置
+
   const confirmReset = async () => {
     setShowResetConfirmModal(false);
     if (onResetMBTI) {
       await onResetMBTI();
     }
-    onClose();
   };
 
   return (
