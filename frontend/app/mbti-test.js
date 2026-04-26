@@ -555,7 +555,11 @@ export default function MbtiTestGame() {
 
   return (
     <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView 
+        style={styles.safeArea} 
+        edges={['top']}                    // ← 重要修改：只避開上方
+      >
+        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
@@ -599,53 +603,61 @@ export default function MbtiTestGame() {
           </TouchableOpacity>
         </View>
 
-        <Animated.View 
-          style={[styles.sceneContainer, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}
+        {/* ScrollView 讓內容可滾動 */}
+        <ScrollView 
+          style={styles.sceneContainer}
+          contentContainerStyle={styles.sceneContentContainer}
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.sceneHeader}>
-            {currentQuestion.title && (
-              <>
-                <View style={styles.sceneNumber}>
-                  <Text style={styles.sceneNumberText}>情境 {currentQuestion.id}</Text>
-                </View>
-                <Text style={styles.sceneTitle}>{currentQuestion.title}</Text>
-              </>
-            )}
-          </View>
-
-          <View style={styles.sceneContent}>
-            {currentQuestion.description && (
-              <Text style={styles.sceneDescription}>{currentQuestion.description}</Text>
-            )}
-            
-            <Animated.View style={[styles.questionCard, { transform: [{ scale: cardScale }] }]}>
-              <MaterialCommunityIcons name="chat-question" size={40} color="#f4c7ab" style={styles.questionIcon} />
-              <Text style={styles.questionText}>{currentQuestion.question}</Text>
-            </Animated.View>
-
-            <View style={styles.optionsContainer}>
-              {currentQuestion.options.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.optionButton, { borderLeftColor: option.color }]}
-                  onPress={() => handleAnswer(option)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.optionIconContainer}>
-                    <MaterialCommunityIcons name={option.icon} size={24} color={option.color} />
+          <Animated.View 
+            style={[styles.sceneInner, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}
+          >
+            <View style={styles.sceneHeader}>
+              {currentQuestion.title && (
+                <>
+                  <View style={styles.sceneNumber}>
+                    <Text style={styles.sceneNumberText}>情境 {currentQuestion.id}</Text>
                   </View>
-                  <Text style={styles.optionText}>{option.text}</Text>
-                  <MaterialCommunityIcons name="chevron-right" size={24} color="#f4c7ab" />
-                </TouchableOpacity>
-              ))}
+                  <Text style={styles.sceneTitle}>{currentQuestion.title}</Text>
+                </>
+              )}
             </View>
-          </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerHint}>💡 選擇最符合你直覺反應的選項，不要想太多！</Text>
-            <Text style={styles.footerCounter}>已完成 {answers.length} / {questions.length}</Text>
-          </View>
-        </Animated.View>
+            <View style={styles.sceneContent}>
+              {currentQuestion.description && (
+                <Text style={styles.sceneDescription}>{currentQuestion.description}</Text>
+              )}
+              
+              <Animated.View style={[styles.questionCard, { transform: [{ scale: cardScale }] }]}>
+                <MaterialCommunityIcons name="chat-question" size={40} color="#f4c7ab" style={styles.questionIcon} />
+                <Text style={styles.questionText}>{currentQuestion.question}</Text>
+              </Animated.View>
+
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options.map((option, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.optionButton, { borderLeftColor: option.color }]}
+                    onPress={() => handleAnswer(option)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.optionIconContainer}>
+                      <MaterialCommunityIcons name={option.icon} size={24} color={option.color} />
+                    </View>
+                    <Text style={styles.optionText}>{option.text}</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#f4c7ab" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Footer 跟著內容一起滾動 */}
+            <View style={styles.footer}>
+              <Text style={styles.footerHint}>💡 選擇最符合你直覺反應的選項，不要想太多！</Text>
+              <Text style={styles.footerCounter}>已完成 {answers.length} / {questions.length}</Text>
+            </View>
+          </Animated.View>
+        </ScrollView>
 
         <CustomModal />
       </SafeAreaView>
@@ -718,7 +730,17 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: 18, color: '#8b5e3c', textAlign: 'center', marginTop: 100 },
 
 
-  sceneContainer: { flex: 1, padding: 20 },
+sceneContainer: {
+    flex: 1,
+  },
+  sceneContentContainer: {
+    padding: 20,
+    paddingBottom: 40,   // 增加底部間距，避免最後一個選項太貼邊
+  },
+  sceneInner: {
+    // 原本 sceneContainer 的樣式移到這裡
+    flexGrow: 1,
+  },
   sceneHeader: { alignItems: 'center', marginBottom: 30 },
   sceneNumber: { backgroundColor: '#f4c7ab', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginBottom: 12 },
   sceneNumberText: { color: '#5c4033', fontSize: 14, fontWeight: '700' },
