@@ -242,7 +242,6 @@ const getMyUserId = async () => {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="temp-chat-invites" options={{ headerShown: true, title: '邀請' }} />
           <Stack.Screen name="mbti-game" options={{ headerShown: false }} />
         </Stack>
 

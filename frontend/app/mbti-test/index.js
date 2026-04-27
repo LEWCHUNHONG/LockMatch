@@ -1,4 +1,4 @@
-// app/mbti-test.js
+// app/mbti-test/index.js
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -24,9 +24,9 @@ import {
   getRandomQuestions,
   calculateMbtiResult,
   MBTI_DESCRIPTIONS
-} from '../data/mbti-questions';
+} from '../../data/mbti-questions';
 
-import { mbtiAPI } from '../utils/api';
+import { mbtiAPI, api } from '../../utils/api';
 
 export default function MbtiTestGame() {
   const router = useRouter();
@@ -180,63 +180,81 @@ export default function MbtiTestGame() {
     });
   };
 
-  const saveMbtiResult = async () => {
-    if (!mbtiResult || isSubmitting) return;
-    setIsSubmitting(true);
+const saveMbtiResult = async () => {
+  if (!mbtiResult || isSubmitting) return;
+  setIsSubmitting(true);
 
-    try {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        const updatedUser = {
-          ...userData,
-          mbti: mbtiResult.type,
-          status: '已測試',
-          avatar: userData.avatar ? `${userData.avatar.split('?cb=')[0]}?cb=${Date.now()}` : userData.avatar
-        };
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-      }
-
-      const response = await mbtiAPI.updateMbti(mbtiResult.type);
-      if (response.data.success && response.data.user) {
-        let latestUser = response.data.user;
-        if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
-          latestUser.avatar = `${BASE_URL}${latestUser.avatar.startsWith('/') ? latestUser.avatar : '/' + latestUser.avatar}`;
-        }
-        latestUser.avatar = `${latestUser.avatar.split('?cb=')[0]}?cb=${Date.now()}`;
-        await AsyncStorage.setItem('user', JSON.stringify(latestUser));
-        setUser(latestUser);
-      }
-
-      setTestCompleted(true);
-
-
-      showCustomModal(
-        '測試完成！🎉',
-        `你的 MBTI 類型是 ${mbtiResult.type}\n\n${mbtiResult.description.description}`,
-        [
-          { text: '查看個人檔案', onPress: () => { hideModal(); setTimeout(() => router.push('/profile'), 150); } },
-          { text: '尋找匹配夥伴', onPress: () => { hideModal(); setTimeout(() => router.push('/chat/search'), 150); } },
-          { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } }
-        ],
-        false
-      );
-    } catch (error) {
-      console.error('保存 MBTI 失敗:', error);
-      showCustomModal(
-        '保存結果',
-        `你的 MBTI 類型 ${mbtiResult.type} 已保存在本地。\n\n由於網絡問題，結果可能未同步到服務器。`,
-        [
-          { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } },
-          { text: '確定', onPress: hideModal }
-        ],
-        true
-      );
-    } finally {
-      setIsSubmitting(false);
+  try {
+    const storedUser = await AsyncStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      const updatedUser = {
+        ...userData,
+        mbti: mbtiResult.type,
+        status: '已測試',
+        avatar: userData.avatar ? `${userData.avatar.split('?cb=')[0]}?cb=${Date.now()}` : userData.avatar
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
     }
-  };
+
+    // 更新 MBTI 到後端
+    const response = await mbtiAPI.updateMbti(mbtiResult.type);
+    if (response.data.success && response.data.user) {
+      let latestUser = response.data.user;
+      if (latestUser.avatar && !latestUser.avatar.startsWith('http')) {
+        latestUser.avatar = `${BASE_URL}${latestUser.avatar.startsWith('/') ? latestUser.avatar : '/' + latestUser.avatar}`;
+      }
+      latestUser.avatar = `${latestUser.avatar.split('?cb=')[0]}?cb=${Date.now()}`;
+      await AsyncStorage.setItem('user', JSON.stringify(latestUser));
+      setUser(latestUser);
+    }
+
+    setTestCompleted(true);
+
+    // ==================== 【新增】完成 MBTI 測試後給 100 積分 ====================
+    try {
+
+      const pointsResponse = await api.post('/api/give-mbti-points', {
+        mbtiType: mbtiResult.type
+      });
+
+      if (pointsResponse.data.success) {
+        console.log('✅ 完成 MBTI 測試，已獲得 100 積分');
+      } else {
+        console.warn('積分發放失敗:', pointsResponse.data.message);
+      }
+    } catch (pointsError) {
+      console.warn('發放積分時發生錯誤（不影響測試結果）:', pointsError.message);
+
+    }
+    // ===================================================================
+
+    showCustomModal(
+      '測試完成！🎉',
+      `你的 MBTI 類型是 ${mbtiResult.type}\n\n${mbtiResult.description.description}`,
+      [
+        { text: '查看個人檔案', onPress: () => { hideModal(); setTimeout(() => router.push('/profile'), 150); } },
+        { text: '尋找匹配夥伴', onPress: () => { hideModal(); setTimeout(() => router.push('/chat/search'), 150); } },
+        { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } }
+      ],
+      false
+    );
+  } catch (error) {
+    console.error('保存 MBTI 失敗:', error);
+    showCustomModal(
+      '保存結果',
+      `你的 MBTI 類型 ${mbtiResult.type} 已保存在本地。\n\n由於網絡問題，結果可能未同步到服務器。`,
+      [
+        { text: '返回主頁', onPress: () => { hideModal(); setTimeout(() => router.push('/dashboard'), 150); } },
+        { text: '確定', onPress: hideModal }
+      ],
+      true
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const restartTest = () => {
     setCurrentQuestionIndex(0);

@@ -139,10 +139,6 @@ app.use('/api', groupInviteRoutes);
 
 app.use('/api/insights', insightsRouter);
 
-
-const rewardsRouter = require('./routes/rewards')(connection, authMiddleware, JWT_SECRET);
-app.use('/api', rewardsRouter);
-
 // user 路由
 app.use('/api', userRoutes(connection, authMiddleware, buildAvatarUrl, avatarUpload, JWT_SECRET, BASE_URL));
 

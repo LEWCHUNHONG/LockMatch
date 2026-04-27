@@ -1144,6 +1144,65 @@ module.exports = (connection, authMiddleware, JWT_SECRET) => {
         }
     });
 
+    // =============================================
+//  完成 MBTI 測試後給予 100 積分
+//  POST /api/rewards/give-mbti-points
+// =============================================
+router.post('/give-mbti-points', authMiddleware(JWT_SECRET), async (req, res) => {
+  const { mbtiType } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // 同一天只給一次
+    const today = new Date().toISOString().split('T')[0];
+    const [existing] = await connection.promise().query(
+      `SELECT id FROM points_history 
+       WHERE user_id = ? 
+         AND type = 'task_reward' 
+         AND description LIKE '完成MBTI測試%' 
+         AND DATE(created_at) = ?`,
+      [userId, today]
+    );
+
+    if (existing.length > 0) {
+      return res.json({
+        success: true,
+        message: '今日已領取 MBTI 測試積分'
+      });
+    }
+
+    await connection.promise().beginTransaction();
+
+    // 記錄積分
+    await connection.promise().query(
+      `INSERT INTO points_history (user_id, points, type, description) 
+       VALUES (?, 100, 'task_reward', '完成MBTI測試 - 獲得 100 積分')`,
+      [userId]
+    );
+
+    // 更新用戶積分
+    await connection.promise().query(
+      'UPDATE users SET points = IFNULL(points, 0) + 100 WHERE id = ?',
+      [userId]
+    );
+
+    await connection.promise().commit();
+
+    console.log(`✅ 用戶 ${userId} 完成 MBTI 測試，獲得 100 積分`);
+
+    res.json({
+      success: true,
+      message: '成功獲得 100 積分！',
+      points_earned: 100
+    });
+
+  } catch (err) {
+    await connection.promise().rollback();
+    console.error('發放 MBTI 積分失敗:', err);
+    res.status(500).json({ success: false, error: '發放積分失敗' });
+  }
+});
+
     // 檢查今日簽到狀態
     router.get('/checkin-status', authMiddleware(JWT_SECRET), (req, res) => {
         const today = new Date().toISOString().split('T')[0];
