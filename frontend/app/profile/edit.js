@@ -498,8 +498,8 @@ const handleResetMBTI = async () => {
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={styles.mbtiEmpty} onPress={() => setShowMbtiChoiceModal(true)}>
-                    <MaterialCommunityIcons name="account-question" size={20} color="#8b5e3c" />
-                    <Text style={styles.mbtiEmptyText}>進行 MBTI 測試</Text>
+                    <MaterialCommunityIcons name="brain" size={20} color="#8b5e3c" />
+                    <Text style={styles.mbtiEmptyText}>完成 MBTI 測試</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -552,7 +552,7 @@ const handleResetMBTI = async () => {
                   <View style={styles.mbtiButtonRow}>
                     {/* 灰色不可點擊按鈕 */}
                     <View style={styles.mbtiDisabledButton}>
-                      <Text style={styles.mbtiDisabledText}>尚未進行測試</Text>
+                      <Text style={styles.mbtiDisabledText}>尚未完成測試</Text>
                     </View>
 
                     {/* 可點擊的測試按鈕 */}
@@ -560,8 +560,8 @@ const handleResetMBTI = async () => {
                       style={styles.mbtiTestButton} 
                       onPress={() => setShowMbtiChoiceModal(true)}
                     >
-                      <MaterialCommunityIcons name="gamepad-variant" size={20} color="#5c4033" />
-                      <Text style={styles.mbtiTestButtonText}>進行測試</Text>
+                      <MaterialCommunityIcons name="brain" size={20} color="#5c4033" />
+                      <Text style={styles.mbtiTestButtonText}>完成 MBTI 測試</Text>
                     </TouchableOpacity>
                   </View>
                 )}

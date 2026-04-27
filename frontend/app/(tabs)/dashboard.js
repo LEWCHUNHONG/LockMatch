@@ -286,7 +286,7 @@ export default function Dashboard() {
 
       if (error.response?.status === 400) {
         const errorMsg = error.response.data?.error || error.response.data?.message || '今日已簽到';
-        if (errorMsg.includes('今日已簽到') || errorMsg.includes('已经签到')) {
+        if (errorMsg.includes('今日已簽到') || errorMsg.includes('已经簽到')) {
           setCheckinStatus(prev => ({ ...prev, checked_in_today: true }));
           const friendlyMsg = error.response.data?.message || '您今天已經簽到過了！明天再來獲得更多積分～';
           alert(friendlyMsg);
@@ -308,34 +308,38 @@ export default function Dashboard() {
     }
   };
 
-  // 重置 MBTI 類型與遊戲進度
-  const handleResetMBTI = async () => {
-    try {
-      const response = await api.post('/api/game/reset-mbti');
+// 重置 MBTI 類型與遊戲進度
+const handleResetMBTI = async () => {
+  try {
+    const response = await api.post('/api/game/reset-mbti');
 
-      if (response.data.success) {
+    if (response.data.success) {
 
-        setUser(prev => prev ? { ...prev, mbti: null } : null);
-        
-
-        await loadUser(false);
-
-
+      setTimeout(() => {
         setShowResetSuccessModal(true);
-
-        // 震動反饋
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        Alert.alert('重置失敗', response.data.message || '請稍後再試');
-      }
-    } catch (error) {
-      console.error('重置 MBTI 失敗:', error);
-      const errorMsg = error.response?.data?.error || 
-                      error.response?.data?.message || 
-                      '網路連線異常，請檢查網路後再試';
-      Alert.alert('重置失敗', errorMsg);
+      }, 300);
+
+      setTimeout(async () => {
+        try {
+          setUser(prev => prev ? { ...prev, mbti: null } : null);
+          await loadUser(false);
+        } catch (e) {
+          console.error('重置後載入資料失敗:', e);
+        }
+      }, 900);
+
+    } else {
+      Alert.alert('重置失敗', response.data.message || '請稍後再試');
     }
-  };
+  } catch (error) {
+    console.error('重置 MBTI 失敗:', error);
+    const errorMsg = error.response?.data?.error || 
+                     error.response?.data?.message || 
+                     '網路連線異常，請檢查網路後再試';
+    Alert.alert('重置失敗', errorMsg);
+  }
+};
 
 // 處理任務操作
 const handleTaskAction = async (task) => {
@@ -554,7 +558,7 @@ const handleTaskAction = async (task) => {
     useCallback(() => {
       const onBackPress = () => {
         setShowLogoutModal(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         return true;
       };
       const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -582,7 +586,7 @@ const handleTaskAction = async (task) => {
 
   const openLogoutModal = () => {
     setShowLogoutModal(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   };
 
   // MBTI 顏色映射
@@ -706,7 +710,7 @@ const handleTaskAction = async (task) => {
                       }]}
                       onPress={() => setShowMbtiChoiceModal(true)}
                     >
-                      <MaterialCommunityIcons name="gamepad-variant" size={14} color="#5c4033" />
+                      <MaterialCommunityIcons name="brain" size={14} color="#5c4033" />
                       <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
                         開始 MBTI 測試
                       </Text>
@@ -778,7 +782,7 @@ const handleTaskAction = async (task) => {
                 style={styles.smallToolItem}
                 onPress={() => setShowMbtiChoiceModal(true)}
               >
-                <MaterialCommunityIcons name="gamepad-variant" size={26} color="#5c4033" />
+                <MaterialCommunityIcons name="brain" size={26} color="#5c4033" />
                 <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
                   {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
                 </Text>

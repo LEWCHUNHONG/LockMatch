@@ -46,12 +46,17 @@ const MbtiTestChoiceModal = ({
   };
 
 
-  const confirmReset = async () => {
-    setShowResetConfirmModal(false);
+const confirmReset = async () => {
+  setShowResetConfirmModal(false);
+
+  onClose();
+
+  setTimeout(async () => {
     if (onResetMBTI) {
       await onResetMBTI();
     }
-  };
+  }, 450);
+};
 
   return (
     <>

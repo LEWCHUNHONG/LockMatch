@@ -445,7 +445,7 @@ export default function Profile() {
                       style={styles.mbtiTagEmpty}
                       onPress={() => setShowMbtiChoiceModal(true)}
                     >
-                      <MaterialCommunityIcons name="brain" size={18} color="#f4c7ab" />
+                      <MaterialCommunityIcons name="brain" size={18} color="#c47c5e" />
                       <Text style={styles.mbtiTextEmpty}>完成 MBTI 測試</Text>
                     </TouchableOpacity>
                   )}
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f4c7ab',
   },
-  mbtiTextEmpty: { color: '#f4c7ab', fontSize: 15, fontWeight: '600' },
+  mbtiTextEmpty: { color: '#c47c5e', fontSize: 15, fontWeight: '600' },
 });
 
 const modalStyles = StyleSheet.create({
