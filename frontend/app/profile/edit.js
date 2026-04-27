@@ -25,15 +25,13 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import api from '../../utils/api';
 import MbtiTestChoiceModal from '../../components/MbtiTestChoiceModal';
 
-export default function Profile() {
+export default function ProfileEdit() {
   const [user, setUser] = useState(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [mbti, setMbti] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -50,30 +48,28 @@ export default function Profile() {
   const [showAvatarActionModal, setShowAvatarActionModal] = useState(false);
   const [showMbtiInfoModal, setShowMbtiInfoModal] = useState(false);
   const [showMbtiChoiceModal, setShowMbtiChoiceModal] = useState(false);
-
   const [showResetConfirmModal, setShowResetConfirmModal] = useState(false);
 
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-
+  // 硬體返回鍵處理
   useEffect(() => {
     const backAction = () => {
       router.back();
       return true;
     };
-
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [router]);
 
-
+  // 載入使用者資料
   useEffect(() => {
     const loadUser = async () => {
       try {
         const storedUser = await AsyncStorage.getItem('user');
         if (storedUser) {
           let parsed = JSON.parse(storedUser);
-
 
           if (parsed.avatar) {
             parsed.avatar = refreshCacheBuster(parsed.avatar);
@@ -83,7 +79,6 @@ export default function Profile() {
           setUser(parsed);
           setUsername(parsed.username || '');
           setEmail(parsed.email || '');
-          setMbti(parsed.mbti || '');
         } else {
           router.replace('/');
         }
@@ -96,48 +91,24 @@ export default function Profile() {
     loadUser();
   }, []);
 
-const refreshCacheBuster = (url) => {
-  if (!url) return url;
-
-  const cacheBuster = Date.now();
-
-
-  let cleanUrl = url.replace(/[?&]cb=\d+(&?)/g, (match, amp) => amp ? '&' : '');
-
-
-  cleanUrl = cleanUrl.replace(/[?&]$/, '');
-
-
-  const hasQuery = cleanUrl.includes('?');
-  const separator = hasQuery ? '&' : '?';
-
-  return `${cleanUrl}${separator}cb=${cacheBuster}`;
-};
+  const refreshCacheBuster = (url) => {
+    if (!url) return url;
+    const cacheBuster = Date.now();
+    let cleanUrl = url.replace(/[?&]cb=\d+(&?)/g, (match, amp) => (amp ? '&' : ''));
+    cleanUrl = cleanUrl.replace(/[?&]$/, '');
+    const hasQuery = cleanUrl.includes('?');
+    return `${cleanUrl}${hasQuery ? '&' : '?'}cb=${cacheBuster}`;
+  };
 
   // MBTI 顏色映射
   const getMbtiColor = (mbti) => {
-    if (!mbti) return '#f4c7ab';
-
     const mbtiColors = {
-      ISTJ: '#3498db',
-      ISFJ: '#2ecc71',
-      INFJ: '#9b59b6',
-      INTJ: '#1abc9c',
-      ISTP: '#e74c3c',
-      ISFP: '#f39c12',
-      INFP: '#d35400',
-      INTP: '#34495e',
-      ESTP: '#e67e22',
-      ESFP: '#f1c40f',
-      ENFP: '#2ecc71',
-      ENTP: '#9b59b6',
-      ESTJ: '#3498db',
-      ESFJ: '#1abc9c',
-      ENFJ: '#e74c3c',
-      ENTJ: '#f39c12',
+      ISTJ: '#3498db', ISFJ: '#2ecc71', INFJ: '#9b59b6', INTJ: '#1abc9c',
+      ISTP: '#e74c3c', ISFP: '#f39c12', INFP: '#d35400', INTP: '#34495e',
+      ESTP: '#e67e22', ESFP: '#f1c40f', ENFP: '#2ecc71', ENTP: '#9b59b6',
+      ESTJ: '#3498db', ESFJ: '#1abc9c', ENFJ: '#e74c3c', ENTJ: '#f39c12',
     };
-
-    return mbtiColors[mbti.toUpperCase()] || '#f4c7ab';
+    return mbtiColors[mbti?.toUpperCase()] || '#f4c7ab';
   };
 
   const showModal = (title, message, type = 'error') => {
@@ -147,182 +118,7 @@ const refreshCacheBuster = (url) => {
     setModalVisible(true);
   };
 
-const handleUploadAvatar = async () => {
-  try {
-    // 請求圖庫權限
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      setUploadErrorMsg('需要圖庫權限才能上傳頭像');
-      setShowUploadError(true);
-      return;
-    }
-
-    // 選擇圖片
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled) return;
-
-    // 壓縮圖片
-    const manipResult = await ImageManipulator.manipulateAsync(
-      result.assets[0].uri,
-      [{ resize: { width: 800 } }],
-      { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    // 準備 FormData
-    const formData = new FormData();
-    const imageUri = Platform.OS === 'android'
-      ? manipResult.uri.replace(/^file:\/\//, 'file:///')
-      : manipResult.uri;
-
-    formData.append('avatar', {
-      uri: imageUri,
-      type: 'image/jpeg',
-      name: 'avatar.jpg',
-    });
-
-    const token = await AsyncStorage.getItem('token');
-
-    // 上傳函數（帶 timeout）
-    const uploadWithTimeout = async (url, options, timeout = 20000) => {
-      const controller = new AbortController();
-      const signal = controller.signal;
-
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-      }, timeout);
-
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal,
-        });
-
-        clearTimeout(timeoutId);
-        return response;
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if (err.name === 'AbortError') {
-          throw new Error('上傳超時，請檢查網路連線');
-        }
-        throw err;
-      }
-    };
-
-    // 帶重試的上傳
-    const uploadWithRetry = async (retries = 2) => {
-      let lastError = null;
-
-      for (let attempt = 1; attempt <= retries + 1; attempt++) {
-        try {
-          const response = await uploadWithTimeout(
-            `${api.defaults.baseURL}/api/upload-avatar`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: token ? `Bearer ${token}` : '',
-
-              },
-              body: formData,
-            },
-            20000
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || `伺服器回應錯誤 (${response.status})`);
-          }
-
-          const res = await response.json();
-
-          if (res.success && res.avatar) {
-            // 成功處理
-            const updatedAvatar = refreshCacheBuster(res.avatar);
-            const updatedUser = { ...user, avatar: updatedAvatar };
-            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-            setUser(updatedUser);
-
-
-            showModal('上傳成功', '頭像已更新', 'success');
-            return;
-          } else {
-            throw new Error(res.error || '上傳失敗');
-          }
-        } catch (err) {
-          lastError = err;
-          console.log(`上傳嘗試 ${attempt} 失敗:`, err.message);
-
-          if (attempt <= retries) {
-            // 等待一小段時間再重試
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            console.log(`將進行第 ${attempt + 1} 次重試...`);
-          }
-        }
-      }
-
-      // 所有重試都失敗
-      throw lastError;
-    };
-
-    // 執行上傳（最多重試 2 次）
-    await uploadWithRetry(2);
-
-  } catch (err) {
-    console.error('頭像上傳最終失敗:', err);
-    let msg = '上傳失敗，請稍後再試';
-
-    if (err.message.includes('timeout') || err.message.includes('超時')) {
-      msg = '上傳超時，請檢查網路連線是否穩定';
-    } else if (err.message.includes('Network')) {
-      msg = '網路連線失敗，請確認網路後再試';
-    } else if (err.message.includes('abort')) {
-      msg = '上傳被中斷，請再試一次';
-    } else {
-      msg = err.message || '發生未知錯誤';
-    }
-
-    setUploadErrorMsg(msg);
-    setShowUploadError(true);
-  }
-};
-
-  const handleDeleteAvatar = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-
-      const response = await fetch(`${api.defaults.baseURL}/api/delete-avatar`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || '刪除失敗');
-      }
-
-      const res = await response.json();
-
-      if (res.success && res.avatar) {
-        const updatedAvatar = refreshCacheBuster(res.avatar);
-        const updatedUser = { ...user, avatar: updatedAvatar };
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-
-        showModal('成功', '頭像已恢復為預設圖片', 'success');
-      }
-    } catch (err) {
-      console.error('刪除頭像失敗:', err);
-      showModal('刪除失敗', err.message || '無法刪除頭像，請再試一次');
-    }
-  };
-
+  // ==================== 頭像相關 ====================
   const handleAvatarPress = () => {
     if (!user?.avatar || user.avatar.includes('default.png')) {
       handleUploadAvatar();
@@ -331,81 +127,150 @@ const handleUploadAvatar = async () => {
     }
   };
 
-const handleUpdate = async () => {
-  if (!username.trim() || !email.trim()) {
-    showModal('錯誤', '使用者名稱和信箱不能為空');
-    return;
-  }
+  const handleUploadAvatar = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        setUploadErrorMsg('需要相簿權限才能更改頭像');
+        setShowUploadError(true);
+        return;
+      }
 
-  if (newPassword || confirmPassword || currentPassword) {
-    if (!currentPassword) {
-      showModal('錯誤', '修改密碼時必須輸入目前密碼');
-      return;
-    }
-    if (!newPassword) {
-      showModal('錯誤', '請輸入新密碼');
-      return;
-    }
-    if (!confirmPassword) {
-      showModal('錯誤', '請輸入確認新密碼');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      showModal('錯誤', '新密碼與確認密碼不一致');
-      return;
-    }
-    if (newPassword.length < 6) {
-      showModal('錯誤', '新密碼至少需要 6 個字元');
-      return;
-    }
-  }
-
-  setLoading(true);
-
-  try {
-    const profileData = {
-      username: username.trim(),
-      email: email.trim(),
-    };
-
-    await api.put('/api/update-profile', profileData);
-
-    if (newPassword && currentPassword) {
-      await api.post('/api/change-password', {
-        currentPassword,
-        newPassword,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
       });
+
+      if (result.canceled) return;
+
+      const manipResult = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      const formData = new FormData();
+      const imageUri = Platform.OS === 'android'
+        ? manipResult.uri.replace(/^file:\/\//, 'file:///')
+        : manipResult.uri;
+
+      formData.append('avatar', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'avatar.jpg',
+      });
+
+      const token = await AsyncStorage.getItem('token');
+
+      const response = await fetch(`${api.defaults.baseURL}/api/upload-avatar`, {
+        method: 'POST',
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error((await response.text()) || '上傳失敗');
+
+      const res = await response.json();
+
+      if (res.success && res.avatar) {
+        const updatedAvatar = refreshCacheBuster(res.avatar);
+        const updatedUser = { ...user, avatar: updatedAvatar };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        showModal('頭像更新成功', '您的頭像已成功更換！', 'success');
+      } else {
+        throw new Error(res.error || '上傳失敗');
+      }
+    } catch (err) {
+      console.error('頭像上傳失敗:', err);
+      const msg = err.message.includes('timeout') || err.message.includes('超時')
+        ? '上傳超時，請檢查網路'
+        : err.message || '上傳失敗，請稍後再試';
+      setUploadErrorMsg(msg);
+      setShowUploadError(true);
+    }
+  };
+
+  const handleDeleteAvatar = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${api.defaults.baseURL}/api/delete-avatar`, {
+        method: 'DELETE',
+        headers: { Authorization: token ? `Bearer ${token}` : '' },
+      });
+
+      if (!response.ok) throw new Error('刪除失敗');
+
+      const res = await response.json();
+      if (res.success) {
+        const updatedUser = { ...user, avatar: res.avatar };
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        showModal('頭像已刪除', '已恢復為預設頭像', 'success');
+      }
+    } catch (err) {
+      showModal('刪除失敗', err.message || '請稍後再試');
+    } finally {
+      setShowAvatarActionModal(false);
+    }
+  };
+
+  // ==================== 資料更新 ====================
+  const handleUpdate = async () => {
+    if (!username.trim() || !email.trim()) {
+      showModal('資料不完整', '使用者名稱與電子信箱不能為空');
+      return;
     }
 
-    const updatedUser = {
-      ...user,
-      username: username.trim(),
-      email: email.trim(),
-    };
-
-    await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
-
-    showModal('更新成功！', '您的個人資料已成功儲存', 'success');
-
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-
-  } catch (error) {
-    let errorMessage = '請稍後再試';
-
-    if (error.response?.data?.error) {
-      errorMessage = error.response.data.error;
-    } else if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
+    if ((newPassword || confirmPassword) && !currentPassword) {
+      showModal('密碼錯誤', '修改密碼時必須輸入目前密碼');
+      return;
+    }
+    if (newPassword && newPassword.length < 6) {
+      showModal('密碼太短', '新密碼至少需要 6 個字元');
+      return;
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+      showModal('密碼不一致', '新密碼與確認密碼不相符');
+      return;
     }
 
-    showModal('更新失敗', errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+
+    try {
+      await api.put('/api/update-profile', {
+        username: username.trim(),
+        email: email.trim(),
+      });
+
+      if (newPassword && currentPassword) {
+        await api.post('/api/change-password', { currentPassword, newPassword });
+      }
+
+      const updatedUser = {
+        ...user,
+        username: username.trim(),
+        email: email.trim(),
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      showModal('更新成功！', '您的個人資料已儲存', 'success');
+
+      // 清空密碼欄位
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || '更新失敗，請稍後再試';
+      showModal('更新失敗', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleModalConfirm = () => {
     setModalVisible(false);
@@ -414,100 +279,133 @@ const handleUpdate = async () => {
     }
   };
 
-    // 點擊重置按鈕
+// ==================== MBTI 重置 ====================
 const handleResetPress = () => {
-    setShowMbtiChoiceModal(false);
-    setTimeout(() => {
-      setShowResetConfirmModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }, 350);
-  };
-  
-  // 重置 MBTI
+  setShowMbtiChoiceModal(false);
+  setTimeout(() => setShowResetConfirmModal(true), 300);
+  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+};
+
 const handleResetMBTI = async () => {
-    setShowResetConfirmModal(false);
+  setShowResetConfirmModal(false);
 
-    setTimeout(async () => {
-      try {
-        const response = await api.post('/api/game/reset-mbti');
+  try {
+    const response = await api.post('/api/game/reset-mbti');
 
-        if (response.data.success) {
-          const updatedUser = { ...user, mbti: null };
-          setUser(updatedUser);
-          setMbti('');
-          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+    if (response.data.success) {
+      const updatedUser = { ...user, mbti: null };
+      setUser(updatedUser);
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
 
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          showModal('重置成功 ✅', 'MBTI 類型與遊戲關卡分數已清除！\n\n現在可以重新進行測試。', 'success');
-        } else {
-          showModal('重置失敗', response.data.message || '請稍後再試', 'error');
-        }
-      } catch (error) {
-        console.error('重置 MBTI 失敗:', error);
-        showModal('重置失敗', '網路連線異常，請稍後再試', 'error');
-      }
-    }, 450);
-  };
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      setTimeout(() => {
+        showModal(
+          '重置成功 ✅',
+          'MBTI 類型與遊戲分數已清除\n\n您可以重新進行測試',
+          'success'
+        );
+      }, 450);
+
+    } else {
+      showModal('重置失敗', response.data.message || '請稍後再試');
+    }
+  } catch (error) {
+    console.error('重置 MBTI 失敗:', error);
+    showModal('重置失敗', '網路連線異常，請稍後再試');
+  }
+};
 
   if (!user) return null;
 
   return (
-    <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2']} style={styles.gradient}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <ScrollView contentContainerStyle={styles.container}>
+          <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+
+            {/* Header */}
             <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.replace('/profile')}>
-                <Text style={styles.back}>←</Text>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={28} color="#5c4033" />
               </TouchableOpacity>
-              <Text style={styles.title}>個人資料</Text>
-              <View style={{ width: 40 }} />
+              <Text style={styles.title}>編輯個人資料</Text>
+              <View style={{ width: 28 }} />
             </View>
 
+            {/* 頭像區塊 */}
             <View style={styles.avatarSection}>
-              <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.8}>
-                <View style={styles.avatar}>
-                  {user.avatar ? (
-                    <Image
-                      source={{ uri: user.avatar }}
-                      style={styles.avatarImage}
-                      resizeMode="cover"
-                      onError={(e) => console.log('頭像載入失敗:', e.nativeEvent.error, '\nURL:', user.avatar)}
-                    />
-                  ) : (
-                    <Text style={styles.avatarText}>{username[0]?.toUpperCase() || 'U'}</Text>
-                  )}
-                </View>
-                <View style={styles.avatarEditIcon}>
-                  <Ionicons name="camera" size={24} color="#5c4033" />
+              <TouchableOpacity onPress={handleAvatarPress} activeOpacity={0.85}>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatar}>
+                    {user.avatar ? (
+                      <Image
+                        source={{ uri: user.avatar }}
+                        style={styles.avatarImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={styles.avatarText}>{username?.[0]?.toUpperCase() || 'U'}</Text>
+                    )}
+                  </View>
+                  <View style={styles.cameraIcon}>
+                    <Ionicons name="camera" size={22} color="#5c4033" />
+                  </View>
                 </View>
               </TouchableOpacity>
+              <Text style={styles.avatarHint}>點擊頭像更換或刪除</Text>
 
-              <Text style={styles.avatarHintNew}>點擊頭像編輯</Text>
+{/* MBTI 顯示 */}
+<View style={styles.mbtiContainer}>
+  {user.mbti ? (
+    <View style={styles.mbtiRow}>
+      {/* 可點擊的 MBTI 徽章 + 資訊圖示 */}
+      <TouchableOpacity
+        style={[styles.mbtiBadge, { backgroundColor: getMbtiColor(user.mbti) }]}
+        onPress={() => setShowMbtiInfoModal(true)}
+        activeOpacity={0.85}
+      >
+        <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
+        <Text style={styles.mbtiText}>{user.mbti}</Text>
+        <Ionicons 
+          name="information-circle-outline" 
+          size={20} 
+          color="#fff" 
+          style={styles.infoIcon}
+        />
+      </TouchableOpacity>
 
-              {/* MBTI 顯示區域 */}
-              <View style={styles.mbtiDisplay}>
-                {user.mbti ? (
-                  <TouchableOpacity
-                    style={[styles.mbtiBadge, { backgroundColor: getMbtiColor(user.mbti) }]}
-                    onPress={() => setShowMbtiInfoModal(true)}
-                  >
-                    <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
-                    <Text style={styles.mbtiBadgeText}>{user.mbti}</Text>
-                    <Ionicons name="information-circle" size={18} color="#fff" />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.mbtiEmpty} onPress={() => setShowMbtiChoiceModal(true)}>
-                    <MaterialCommunityIcons name="brain" size={20} color="#8b5e3c" />
-                    <Text style={styles.mbtiEmptyText}>完成 MBTI 測試</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+      {/* 重置按鈕 */}
+      <TouchableOpacity 
+        style={styles.resetBtn} 
+        onPress={handleResetPress}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="restore" size={22} color="#e74c3c" />
+      </TouchableOpacity>
+    </View>
+  ) : (
+    <TouchableOpacity 
+      style={styles.mbtiEmptyBtn} 
+      onPress={() => setShowMbtiChoiceModal(true)}
+    >
+      <MaterialCommunityIcons name="brain" size={24} color="#8b5e3c" />
+      <Text style={styles.mbtiEmptyText}>完成 MBTI 性格測試</Text>
+    </TouchableOpacity>
+  )}
+</View>
+</View>
 
+            {/* 表單區塊 */}
             <View style={styles.form}>
               <Text style={styles.label}>使用者名稱</Text>
-              <TextInput style={styles.input} value={username} onChangeText={setUsername} />
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={setUsername}
+                placeholder="請輸入使用者名稱"
+                placeholderTextColor="#c9a88a"
+              />
 
               <Text style={styles.label}>電子信箱</Text>
               <TextInput
@@ -516,72 +414,24 @@ const handleResetMBTI = async () => {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                placeholder="example@email.com"
+                placeholderTextColor="#c9a88a"
               />
 
-              {/* MBTI 顯示區域 */}
-              <View style={styles.mbtiInputContainer}>
-                <View style={styles.mbtiLabelContainer}>
-                  <Text style={styles.label}>MBTI 類型</Text>
-                  <TouchableOpacity onPress={() => setShowMbtiInfoModal(true)}>
-                    <Ionicons name="information-circle-outline" size={20} color="#8b5e3c" />
-                  </TouchableOpacity>
-                </View>
+              <Text style={styles.sectionTitle}>修改密碼（選填）</Text>
 
-                {user.mbti ? (
-
-                  <View style={styles.mbtiInputWrapper}>
-                    <TouchableOpacity
-                      style={[styles.mbtiBadgeFullWidth, { backgroundColor: getMbtiColor(user.mbti) }]}
-                      onPress={() => setShowMbtiInfoModal(true)}
-                    >
-                      <MaterialCommunityIcons name="account-check" size={20} color="#fff" />
-                      <Text style={styles.mbtiBadgeText}>{user.mbti} 型</Text>
-                      <Ionicons name="information-circle" size={18} color="#fff" />
-                    </TouchableOpacity>
-
-                    {/* 編輯按鈕 - 重置 MBTI */}
-                    <TouchableOpacity
-                      style={styles.mbtiEditButton}
-                      onPress={handleResetPress}
-                    >
-                      <MaterialCommunityIcons name="delete" size={22} color="#e74c3c" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  // 尚未測試時顯示兩個並排按鈕）
-                  <View style={styles.mbtiButtonRow}>
-                    {/* 灰色不可點擊按鈕 */}
-                    <View style={styles.mbtiDisabledButton}>
-                      <Text style={styles.mbtiDisabledText}>尚未完成測試</Text>
-                    </View>
-
-                    {/* 可點擊的測試按鈕 */}
-                    <TouchableOpacity 
-                      style={styles.mbtiTestButton} 
-                      onPress={() => setShowMbtiChoiceModal(true)}
-                    >
-                      <MaterialCommunityIcons name="brain" size={20} color="#5c4033" />
-                      <Text style={styles.mbtiTestButtonText}>完成 MBTI 測試</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-
-              <Text style={styles.label}>目前密碼（更改密碼時必填）</Text>
+              <Text style={styles.label}>目前密碼</Text>
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   secureTextEntry={!showCurrentPassword}
-                  placeholder="留空表示不更改"
+                  placeholder="輸入目前密碼"
                   placeholderTextColor="#c9a88a"
                 />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                >
-                  <Ionicons name={showCurrentPassword ? 'eye-off' : 'eye'} size={24} color="#8b5e3c" />
+                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={styles.eyeBtn}>
+                  <Ionicons name={showCurrentPassword ? 'eye-off' : 'eye'} size={22} color="#8b5e3c" />
                 </TouchableOpacity>
               </View>
 
@@ -595,11 +445,8 @@ const handleResetMBTI = async () => {
                   placeholder="至少 6 個字元"
                   placeholderTextColor="#c9a88a"
                 />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowNewPassword(!showNewPassword)}
-                >
-                  <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={24} color="#8b5e3c" />
+                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeBtn}>
+                  <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={22} color="#8b5e3c" />
                 </TouchableOpacity>
               </View>
 
@@ -610,19 +457,16 @@ const handleResetMBTI = async () => {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirmPassword}
-                  placeholder="確認新密碼"
+                  placeholder="再次輸入新密碼"
                   placeholderTextColor="#c9a88a"
                 />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={24} color="#8b5e3c" />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
+                  <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="#8b5e3c" />
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
-                style={[styles.saveBtn, loading && { opacity: 0.7 }]}
+                style={[styles.saveButton, loading && styles.saveButtonDisabled]}
                 onPress={handleUpdate}
                 disabled={loading}
               >
@@ -633,386 +477,198 @@ const handleResetMBTI = async () => {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      {/* 各種 Modal */}
-      <Modal
-        isVisible={modalVisible}
-        onBackdropPress={() => modalType === 'success' && handleModalConfirm()}
-        backdropOpacity={0.5}
-        animationIn="fadeInUp"
-        animationOut="fadeOutDown"
-        style={modalStyles.modal}
-      >
+      {/* ==================== 各種 Modal ==================== */}
+      {/* 一般提示 Modal */}
+      <Modal isVisible={modalVisible} onBackdropPress={handleModalConfirm} backdropOpacity={0.6}>
         <View style={modalStyles.container}>
           <Text style={[modalStyles.title, modalType === 'success' ? modalStyles.successTitle : modalStyles.errorTitle]}>
             {modalTitle}
           </Text>
           <Text style={modalStyles.message}>{modalMessage}</Text>
           <TouchableOpacity
-            style={[modalStyles.button, modalType === 'success' ? modalStyles.successButton : modalStyles.errorButton]}
+            style={[modalStyles.button, modalType === 'success' ? modalStyles.successBtn : modalStyles.errorBtn]}
             onPress={handleModalConfirm}
           >
             <Text style={modalStyles.buttonText}>
-              {modalType === 'success' ? '返回主頁' : '我知道了'}
+              {modalType === 'success' ? '返回主頁' : '確定'}
             </Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
-      <Modal
-        isVisible={showUploadError}
-        onBackdropPress={() => setShowUploadError(false)}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-      >
+      {/* 上傳錯誤 Modal */}
+      <Modal isVisible={showUploadError} onBackdropPress={() => setShowUploadError(false)}>
         <View style={modalStyles.container}>
-          <Text style={[modalStyles.title, { color: '#e74c3c' }]}>上傳失敗</Text>
+          <Text style={modalStyles.errorTitle}>上傳失敗</Text>
           <Text style={modalStyles.message}>{uploadErrorMsg}</Text>
-          <TouchableOpacity
-            style={[modalStyles.button, { backgroundColor: '#e74c3c' }]}
-            onPress={() => setShowUploadError(false)}
-          >
-            <Text style={modalStyles.buttonText}>確定</Text>
+          <TouchableOpacity style={modalStyles.errorBtn} onPress={() => setShowUploadError(false)}>
+            <Text style={modalStyles.buttonText}>我知道了</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
-      <Modal
-        isVisible={showMbtiInfoModal}
-        onBackdropPress={() => setShowMbtiInfoModal(false)}
-		onBackButtonPress={() => setShowMbtiInfoModal(false)}
-        backdropOpacity={0.5}
-        animationIn="fadeInUp"
-        animationOut="fadeOutDown"
-        style={modalStyles.modal}
-      >
-        <View style={modalStyles.container}>
-          <Text style={[modalStyles.title, { color: '#5c4033' }]}>關於 MBTI</Text>
-          <Text style={modalStyles.message}>
-            MBTI（邁爾斯-布里格斯類型指標）是一種人格類型理論，將人格分為16種類型。{'\n\n'}
-            每個類型由4個字母組成：{'\n'}
-            • E（外向）或 I（內向）{'\n'}
-            • S（實感）或 N（直覺）{'\n'}
-            • T（思考）或 F（情感）{'\n'}
-            • J（判斷）或 P（感知）{'\n\n'}
-            完成 MBTI 測試後，系統會根據你的性格類型為你推薦最匹配的朋友！
-          </Text>
-          <TouchableOpacity
-            style={[modalStyles.button, { backgroundColor: '#f4c7ab' }]}
-            onPress={() => setShowMbtiInfoModal(false)}
-          >
-            <Text style={modalStyles.buttonText}>我了解了</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+{/* MBTI 說明 Modal */}
+<Modal 
+  isVisible={showMbtiInfoModal} 
+  onBackdropPress={() => setShowMbtiInfoModal(false)}
+  onBackButtonPress={() => setShowMbtiInfoModal(false)}
+  backdropOpacity={0.6}
+>
+  <View style={modalStyles.container}>
+    <Text style={modalStyles.title}>關於 MBTI</Text>
+    
+    <Text style={modalStyles.message}>
+      MBTI（邁爾斯-布里格斯類型指標）是一種廣泛使用的人格類型理論，{'\n'}
+      將人格分為 16 種不同類型。{'\n\n'}
+      每個類型由四個字母組成：{'\n'}
+      • E（外向） / I（內向）{'\n'}
+      • S（實感） / N（直覺）{'\n'}
+      • T（思考） / F（情感）{'\n'}
+      • J（判斷） / P（感知）{'\n\n'}
+      完成測試後，系統會根據你的性格推薦最適合的朋友！
+    </Text>
 
+    <TouchableOpacity
+      style={modalStyles.successBtn}
+      onPress={() => setShowMbtiInfoModal(false)}
+    >
+      <Text style={modalStyles.buttonText}>我了解了</Text>
+    </TouchableOpacity>
+  </View>
+</Modal>
+
+      {/* 頭像操作 Action Sheet */}
       <Modal
         isVisible={showAvatarActionModal}
         onBackdropPress={() => setShowAvatarActionModal(false)}
         onSwipeComplete={() => setShowAvatarActionModal(false)}
-        onBackButtonPress={() => setShowAvatarActionModal(false)}
         swipeDirection={['down']}
-        swipeThreshold={100}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
-        backdropOpacity={0.5}
-        avoidKeyboard={true}
-        propagateSwipe={true}
         style={{ justifyContent: 'flex-end', margin: 0 }}
       >
         <View style={modalStyles.actionSheet}>
           <View style={modalStyles.actionSheetHandle} />
 
-          <TouchableOpacity
-            style={modalStyles.actionItem}
-            onPress={() => {
-              setShowAvatarActionModal(false);
-              handleUploadAvatar();
-            }}
-          >
+          <TouchableOpacity style={modalStyles.actionItem} onPress={() => { setShowAvatarActionModal(false); handleUploadAvatar(); }}>
             <Ionicons name="camera-outline" size={26} color="#5c4033" />
             <Text style={modalStyles.actionText}>更換頭像</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[modalStyles.actionItem, modalStyles.destructiveItem]}
-            onPress={() => {
-              setShowAvatarActionModal(false);
-              handleDeleteAvatar();
-            }}
-          >
+          <TouchableOpacity style={[modalStyles.actionItem, modalStyles.destructiveItem]} onPress={handleDeleteAvatar}>
             <Ionicons name="trash-outline" size={26} color="#e74c3c" />
             <Text style={[modalStyles.actionText, { color: '#e74c3c' }]}>刪除頭像</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[modalStyles.actionItem, modalStyles.cancelItem]}
-            onPress={() => setShowAvatarActionModal(false)}
-          >
+          <TouchableOpacity style={modalStyles.cancelItem} onPress={() => setShowAvatarActionModal(false)}>
             <Text style={modalStyles.cancelText}>取消</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
       {/* MBTI 重置確認 Modal */}
-      <Modal
-        isVisible={showResetConfirmModal}
-        onBackdropPress={() => setShowResetConfirmModal(false)}
-        onBackButtonPress={() => setShowResetConfirmModal(false)}
-        animationIn="zoomIn"
-        animationOut="zoomOut"
-        backdropOpacity={0.6}
-      >
+      <Modal isVisible={showResetConfirmModal} onBackdropPress={() => setShowResetConfirmModal(false)}>
         <View style={modalStyles.container}>
-          <MaterialCommunityIcons 
-            name="alert-circle-outline" 
-            size={60} 
-            color="#e74c3c" 
-            style={{ marginBottom: 16 }}
-          />
-          
-          <Text style={[modalStyles.title, { color: '#5c4033', fontSize: 22 }]}>
-            重置 MBTI？
-          </Text>
-          
+          <MaterialCommunityIcons name="alert-circle-outline" size={60} color="#e74c3c" style={{ marginBottom: 16 }} />
+          <Text style={modalStyles.title}>確定重置 MBTI？</Text>
           <Text style={modalStyles.message}>
-            確定要重置你的 MBTI 類型嗎？{'\n\n'}
-            這將會：{'\n'}
-            • 清除目前的 MBTI 結果{'\n'}
-            • 把遊戲關卡分數歸零{'\n'}
-            • 歷史記錄會保留{'\n\n'}
-            重置後你可以重新進行測試。
+            重置後將清除目前的 MBTI 結果與遊戲關卡分數。{'\n\n'}
+            歷史記錄會保留，您可以重新進行測試。
           </Text>
 
-          <View style={styles.resetConfirmButtonRow}>
-            <TouchableOpacity
-              style={styles.resetCancelButton}
-              onPress={() => setShowResetConfirmModal(false)}
-            >
+          <View style={styles.resetButtonRow}>
+            <TouchableOpacity style={styles.resetCancelBtn} onPress={() => setShowResetConfirmModal(false)}>
               <Text style={styles.resetCancelText}>取消</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.resetConfirmButton}
-              onPress={handleResetMBTI}
-            >
+            <TouchableOpacity style={styles.resetConfirmBtn} onPress={handleResetMBTI}>
               <Text style={styles.resetConfirmText}>確定重置</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-            <MbtiTestChoiceModal 
-  visible={showMbtiChoiceModal} 
-  onClose={() => setShowMbtiChoiceModal(false)} 
-/>
-
+      <MbtiTestChoiceModal visible={showMbtiChoiceModal} onClose={() => setShowMbtiChoiceModal(false)} />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
-  container: { padding: 24, paddingBottom: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 },
-  back: { fontSize: 32, color: '#5c4033' },
-  title: { fontSize: 26, fontWeight: '800', color: '#5c4033' },
-  avatarSection: { alignItems: 'center', marginBottom: 40 },
   safeArea: { flex: 1 },
+  container: { paddingHorizontal: 24, paddingBottom: 60 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  title: { fontSize: 26, fontWeight: '800', color: '#5c4033' },
+
+  avatarSection: { alignItems: 'center', marginBottom: 40 },
+  avatarContainer: { position: 'relative' },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 130,
+    height: 130,
+    borderRadius: 65,
     backgroundColor: '#f4c7ab',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#8b5e3c',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
   },
   avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  avatarText: { fontSize: 48, fontWeight: '800', color: '#5c4033' },
-  avatarEditIcon: {
+  avatarText: { fontSize: 52, fontWeight: '800', color: '#5c4033' },
+  cameraIcon: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#fffaf5',
+    bottom: 4,
+    right: 4,
+    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 8,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: '#f4c7ab',
-    shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
   },
-  avatarHintNew: {
+  avatarHint: {
+    marginTop: 14,
     color: '#8b5e3c',
     fontSize: 14,
     fontWeight: '500',
-    marginTop: 12,
-    opacity: 0.8,
   },
-  mbtiDisplay: {
-    marginTop: 16,
+
+  mbtiContainer: { marginTop: 20, width: '100%', alignItems: 'center' },
+  mbtiRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12 
   },
   mbtiBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  mbtiBadgeText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign : 'center',
-  },
-  mbtiEmpty: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: '#f4c7ab',
-    borderRadius: 20,
-    gap: 10,
-    backgroundColor: 'rgba(244, 199, 171, 0.1)',
-  },
-  mbtiEmptyText: {
-    color: '#8b5e3c',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  form: { gap: 8 },
-  label: { fontSize: 15, color: '#5c4033', marginTop: 12 },
-  mbtiLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderRadius: 30,
     gap: 8,
-  },
-  mbtiInputContainer: {
-
-  },
-  mbtiInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  mbtiInput: {
-    flex: 1,
-    textTransform: 'uppercase',
-  },
-  mbtiTestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4c7ab',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  mbtiTestButtonText: {
-    color: '#5c4033',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  input: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, borderWidth: 1, borderColor: '#f4c7ab' },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#f4c7ab',
-    color: '#5c4033',
-  },
-  passwordInput: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#5c4033' },
-  eyeButton: { paddingHorizontal: 16, paddingVertical: 16 },
-  saveBtn: { backgroundColor: '#f4c7ab', paddingVertical: 18, borderRadius: 24, alignItems: 'center', marginTop: 40 },
-  saveText: { color: '#5c4033', fontSize: 18, fontWeight: '700' },
-
-  mbtiNotTestedContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#f4c7ab',
-  },
-  mbtiNotTestedText: {
-    color: '#8b5e3c',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-
-  mbtiButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
-  },
-  mbtiDisabledButton: {
-    flex: 1,
-    backgroundColor: '#e0d5c7',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#d4c4b0',
-    alignItems: 'center',
-  },
-  mbtiDisabledText: {
-    color: '#8b5e3c',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  mbtiTestButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f4c7ab',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    gap: 8,
-  },
-  mbtiTestButtonText: {
-    color: '#5c4033',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-mbtiInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 12,
-  },
-  mbtiBadgeFullWidth: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  mbtiEditButton: {
+  mbtiText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: '700' 
+  },
+  infoIcon: {
+    marginLeft: 4,
+  },
+
+  resetBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -1022,66 +678,111 @@ mbtiInputWrapper: {
     borderWidth: 1.5,
     borderColor: '#f4c7ab',
   },
-
-  resetConfirmButtonRow: {
+  mbtiEmptyBtn: {
     flexDirection: 'row',
-    width: '100%',
+    alignItems: 'center',
+    backgroundColor: '#fffaf5',
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 30,
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
     gap: 12,
-    marginTop: 8,
   },
-  resetCancelButton: {
+  mbtiEmptyText: { color: '#5c4033', fontSize: 17, fontWeight: '600' },
+
+  form: { gap: 16 },
+  label: { fontSize: 15, color: '#5c4033', fontWeight: '600', marginBottom: 6 },
+  sectionTitle: { fontSize: 17, color: '#5c4033', fontWeight: '700', marginTop: 24, marginBottom: 8 },
+
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    fontSize: 16,
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
+  },
+
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#f4c7ab',
+  },
+  passwordInput: { flex: 1, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#5c4033' },
+  eyeBtn: { padding: 16 },
+
+  saveButton: {
+    backgroundColor: '#f4c7ab',
+    paddingVertical: 18,
+    borderRadius: 28,
+    alignItems: 'center',
+    marginTop: 32,
+    shadowColor: '#f4c7ab',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  saveButtonDisabled: { opacity: 0.6 },
+  saveText: { color: '#5c4033', fontSize: 18, fontWeight: '700' },
+
+  resetButtonRow: { flexDirection: 'row', gap: 12, width: '100%', marginTop: 20 },
+  resetCancelBtn: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 20,
     backgroundColor: '#f4c7ab',
     alignItems: 'center',
   },
-  resetConfirmButton: {
+  resetConfirmBtn: {
     flex: 1,
     paddingVertical: 16,
     borderRadius: 20,
     backgroundColor: '#e74c3c',
     alignItems: 'center',
   },
-  resetCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#5c4033',
-  },
-  resetConfirmText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
+  resetCancelText: { color: '#5c4033', fontSize: 16, fontWeight: '600' },
+  resetConfirmText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
 
 const modalStyles = StyleSheet.create({
-  modal: { justifyContent: 'center', margin: 0 },
   container: {
     backgroundColor: '#fffaf5',
     borderRadius: 28,
     padding: 32,
     alignItems: 'center',
-    marginHorizontal: 32,
+    marginHorizontal: 20,
     shadowColor: '#8b5e3c',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 20,
   },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: '800', color: '#5c4033', marginBottom: 16, textAlign: 'center' },
   successTitle: { color: '#5c4033' },
   errorTitle: { color: '#e74c3c' },
-  message: { fontSize: 16, color: '#8b5e3c', textAlign: 'center', marginBottom: 32, lineHeight: 24 },
-  button: { paddingVertical: 16, paddingHorizontal: 40, borderRadius: 24, minWidth: 180, alignItems: 'center' },
-  successButton: { backgroundColor: '#f4c7ab' },
-  errorButton: { backgroundColor: '#e74c3c' },
+  message: { fontSize: 16, color: '#8b5e3c', textAlign: 'center', lineHeight: 24, marginBottom: 32 },
+  button: { paddingVertical: 16, paddingHorizontal: 40, borderRadius: 24, minWidth: 160, alignItems: 'center' },
+  successBtn: { 
+    backgroundColor: '#f4c7ab', 
+    paddingVertical: 16, 
+    paddingHorizontal: 40, 
+    borderRadius: 24, 
+    minWidth: 160, 
+    alignItems: 'center' 
+  },
+  errorBtn: { backgroundColor: '#e74c3c' },
   buttonText: { color: '#5c4033', fontSize: 17, fontWeight: '700' },
 
   actionSheet: {
     backgroundColor: '#fffaf5',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingTop: 12,
     paddingBottom: 40,
     paddingHorizontal: 20,
@@ -1098,28 +799,17 @@ const modalStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 18,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     borderRadius: 20,
     marginBottom: 8,
   },
-  actionText: {
-    fontSize: 18,
-    color: '#5c4033',
-    marginLeft: 16,
-    fontWeight: '600',
-  },
-  destructiveItem: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-  },
+  actionText: { fontSize: 18, color: '#5c4033', marginLeft: 16, fontWeight: '600' },
+  destructiveItem: { backgroundColor: 'rgba(231, 76, 60, 0.1)' },
   cancelItem: {
     marginTop: 12,
     backgroundColor: '#f4c7ab',
-    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 24,
   },
-  cancelText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#5c4033',
-    textAlign: 'center',
-  },
+  cancelText: { fontSize: 18, fontWeight: '700', color: '#5c4033', textAlign: 'center' },
 });
