@@ -280,7 +280,6 @@ const loadUser = useCallback(async () => {
     }
   };
 
-  // === 修正後的 Bio 更新（支援清空 + Modal 提示）===
   const handleSaveBio = async () => {
     if (saving) return;
 
@@ -511,7 +510,6 @@ const loadUser = useCallback(async () => {
           contentContainerStyle={styles.flashListContent}
         />
 
-        {/* 統一提示 Modal（解決原本沒有彈窗的問題） */}
         <Modal
           isVisible={modalVisible}
           onBackdropPress={handleModalConfirm}
@@ -648,7 +646,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 30,
-    gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
