@@ -17,7 +17,7 @@ export default function PostCard({
 }) {
   const router = useRouter();
   const baseURL = api.defaults.baseURL;
-  const scaleValue = new Animated.Value(1);
+  const likeScaleValue = new Animated.Value(1);
 
   // Modal states
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -65,12 +65,21 @@ const handleUserPress = () => {
 };
 
 const handleLikePress = () => {
-
+  // 讚按鈕點擊時的放大動畫
   Animated.sequence([
-    Animated.timing(scaleValue, { toValue: 1.4, duration: 100, useNativeDriver: true }),
-    Animated.timing(scaleValue, { toValue: 1, duration: 150, useNativeDriver: true }),
+    Animated.timing(likeScaleValue, { 
+      toValue: 1.4, 
+      duration: 100, 
+      useNativeDriver: true 
+    }),
+    Animated.timing(likeScaleValue, { 
+      toValue: 1, 
+      duration: 150, 
+      useNativeDriver: true 
+    }),
   ]).start();
 
+  // 觸覺反饋
   if (post.is_liked_by_me) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   } else {
@@ -144,23 +153,22 @@ const confirmDelete = () => {
     <>
       <View style={styles.card}>
 <View style={styles.header}>
-  {/* 頭像 */}
-  <TouchableOpacity 
-    onPress={handleUserPress}
-    activeOpacity={0.75}
-    style={styles.avatarWrapper}
-  >
-    <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-      <Image
-        source={{ 
-          uri: post.avatar?.startsWith('/') 
-            ? `${baseURL}${post.avatar}` 
-            : post.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&size=64&background=f4c7ab&color=5c4033` 
-        }}
-        style={styles.avatar}
-      />
-    </Animated.View>
-  </TouchableOpacity>
+
+{/* 頭像 */}
+<TouchableOpacity 
+  onPress={handleUserPress}
+  activeOpacity={0.75}
+  style={styles.avatarWrapper}
+>
+  <Image
+    source={{ 
+      uri: post.avatar?.startsWith('/') 
+        ? `${baseURL}${post.avatar}` 
+        : post.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&size=64&background=f4c7ab&color=5c4033` 
+    }}
+    style={styles.avatar}
+  />
+</TouchableOpacity>
 
   {/* 用戶名稱與時間 */}
   <TouchableOpacity 
@@ -246,18 +254,18 @@ const confirmDelete = () => {
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleLikePress}>
-            <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-              <MaterialCommunityIcons
-                name={post.is_liked_by_me ? 'heart' : 'heart-outline'}
-                size={26}
-                color={post.is_liked_by_me ? '#ff3366' : '#666'}
-              />
-            </Animated.View>
-            <Text style={[styles.actionCount, post.is_liked_by_me && styles.likedCount]}>
-              {post.like_count || 0}
-            </Text>
-          </TouchableOpacity>
+<TouchableOpacity style={styles.actionBtn} onPress={handleLikePress}>
+  <Animated.View style={{ transform: [{ scale: likeScaleValue }] }}>
+    <MaterialCommunityIcons
+      name={post.is_liked_by_me ? 'heart' : 'heart-outline'}
+      size={26}
+      color={post.is_liked_by_me ? '#ff3366' : '#666'}
+    />
+  </Animated.View>
+  <Text style={[styles.actionCount, post.is_liked_by_me && styles.likedCount]}>
+    {post.like_count || 0}
+  </Text>
+</TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => onPressComment?.(post.id)}
