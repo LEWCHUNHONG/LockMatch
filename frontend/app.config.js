@@ -46,7 +46,7 @@ export default {
       "apiUrl": process.env.EXPO_PUBLIC_API_URL,
       "router": {},
       "eas": {
-        "projectId": "95024c41-9d21-4bf5-b82a-d57070cb90a0"
+        "projectId": "e87e8358-1496-4bc4-814a-73e8f12242a0"
       }
     }
   }

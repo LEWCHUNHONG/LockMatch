@@ -9,22 +9,35 @@ const textAnalytics = require('../services/textAnalyticsService');
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, postMediaUpload) => {
 
 
-const toHKTime = (dateValue) => {
-  if (!dateValue) return null;
+const formatRelativeTime = (dateValue) => {
+  if (!dateValue) return '未知時間';
 
   try {
-    let date = new Date(dateValue);
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return '時間錯誤';
 
-    if (isNaN(date.getTime())) {
-      console.warn('無效的日期:', dateValue);
-      return null;
-    }
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
 
-    return date.toISOString().replace('Z', '+08:00');
+    if (diffMins < 1) return '剛剛';
+    if (diffMins < 60) return `${diffMins}分鐘前`;
 
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs}小時前`;
+
+    // 超過 24 小時顯示具體日期格式
+    return date.toLocaleString('zh-TW', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: false,
+    });
   } catch (e) {
-    console.error('toHKTime 錯誤:', e, '原始值:', dateValue);
-    return null;
+    console.error('時間轉換錯誤:', e);
+    return '時間錯誤';
   }
 };
   
@@ -136,7 +149,7 @@ const toHKTime = (dateValue) => {
           ...post,
           media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
           media_types: post.media_types ? JSON.parse(post.media_types) : [],
-          created_at: toHKTime(post.created_at)   // ← 修正重點
+          created_at: formatRelativeTime(post.created_at)
         }));
 
         res.json({ success: true, posts: formattedPosts });
@@ -260,7 +273,7 @@ const toHKTime = (dateValue) => {
           content: post.content || '',
           media_urls: media_urls,
           media_types: media_types,
-          created_at: toHKTime(post.created_at),
+          created_at: formatRelativeTime(post.created_at),
           user_id: post.user_id,
           username: post.username,
           avatar: post.avatar,
@@ -361,7 +374,7 @@ const toHKTime = (dateValue) => {
 
         const formattedComments = results.map(comment => ({
           ...comment,
-          created_at: toHKTime(comment.created_at)
+          created_at: formatRelativeTime(post.created_at)
         }));
 
         res.json({ success: true, comments: formattedComments });
@@ -659,7 +672,7 @@ const toHKTime = (dateValue) => {
         ...post,
         media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
         media_types: post.media_types ? JSON.parse(post.media_types) : [],
-        created_at: toHKTime(post.created_at)
+        created_at: formatRelativeTime(post.created_at)
       }));
 
       res.json({ success: true, posts: formattedPosts });
@@ -699,7 +712,7 @@ const toHKTime = (dateValue) => {
           ...post,
           media_urls: post.media_urls ? JSON.parse(post.media_urls) : [],
           media_types: post.media_types ? JSON.parse(post.media_types) : [],
-          created_at: toHKTime(post.created_at)     // ← 修正重點
+          created_at: formatRelativeTime(post.created_at)
         }));
 
         res.json({ success: true, posts: formattedPosts });

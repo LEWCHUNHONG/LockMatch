@@ -4,16 +4,32 @@ const router = express.Router();
 
 module.exports = (connection, authMiddleware, JWT_SECRET, buildAvatarUrl, BASE_URL, io) => {
 
+  const formatLastActive = (dateValue) => {
+  if (!dateValue) return '離線';
+  
+  const date = new Date(dateValue);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return '剛剛在線';
+  if (diffMins < 60) return `${diffMins} 分鐘前在線`;
+  
+  const diffHrs = Math.floor(diffMins / 60);
+  if (diffHrs < 24) return `${diffHrs} 小時前在線`;
+  
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) return `${diffDays} 天前在線`;
+
+  return '一段時間前在線';
+};
+
   // 獲取我的好友列表
 router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
   connection.query(
     `SELECT 
-      u.id,
-      u.username,
-      u.avatar,
-      u.mbti,
-      u.status,
-      CONVERT_TZ(u.last_active, @@session.time_zone, '+00:00') as last_active,   -- 強制轉成 UTC + Z
+      u.id, u.username, u.avatar, u.mbti, u.status,
+      u.last_active,  -- 這裡讀取原始時間
       (TIMESTAMPDIFF(MINUTE, u.last_active, NOW()) < 5) as is_online
     FROM users u
     JOIN friendships f ON (f.user1_id = u.id OR f.user2_id = u.id)
@@ -23,20 +39,14 @@ router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
     ORDER BY u.last_active DESC`,
     [req.user.id, req.user.id, req.user.id],
     (err, results) => {
-      if (err) {
-        console.error('獲取好友列表失敗:', err);
-        return res.status(500).json({ error: '取得好友失敗' });
-      }
+      if (err) return res.status(500).json({ error: '取得好友失敗' });
       
-      // 處理頭像URL
-      const formattedResults = results.map(friend => ({
-        ...friend,
-        avatar: buildAvatarUrl(friend.avatar),
-
-        last_active: friend.last_active ? new Date(friend.last_active).toISOString() : null
+      const formattedResults = results.map(user => ({
+        ...user,
+        avatar: buildAvatarUrl(user.avatar),
+        // 在這裡將 last_active 轉換成字串
+        last_active: user.is_online ? '在線' : formatLastActive(user.last_active)
       }));
-      
-      console.log('後端回傳的好友列表（含 last_active）:', formattedResults);
       
       res.json({ success: true, friends: formattedResults });
     }
