@@ -12,11 +12,12 @@ export default function PostCard({
   onLikeToggle, 
   onPressComment,
   currentUserId,
-  onDelete
+  onDelete,
+  currentProfileId,
 }) {
   const router = useRouter();
   const baseURL = api.defaults.baseURL;
-  const scaleValue = new Animated.Value(1);
+  const likeScaleValue = new Animated.Value(1);
 
   // Modal states
   const [showOptionsModal, setShowOptionsModal] = useState(false);
@@ -25,18 +26,18 @@ export default function PostCard({
   const [messageTitle, setMessageTitle] = useState('');
   const [messageText, setMessageText] = useState('');
   const [showFullImage, setShowFullImage] = useState(false);
-  const [fullImageIndex, setFullImageIndex] = useState(0);  // 新增：追蹤全屏圖片索引
+  const [fullImageIndex, setFullImageIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // 新增：滑動手勢
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (evt, gestureState) => {
-        // 可選：可以在這裡做即時跟隨效果（進階）
+
       },
       onPanResponderRelease: (evt, gestureState) => {
-        const { dx } = gestureState; // dx 是水平位移，正數=往右滑，負數=往左滑
+        const { dx } = gestureState;
 
         if (dx > 80 && currentImageIndex > 0) {
           // 往右滑 → 上一張
@@ -51,13 +52,34 @@ export default function PostCard({
     })
   ).current;
 
-const handleLikePress = () => {
+const handleUserPress = () => {
 
+  const currentId = String(currentProfileId || '');
+  const postUserId = String(post.user_id || '');
+
+  if (currentId && currentId === postUserId) {
+    return;
+  }
+
+  router.push(`/profile/public/${post.user_id}`);
+};
+
+const handleLikePress = () => {
+  // 讚按鈕點擊時的放大動畫
   Animated.sequence([
-    Animated.timing(scaleValue, { toValue: 1.4, duration: 100, useNativeDriver: true }),
-    Animated.timing(scaleValue, { toValue: 1, duration: 150, useNativeDriver: true }),
+    Animated.timing(likeScaleValue, { 
+      toValue: 1.4, 
+      duration: 100, 
+      useNativeDriver: true 
+    }),
+    Animated.timing(likeScaleValue, { 
+      toValue: 1, 
+      duration: 150, 
+      useNativeDriver: true 
+    }),
   ]).start();
 
+  // 觸覺反饋
   if (post.is_liked_by_me) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   } else {
@@ -77,11 +99,14 @@ const handleLikePress = () => {
     router.push(`/discuss/edit?id=${post.id}`);
   };
 
-  const confirmDelete = () => {
-    setShowOptionsModal(false);
+const confirmDelete = () => {
+  setShowOptionsModal(false);
+
+  setTimeout(() => {
     setShowConfirmDeleteModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
+  }, 600);
+};
 
   const handleDelete = async () => {
     setShowConfirmDeleteModal(false);
@@ -112,53 +137,12 @@ const handleLikePress = () => {
     setShowOptionsModal(false);
     setMessageTitle('已報告');
     setMessageText('感謝您的回報，我們會審核此內容。');
+    setTimeout(() => {
     setShowMessageModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, 600);
   };
 
-  
-  const timeAgo = (dateString) => {
-    if (!dateString) return '未知時間';
-
-    let date = new Date(dateString);
-
-    if (isNaN(date.getTime())) {
-      const [datePart, timePart] = dateString.split(' ');
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour, min, sec] = timePart.split(':').map(Number);
-      date = new Date(Date.UTC(year, month - 1, day, hour, min, sec));
-    }
-
-    if (isNaN(date.getTime())) return '時間錯誤';
-
-    const utcTimestamp = Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      date.getUTCHours(),
-      date.getUTCMinutes(),
-      date.getUTCSeconds()
-    );
-
-    const now = new Date().getTime();
-    const diffMs = now - utcTimestamp;
-    const diffMins = Math.round(diffMs / 60000);
-
-    if (diffMins <= 1) return '剛剛';
-    if (diffMins < 60) return `${diffMins}分鐘前`;
-
-    const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}小時前`;
-
-    return new Date(utcTimestamp).toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: false,
-    });
-  };
 
   const openFullImage = (index) => {
     setFullImageIndex(index);
@@ -168,19 +152,43 @@ const handleLikePress = () => {
   return (
     <>
       <View style={styles.card}>
-        <View style={styles.header}>
-          <Image
-            source={{ uri: post.avatar?.startsWith('/') ? `${baseURL}${post.avatar}` : post.avatar || 'https://ui-avatars.com/api/?name=User&size=64&background=f4c7ab&color=5c4033' }}
-            style={styles.avatar}
-          />
-          <View style={styles.userInfo}>
-            <Text style={styles.username}>{post.username || '匿名'}</Text>
-            <Text style={styles.time}>{timeAgo(post.created_at)}</Text>
-          </View>
-          <TouchableOpacity style={styles.moreBtn} onPress={handleMorePress}>
-            <MaterialCommunityIcons name="dots-horizontal" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
+<View style={styles.header}>
+
+{/* 頭像 */}
+<TouchableOpacity 
+  onPress={handleUserPress}
+  activeOpacity={0.75}
+  style={styles.avatarWrapper}
+>
+  <Image
+    source={{ 
+      uri: post.avatar?.startsWith('/') 
+        ? `${baseURL}${post.avatar}` 
+        : post.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&size=64&background=f4c7ab&color=5c4033` 
+    }}
+    style={styles.avatar}
+  />
+</TouchableOpacity>
+
+  {/* 用戶名稱與時間 */}
+  <TouchableOpacity 
+    onPress={handleUserPress}
+    activeOpacity={0.75}
+    style={styles.userInfo}
+  >
+    <Animated.Text 
+      style={styles.username}
+      numberOfLines={1}
+    >
+      {post.username || '匿名'}
+    </Animated.Text>
+    <Text style={styles.time}>{post.created_at}</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity style={styles.moreBtn} onPress={handleMorePress}>
+    <MaterialCommunityIcons name="dots-horizontal" size={20} color="#999" />
+  </TouchableOpacity>
+</View>
 
         {post.content ? <Text style={styles.content}>{post.content}</Text> : null}
 
@@ -246,18 +254,18 @@ const handleLikePress = () => {
         )}
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleLikePress}>
-            <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
-              <MaterialCommunityIcons
-                name={post.is_liked_by_me ? 'heart' : 'heart-outline'}
-                size={26}
-                color={post.is_liked_by_me ? '#ff3366' : '#666'}
-              />
-            </Animated.View>
-            <Text style={[styles.actionCount, post.is_liked_by_me && styles.likedCount]}>
-              {post.like_count || 0}
-            </Text>
-          </TouchableOpacity>
+<TouchableOpacity style={styles.actionBtn} onPress={handleLikePress}>
+  <Animated.View style={{ transform: [{ scale: likeScaleValue }] }}>
+    <MaterialCommunityIcons
+      name={post.is_liked_by_me ? 'heart' : 'heart-outline'}
+      size={26}
+      color={post.is_liked_by_me ? '#ff3366' : '#666'}
+    />
+  </Animated.View>
+  <Text style={[styles.actionCount, post.is_liked_by_me && styles.likedCount]}>
+    {post.like_count || 0}
+  </Text>
+</TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
             onPress={() => onPressComment?.(post.id)}
@@ -420,6 +428,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 1,
     borderColor: '#eee',
+    overflow: 'hidden',
   },
   userInfo: { flex: 1 },
   username: {
@@ -470,7 +479,7 @@ const styles = StyleSheet.create({
   mediaContainer: {
     position: 'relative',
     width: '100%',
-    height: 350,           // 可自行調整高度
+    height: 350,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
@@ -480,9 +489,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     transform: [{ translateY: -20 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',  // ← 從 0.5 降到 0.35，更透明
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     borderRadius: 30,
-    width: 44,               // 稍微小一點，更精緻
+    width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
@@ -498,14 +507,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',  // ← 從 0.6 降到 0.45
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 16,
     zIndex: 10,
   },
   pageText: {
-    color: 'rgba(255, 255, 255, 0.95)',     // ← 文字也稍微淡一點
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -516,21 +525,36 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 10,                // 圓點間距稍微拉開一點
+    gap: 10,
     zIndex: 10,
   },
   dot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: 'rgba(115, 188, 212, 0.4)',  // ← 從 0.5 降到 0.4
+    backgroundColor: 'rgba(115, 188, 212, 0.4)',
   },
   activeDot: {
-    backgroundColor: 'rgba(115, 188, 212, 0.95)',  // ← 目前活躍的圓點稍微明顯一點
+    backgroundColor: 'rgba(115, 188, 212, 0.95)',
     width: 10,
     height: 10,
     borderRadius: 5,
   },
+
+avatarContainer: {
+  marginRight: 12,
+},
+userInfoContainer: {
+  flex: 1,
+  paddingVertical: 4,
+},
+avatarWrapper: {
+  marginRight: 1,
+},
+userInfo: {
+  flex: 1,
+  justifyContent: 'center',
+},
 });
 
 const modalStyles = StyleSheet.create({
@@ -562,14 +586,14 @@ const modalStyles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // 選項 Modal 用的單一按鈕樣式（較寬、居中）
+
   optionsContainer: {
     width: '100%',
     gap: 12,
     alignItems: 'center',
   },
   optionButton: {
-    width: '85%',                    // 固定較寬比例，不會溢出
+    width: '85%',
     minHeight: 52,
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -578,7 +602,7 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // 確認刪除 Modal 用的左右按鈕樣式（自動均分）
+
   buttonRow: {
     flexDirection: 'row',
     width: '100%',
@@ -587,7 +611,7 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   confirmButtonStyle: {
-    flex: 1,                         // ← 左右自動均分，不會出界
+    flex: 1,
     minHeight: 52,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -597,15 +621,14 @@ const modalStyles = StyleSheet.create({
   },
 
   ReportconfirmButtonStyle: {
-    width: '80%',              // 建議 75%～85% 寬度，看起來更穩重
+    width: '80%',
     minHeight: 54,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 24,          // 更大圓角，更現代感
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,             // 與上方文字拉開距離
-    // 可選：加上輕微陰影讓它有「浮起」感
+    marginTop: 16,
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.20,
@@ -613,7 +636,7 @@ const modalStyles = StyleSheet.create({
     elevation: 6,
   },
   
-  // 共用顏色樣式
+
   destructiveButton: {
     backgroundColor: '#e74c3c',
   },
@@ -640,16 +663,16 @@ const modalStyles = StyleSheet.create({
   },
 });
 
-// 新增：全圖樣式
+
 const fullImageStyles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',  // 深色背景，突出圖片
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fullImage: {
     width: '100%',
-    height: '100%',  // 全屏適應
+    height: '100%',
   },
 });

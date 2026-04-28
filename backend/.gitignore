@@ -127,3 +127,19 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# local env files
+.env
+.env.local
+
+
+# 先忽略整個 uploads 資料夾及其所有內容
+uploads/
+
+!uploads/avatars/
+!uploads/avatars/default.png
+!uploads/shop/
+!uploads/temp/
+
+!uploads/shop/**
+!uploads/temp/**

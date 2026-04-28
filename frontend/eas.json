@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 0.52.0" 
+    "version": ">= 0.52.0"
   },
   "build": {
     "development": {
@@ -14,9 +14,12 @@
       }
     },
     "preview": {
-      "distribution": "internal",          
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://lockmatch.shamough1792.synology.me"
+      },
+      "distribution": "internal",
       "android": {
-        "buildType": "apk"                
+        "buildType": "apk"
       }
     }
   }

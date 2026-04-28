@@ -1,21 +1,30 @@
 // app/chat/friends.js
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  Image,
-  FlatList,
-  ActivityIndicator,
+import React, { 
+  useState, 
+  useEffect, 
+  useCallback 
+} from 'react';
+
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  TextInput, 
+  Image, 
+  FlatList, 
+  ActivityIndicator 
 } from 'react-native';
+
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
-import { chatAPI } from '../../utils/api';
+
+import { useFocusEffect } from 'expo-router';
+
+import { chatAPI, socketAPI } from '../../utils/api';
 
 export default function FriendsList() {
   const router = useRouter();
@@ -25,6 +34,9 @@ export default function FriendsList() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingPending, setLoadingPending] = useState(false);
+
+
+  const [pendingCount, setPendingCount] = useState(0);
 
   // Alert modal states
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -49,53 +61,74 @@ export default function FriendsList() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const socket = socketAPI.getSocket();
+    if (socket) {
+      socket.on('new-friend-request', () => {
+        fetchPendingCount();
+      });
+      return () => {
+        socket.off('new-friend-request');
+      };
+    }
+  }, []);
+
+
+  const fetchPendingCount = async () => {
+    try {
+      const response = await chatAPI.getPendingRequests();
+      if (response.data.success) {
+        setPendingCount(response.data.requests.length);
+      }
+    } catch (error) {
+      console.error('獲取未讀請求數量失敗:', error);
+    }
+  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchPendingCount();
+    }, [])
+  );
+
   const loadFriends = async () => {
     try {
       setLoading(true);
       const response = await chatAPI.getFriends();
       if (response.data.success) {
-        const formattedFriends = response.data.friends.map(friend => {
-          // 調試日誌
-          console.log('好友原始數據:', friend);
-          console.log('好友頭像路徑:', friend.avatar);
-          
-          // 修復頭像URL
-          let fixedAvatar = friend.avatar;
-          
-          // 如果後端沒有正確構建完整URL，我們在前端處理
-          if (friend.avatar) {
-            // 如果已經是完整URL，直接使用
-            if (friend.avatar.startsWith('http')) {
-              fixedAvatar = friend.avatar;
-            } 
-            // 如果是相對路徑，添加基礎URL
-            else if (friend.avatar.startsWith('/')) {
-              fixedAvatar = `${BASE_URL}${friend.avatar}`;
-            }
-            // 如果是沒有斜杠的相對路徑，加上斜杠
-            else if (friend.avatar.includes('uploads/')) {
-              fixedAvatar = `${BASE_URL}/${friend.avatar}`;
-            }
-          }
-          
-          // 添加時間戳防止緩存
-          if (fixedAvatar) {
-            fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
-          }
-          
-          return {
-            id: friend.id.toString(),
-            name: friend.name || friend.username,
-            username: friend.username,
-            mbti: friend.mbti || '待測',
-            isOnline: friend.is_online || false,
-            avatar: fixedAvatar,
-            status: friend.status || '最近活躍',
-            lastActive: formatLastActive(friend.last_active),
-            isFriend: true,
-          };
-        });
-        
+const formattedFriends = response.data.friends.map(friend => {
+
+  console.log('好友原始數據:', friend);
+  console.log('好友頭像路徑:', friend.avatar);
+
+  // 修復頭像URL
+  let fixedAvatar = friend.avatar;
+  if (friend.avatar) {
+    if (friend.avatar.startsWith('http')) {
+      fixedAvatar = friend.avatar;
+    } else if (friend.avatar.startsWith('/')) {
+      fixedAvatar = `${BASE_URL}${friend.avatar}`;
+    } else if (friend.avatar.includes('uploads/')) {
+      fixedAvatar = `${BASE_URL}/${friend.avatar}`;
+    }
+  }
+
+  if (fixedAvatar) {
+    fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
+  }
+
+  return {
+    id: friend.id.toString(),
+    name: friend.name || friend.username,
+    username: friend.username,
+    mbti: friend.mbti || '待測',
+    isOnline: friend.is_online || false,
+    avatar: fixedAvatar,
+    status: friend.status || '最近活躍',
+    last_active: friend.last_active || '離線',
+    isFriend: true,
+  };
+});
+
         console.log('格式化後的好友數據:', formattedFriends);
         setFriends(formattedFriends);
       } else {
@@ -115,34 +148,34 @@ export default function FriendsList() {
       const response = await chatAPI.getPendingRequests();
       if (response.data.success) {
         console.log('待處理請求 API 返回:', response.data);
-        
+
         const formattedRequests = response.data.requests.map(request => {
-          // 使用通用方式處理用戶數據，適應兩種可能的數據結構
+
           const userData = request.from_user || request;
-          
+
           // 修復頭像URL
           let fixedAvatar = userData.avatar;
-          
+
           if (userData.avatar) {
-            // 如果已經是完整URL，直接使用
+
             if (userData.avatar.startsWith('http')) {
               fixedAvatar = userData.avatar;
-            } 
-            // 如果是相對路徑，添加基礎URL
+            }
+
             else if (userData.avatar.startsWith('/')) {
               fixedAvatar = `${BASE_URL}${userData.avatar}`;
             }
-            // 如果是沒有斜杠的相對路徑，加上斜杠
+
             else if (userData.avatar.includes('uploads/')) {
               fixedAvatar = `${BASE_URL}/${userData.avatar}`;
             }
           }
-          
-          // 添加時間戳防止緩存
+
+
           if (fixedAvatar) {
             fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
           }
-          
+
           return {
             id: request.id.toString(),
             userId: request.from_user_id ? request.from_user_id.toString() : userData.id?.toString() || 'unknown',
@@ -154,7 +187,7 @@ export default function FriendsList() {
             time: formatTime(request.created_at),
           };
         });
-        
+
         console.log('格式化後的待處理請求:', formattedRequests);
         setPendingRequests(formattedRequests);
       } else {
@@ -167,40 +200,6 @@ export default function FriendsList() {
     } finally {
       setLoadingPending(false);
     }
-  };
-
-  const formatLastActive = (timestamp) => {
-    if (!timestamp) return '很久以前';
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return '剛剛';
-    if (diffMins < 60) return `${diffMins}分鐘前`;
-    if (diffHours < 24) return `${diffHours}小時前`;
-    if (diffDays === 1) return '昨天';
-    if (diffDays < 7) return `${diffDays}天前`;
-
-    return `${diffDays}天前`;
-  };
-
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffDays === 0) return '今天';
-    if (diffDays === 1) return '昨天';
-    if (diffDays < 7) return `${diffDays}天前`;
-
-    return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' });
   };
 
   const handleAcceptRequest = async (requestId) => {
@@ -267,12 +266,12 @@ export default function FriendsList() {
     <TouchableOpacity style={styles.friendItem} onPress={() => handleFriendPress(item)}>
       <View style={styles.friendAvatar}>
         {item.avatar ? (
-          <Image 
-            source={{ 
+          <Image
+            source={{
               uri: item.avatar,
               cache: 'reload'
-            }} 
-            style={styles.avatarImage} 
+            }}
+            style={styles.avatarImage}
             onError={() => console.log('頭像加載失敗:', item.avatar)}
           />
         ) : (
@@ -297,7 +296,15 @@ export default function FriendsList() {
           <Text style={styles.friendStatus} numberOfLines={1}>
             {item.status}
           </Text>
-          <Text style={styles.friendTime}>{item.lastActive}</Text>
+<Text 
+  style={[
+    styles.lastActive,
+    item.last_active === '在線' ? { color: '#4CAF50' } : { color: '#8b5e3c' }
+  ]}
+  numberOfLines={1}
+>
+  {item.last_active || '離線'}
+</Text>
         </View>
       </View>
 
@@ -311,12 +318,12 @@ export default function FriendsList() {
     <View style={styles.pendingItem}>
       <View style={styles.pendingAvatar}>
         {item.avatar ? (
-          <Image 
-            source={{ 
+          <Image
+            source={{
               uri: item.avatar,
               cache: 'reload'
-            }} 
-            style={styles.avatarImage} 
+            }}
+            style={styles.avatarImage}
             onError={() => console.log('頭像加載失敗:', item.avatar)}
           />
         ) : (
@@ -355,7 +362,7 @@ export default function FriendsList() {
         colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
         style={styles.gradient}
       >
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -364,14 +371,24 @@ export default function FriendsList() {
 
             <Text style={styles.headerTitle}>好友列表</Text>
 
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.push('/chat/search')}
-            >
-              <MaterialCommunityIcons name="account-plus" size={26} color="#5c4033" />
-            </TouchableOpacity>
-
+            <View style={styles.headerRight}>
+              {/* 未讀請求按鈕 */}
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => router.push('/chat/friend-requests')}
+              >
+                <View>
+                  <MaterialCommunityIcons name="bell" size={26} color="#5c4033" />
+                  {pendingCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{pendingCount}</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
+
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
@@ -502,9 +519,6 @@ export default function FriendsList() {
   );
 }
 
-// ======================
-//       STYLES
-// ======================
 
 const styles = StyleSheet.create({
   gradient: { flex: 1 },
@@ -715,6 +729,30 @@ const styles = StyleSheet.create({
     color: '#8b5e3c',
     marginBottom: 6,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#e74c3c',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fffaf5',
+  },
+  badgeText: {
+    color: '#fffaf5',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   friendFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -805,6 +843,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fffaf5',
   },
+  lastActive: {
+  fontSize: 13,
+  color: '#8b5e3c',
+  marginLeft: 8,
+},
 });
 
 // Modal styles

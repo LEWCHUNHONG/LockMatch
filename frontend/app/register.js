@@ -33,12 +33,12 @@ export default function RegisterScreen() {
   const router = useRouter();
   const scaleValue = new Animated.Value(1);
 
-  // 攔截系統返回手勢，強制回到首頁
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         router.replace('/');
-        return true; // 阻止預設行為
+        return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -200,6 +200,7 @@ export default function RegisterScreen() {
                     </Text>
                   </TouchableOpacity>
 
+{/*
                   <View style={styles.orContainer}>
                     <View style={styles.orLine} />
                     <Text style={styles.orText}>或其他方式註冊</Text>
@@ -216,7 +217,22 @@ export default function RegisterScreen() {
                       <Ionicons name="logo-facebook" size={18} color="#1877F2" />
                       <Text style={styles.socialLabel}>Facebook</Text>
                     </TouchableOpacity>
-                  </View>
+                  </View> */}
+
+                  {/* 社群登入提示（暫時停用） */}
+<View style={styles.socialHintContainer}>
+  <View style={styles.orLine} />
+  <Text style={styles.socialHintText}>
+    即將支援 Google / Facebook 快速註冊
+  </Text>
+  <View style={styles.orLine} />
+</View>
+
+<Text style={styles.comingSoonText}>
+  更多方便的註冊方式即將推出 ✨
+</Text>
+
+
                 </View>
               </View>
             </ScrollView>
@@ -260,7 +276,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  // 新增：返回按鈕樣式
+
   backButton: {
     position: 'absolute',
     top: 56,
@@ -405,6 +421,24 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontWeight: '600',
   },
+  socialHintContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginVertical: 24,
+},
+socialHintText: {
+  color: '#a0785e',
+  fontSize: 14,
+  paddingHorizontal: 16,
+  fontWeight: '500',
+},
+comingSoonText: {
+  textAlign: 'center',
+  color: '#c47c5e',
+  fontSize: 13.5,
+  marginTop: 8,
+  fontStyle: 'italic',
+},
 });
 
 const modalStyles = StyleSheet.create({

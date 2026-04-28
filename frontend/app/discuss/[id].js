@@ -182,32 +182,26 @@ export default function PostDetail() {
     }
   };
 
-  // 時間格式化
-  const timeAgo = (dateString) => {
-    if (!dateString) return '未知時間';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.round(diffMs / 60000);
+// 時間格式化
+const timeAgo = (dateString) => {
+  if (!dateString) return '未知時間';
+  
+  if (typeof dateString === 'string' && 
+      (dateString.includes('剛剛') || 
+       dateString.includes('分鐘前') || 
+       dateString.includes('小時前') || 
+       dateString.includes('年') || 
+       dateString.includes('月'))) {
+    return dateString;
+  }
 
-    if (diffMins <= 1) return '剛剛';
-    if (diffMins < 60) return `${diffMins}分鐘前`;
-    const diffHrs = Math.floor(diffMins / 60);
-    if (diffHrs < 24) return `${diffHrs}小時前`;
-
-    return date.toLocaleString('zh-TW', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: false,
-    });
-  };
+  console.warn('收到未格式化的時間:', dateString);
+  return '時間格式錯誤';
+};
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color="#f4c7ab" />
       </SafeAreaView>
     );
@@ -215,7 +209,7 @@ export default function PostDetail() {
 
   if (!post) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <Text style={{ textAlign: 'center', marginTop: 50 }}>
           貼文不存在或已被刪除
         </Text>
@@ -244,7 +238,7 @@ export default function PostDetail() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
         style={styles.gradient}
@@ -485,7 +479,7 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingBottom: 100, // 為底部輸入欄預留空間
+    paddingBottom: 100,
   },
 
   bottomInputContainer: {
@@ -530,7 +524,7 @@ const modalStyles = StyleSheet.create({
     borderRadius: 28,
     paddingVertical: 32,
     paddingHorizontal: 24,
-    marginHorizontal: 32,           // 稍微縮小外邊距，增加內部空間
+    marginHorizontal: 32,
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 8 },
@@ -554,15 +548,15 @@ const modalStyles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 16,                        // 兩個按鈕間距加大一點
+    gap: 16,
     justifyContent: 'center',
   },
   // 共用按鈕基礎樣式
   actionButton: {
-    paddingHorizontal: 32,          // 左右內距決定按鈕寬度
+    paddingHorizontal: 32,
     paddingVertical: 14,
-    minWidth: 120,                  // 保證至少這個寬，不會太窄
-    maxWidth: 180,                  // 防止太大頂到邊
+    minWidth: 120,
+    maxWidth: 180,
     minHeight: 52,
     borderRadius: 26,
     justifyContent: 'center',

@@ -27,7 +27,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "思考派對背後的社交意義，想像不同人的故事",
         mbti: { I: 1, N: 2 },
-        icon: "thought-bubble",
+        icon: "thought-bubble-outline", // 修正
         color: "#06D6A0"
       }
     ]
@@ -53,7 +53,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "研究最有效率的路線和最佳性價比方案",
         mbti: { T: 2, J: 1 },
-        icon: "chart-timeline",
+        icon: "chart-timeline-variant",
         color: "#073B4C"
       },
       {
@@ -73,13 +73,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "分析現有數據，找出最可靠的解決方案",
         mbti: { S: 2, T: 1 },
-        icon: "chart-box",
+        icon: "chart-box-outline",
         color: "#118AB2"
       },
       {
         text: "跳出框架，提出從未有人想過的全新點子",
         mbti: { N: 2, P: 1 },
-        icon: "lightbulb-on",
+        icon: "lightbulb-on-outline",
         color: "#FFD166"
       },
       {
@@ -181,13 +181,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "確保每個人都安全，照顧他人情緒",
         mbti: { F: 2, E: 1 },
-        icon: "shield-heart",
+        icon: "shield-outline",
         color: "#FF6B6B"
       },
       {
         text: "觀察細節，尋找最可靠的解決方案",
         mbti: { S: 2, I: 1 },
-        icon: "magnify-scan",
+        icon: "magnify-expand",
         color: "#4ECDC4"
       }
     ]
@@ -207,13 +207,13 @@ export const MBTI_GAME_SCENES = [
       {
         text: "先傾聽，再提出深思熟慮的完整方案",
         mbti: { I: 2, J: 1 },
-        icon: "head-lightbulb",
+        icon: "lightbulb-variant-outline",
         color: "#06D6A0"
       },
       {
         text: "用具體案例說明想法的可行性",
         mbti: { S: 2, T: 1 },
-        icon: "chart-bell-curve",
+        icon: "chart-bell-curve-cumulative",
         color: "#118AB2"
       },
       {
@@ -271,7 +271,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "跟隨直覺，選擇感覺最對的那一個",
         mbti: { N: 2, F: 1 },
-        icon: "heart-flash",
+        icon: "heart-pulse",
         color: "#EF476F"
       },
       {
@@ -309,7 +309,7 @@ export const MBTI_GAME_SCENES = [
       {
         text: "親自示範，帶領團隊一起衝刺",
         mbti: { E: 2, S: 1 },
-        icon: "run-fast",
+        icon: "run",
         color: "#FF6B6B"
       },
       {
@@ -319,10 +319,361 @@ export const MBTI_GAME_SCENES = [
         color: "#FFD166"
       }
     ]
+  },
+  {
+  id: 11,
+  title: "意見衝突時刻",
+  description: "團隊會議中，你提出一個想法，但有人強烈反對...",
+  question: "這時候你最可能怎麼做？",
+  options: [
+    {
+      text: "堅持自己的觀點，用邏輯和數據說服對方",
+      mbti: { T: 2, J: 1 },
+      icon: "scale-balance",
+      color: "#118AB2"
+    },
+    {
+      text: "試著理解對方的感受，尋找雙方都能接受的折衷方案",
+      mbti: { F: 2, E: 1 },
+      icon: "handshake",
+      color: "#FF6B6B"
+    },
+    {
+      text: "先安靜觀察，之後私下再思考如何調整自己的想法",
+      mbti: { I: 2, N: 1 },
+      icon: "thought-bubble-outline",
+      color: "#4ECDC4"
+    },
+    {
+      text: "立刻提出另一個替代方案，讓討論繼續前進",
+      mbti: { P: 2, N: 1 },
+      icon: "lightbulb-on-outline",
+      color: "#FFD166"
+    }
+  ]
+},
+{
+  id: 12,
+  title: "週末放鬆選擇",
+  description: "連續工作兩週後，你終於迎來一個完整的週末...",
+  question: "你最想如何度過這個週末？",
+  options: [
+    {
+      text: "安排好幾個活動，約朋友聚會或參加展覽",
+      mbti: { E: 2, S: 1 },
+      icon: "calendar-clock",
+      color: "#FF6B6B"
+    },
+    {
+      text: "一個人宅在家，追劇、看書、聽音樂",
+      mbti: { I: 2, N: 1 },
+      icon: "book-open-variant",
+      color: "#06D6A0"
+    },
+    {
+      text: "報名一個短期課程或工作坊，學習新技能",
+      mbti: { J: 2, T: 1 },
+      icon: "school-outline",
+      color: "#118AB2"
+    },
+    {
+      text: "什麼都不計劃，睡到自然醒，看心情決定要做什麼",
+      mbti: { P: 2, F: 1 },
+      icon: "emoticon-happy",
+      color: "#EF476F"
+    }
+  ]
+},
+{
+  id: 13,
+  title: "面對批評反應",
+  description: "你花了很多心血完成一份報告，上司卻給了嚴厲的批評...",
+  question: "你的第一反應通常是？",
+  options: [
+    {
+      text: "冷靜分析批評內容，找出可以改進的具體地方",
+      mbti: { T: 2, S: 1 },
+      icon: "magnify",
+      color: "#073B4C"
+    },
+    {
+      text: "先感到難過或受傷，需要時間消化情緒",
+      mbti: { F: 2, I: 1 },
+      icon: "emoticon-sad-outline",
+      color: "#FF6B6B"
+    },
+    {
+      text: "馬上思考如何反駁或證明自己的做法是對的",
+      mbti: { T: 2, E: 1 },
+      icon: "sword-cross",
+      color: "#118AB2"
+    },
+    {
+      text: "把批評當成學習機會，馬上開始思考新方向",
+      mbti: { N: 2, P: 1 },
+      icon: "rocket-launch",
+      color: "#FFD166"
+    }
+  ]
+},
+{
+  id: 14,
+  title: "資訊接收偏好",
+  description: "你需要了解一個全新的複雜專案...",
+  question: "你比較喜歡用什麼方式接收資訊？",
+  options: [
+    {
+      text: "詳細的書面報告和數據表格",
+      mbti: { S: 2, T: 1 },
+      icon: "file-document",
+      color: "#4ECDC4"
+    },
+    {
+      text: "高層次的概念和整體願景說明",
+      mbti: { N: 2, I: 1 },
+      icon: "lightbulb-on",
+      color: "#9B59B6"
+    },
+    {
+      text: "和相關人員面對面討論，邊問邊了解",
+      mbti: { E: 2, F: 1 },
+      icon: "account-voice",
+      color: "#FF6B6B"
+    },
+    {
+      text: "先給我大綱，我自己再去深入研究細節",
+      mbti: { J: 2, N: 1 },
+      icon: "file-tree",
+      color: "#118AB2"
+    }
+  ]
+},
+{
+  id: 15,
+  title: "危機時刻決策",
+  description: "你在旅行途中突然遇到航班取消，所有人都很慌...",
+  question: "你會怎麼處理？",
+  options: [
+    {
+      text: "立刻打電話給航空公司，研究所有替代方案",
+      mbti: { J: 2, T: 1 },
+      icon: "phone",
+      color: "#118AB2"
+    },
+    {
+      text: "安撫同行的人，告訴大家會沒事的",
+      mbti: { F: 2, E: 1 },
+      icon: "shield-heart",
+      color: "#FF6B6B"
+    },
+    {
+      text: "先觀察其他人怎麼做，再決定自己的行動",
+      mbti: { I: 2, S: 1 },
+      icon: "eye",
+      color: "#4ECDC4"
+    },
+    {
+      text: "腦中快速冒出好幾個創意解決方案（轉機、改搭火車等）",
+      mbti: { N: 2, P: 1 },
+      icon: "lightning-bolt",
+      color: "#FFD166"
+    }
+  ]
+},
+  {
+    id: 16,
+    title: "新環境適應",
+    description: "你剛加入一個全新的團隊或公司...",
+    question: "在最初的幾週，你最可能怎麼做？",
+    options: [
+      {
+        text: "主動找同事聊天，盡快融入團隊",
+        mbti: { E: 2, F: 1 },
+        icon: "account-group",
+        color: "#FF6B6B"
+      },
+      {
+        text: "先安靜觀察，了解團隊文化和運作方式",
+        mbti: { I: 2, S: 1 },
+        icon: "eye",
+        color: "#4ECDC4"
+      },
+      {
+        text: "快速學習工作流程，爭取盡早獨立完成任務",
+        mbti: { J: 2, T: 1 },
+        icon: "clipboard-check",
+        color: "#118AB2"
+      },
+      {
+        text: "思考這個團隊可以如何變得更好，提出新想法",
+        mbti: { N: 2, P: 1 },
+        icon: "lightbulb-on-outline",
+        color: "#FFD166"
+      }
+    ]
+  },
+  {
+    id: 17,
+    title: "禮物選擇難題",
+    description: "朋友生日即將到來，你要挑選一份禮物...",
+    question: "你會如何選擇禮物？",
+    options: [
+      {
+        text: "買實用且高品質的東西，確保對方用得到",
+        mbti: { S: 2, T: 1 },
+        icon: "gift",
+        color: "#118AB2"
+      },
+      {
+        text: "選擇有創意、獨特且有紀念意義的禮物",
+        mbti: { N: 2, F: 1 },
+        icon: "star",
+        color: "#EF476F"
+      },
+      {
+        text: "直接問對方想要什麼，或參考他平常的喜好",
+        mbti: { E: 2, S: 1 },
+        icon: "account-question",
+        color: "#FF6B6B"
+      },
+      {
+        text: "花時間思考對方的個性和夢想，挑選有意義的東西",
+        mbti: { I: 2, N: 1 },
+        icon: "heart-outline",
+        color: "#06D6A0"
+      }
+    ]
+  },
+  {
+    id: 18,
+    title: "電影或書籍選擇",
+    description: "你有空想看一部電影或一本書...",
+    question: "你比較傾向選擇哪一類？",
+    options: [
+      {
+        text: "輕鬆有趣、娛樂性強的商業片或小說",
+        mbti: { E: 1, S: 2 },
+        icon: "popcorn",
+        color: "#FFD166"
+      },
+      {
+        text: "探討人生、充滿哲理或心理層面的作品",
+        mbti: { I: 2, N: 1 },
+        icon: "book-open-page-variant",
+        color: "#9B59B6"
+      },
+      {
+        text: "有明確結局、邏輯清晰的故事",
+        mbti: { J: 2, T: 1 },
+        icon: "movie-roll",
+        color: "#118AB2"
+      },
+      {
+        text: "開放式結局、充滿想像空間的藝術作品",
+        mbti: { P: 2, N: 1 },
+        icon: "palette",
+        color: "#4ECDC4"
+      }
+    ]
+  },
+  {
+    id: 19,
+    title: "壓力排解方式",
+    description: "最近工作壓力很大，你覺得快要喘不過氣...",
+    question: "你最常怎麼紓解壓力？",
+    options: [
+      {
+        text: "找朋友聚會聊天，大聲說出來",
+        mbti: { E: 2, F: 1 },
+        icon: "chat",
+        color: "#FF6B6B"
+      },
+      {
+        text: "獨自安靜思考，或寫日記整理心情",
+        mbti: { I: 2, N: 1 },
+        icon: "notebook",
+        color: "#06D6A0"
+      },
+      {
+        text: "列出問題，逐一制定解決計劃",
+        mbti: { T: 2, J: 1 },
+        icon: "checklist",
+        color: "#118AB2"
+      },
+      {
+        text: "去做運動、旅行或從事喜歡的休閒活動",
+        mbti: { S: 2, P: 1 },
+        icon: "run",
+        color: "#EF476F"
+      }
+    ]
+  },
+  {
+    id: 20,
+    title: "規則與彈性",
+    description: "公司突然宣布一項新規定，大家都覺得不合理...",
+    question: "你的態度通常是？",
+    options: [
+      {
+        text: "遵守規定，因為規則就是用來執行的",
+        mbti: { J: 2, S: 1 },
+        icon: "gavel",
+        color: "#118AB2"
+      },
+      {
+        text: "找出規定的漏洞或彈性空間",
+        mbti: { P: 2, N: 1 },
+        icon: "puzzle",
+        color: "#FFD166"
+      },
+      {
+        text: "分析這項規定是否合理，有必要就提出建議",
+        mbti: { T: 2, I: 1 },
+        icon: "magnify",
+        color: "#073B4C"
+      },
+      {
+        text: "考慮這規定對團隊成員的影響，試著幫助大家",
+        mbti: { F: 2, E: 1 },
+        icon: "account-heart",
+        color: "#FF6B6B"
+      }
+    ]
+  },
+  {
+    id: 21,
+    title: "未來規劃",
+    description: "有人問你對未來五年的打算...",
+    question: "你會如何回答？",
+    options: [
+      {
+        text: "我已經有明確的職業規劃和時間表",
+        mbti: { J: 2, T: 1 },
+        icon: "map-marker-path",
+        color: "#118AB2"
+      },
+      {
+        text: "我喜歡保持開放，隨時迎接新機會",
+        mbti: { P: 2, N: 1 },
+        icon: "compass",
+        color: "#FFD166"
+      },
+      {
+        text: "我希望能做自己真正熱愛、有意義的事",
+        mbti: { F: 2, N: 1 },
+        icon: "heart",
+        color: "#EF476F"
+      },
+      {
+        text: "我會先專注眼前，把當下的事情做好",
+        mbti: { S: 2, I: 1 },
+        icon: "eye",
+        color: "#4ECDC4"
+      }
+    ]
   }
 ];
 
-// 從PDF題目中提取的傳統MBTI問題（可隨機選擇使用）
 export const MBTI_TRADITIONAL_QUESTIONS = [
   {
     id: 101,
@@ -503,10 +854,105 @@ export const MBTI_TRADITIONAL_QUESTIONS = [
         color: "#9B59B6"
       }
     ]
+  },
+  {
+  id: 111,
+  question: "你比較喜歡的工作環境是？",
+  options: [
+    { text: "安靜、有明確規則和流程", mbti: { I: 1, J: 1 }, icon: "office-building", color: "#118AB2" },
+    { text: "熱鬧、變化多、可以自由發揮", mbti: { E: 1, P: 1 }, icon: "account-group", color: "#FF6B6B" }
+  ]
+},
+{
+  id: 112,
+  question: "當你有空閒時間時，你更傾向於？",
+  options: [
+    { text: "做一些實際且有用的事情", mbti: { S: 1 }, icon: "hammer", color: "#27AE60" },
+    { text: "沉浸在自己的想像和想法中", mbti: { N: 1 }, icon: "brain", color: "#9B59B6" }
+  ]
+},
+{
+  id: 113,
+  question: "你做決定時通常會？",
+  options: [
+    { text: "先考慮這件事對別人有什麼影響", mbti: { F: 1 }, icon: "heart", color: "#E74C3C" },
+    { text: "先分析這件事本身是否合理", mbti: { T: 1 }, icon: "scale", color: "#2C3E50" }
+  ]
+},
+{
+  id: 114,
+  question: "你更喜歡的生活節奏是？",
+  options: [
+    { text: "井然有序、一切都在掌控之中", mbti: { J: 1 }, icon: "clock-check", color: "#118AB2" },
+    { text: "彈性自由、可以隨時調整", mbti: { P: 1 }, icon: "calendar-blank", color: "#F1C40F" }
+  ]
+},
+  {
+    id: 115,
+    question: "參加派對時，你通常會？",
+    options: [
+      { text: "主動認識很多新朋友", mbti: { E: 1 }, icon: "account-plus", color: "#FF6B6B" },
+      { text: "只和少數熟悉的人聊天", mbti: { I: 1 }, icon: "account", color: "#3498DB" }
+    ]
+  },
+  {
+    id: 116,
+    question: "你更相信？",
+    options: [
+      { text: "豐富的實際經驗", mbti: { S: 1 }, icon: "hammer", color: "#27AE60" },
+      { text: "大膽的想像與直覺", mbti: { N: 1 }, icon: "auto-fix", color: "#9B59B6" }
+    ]
+  },
+  {
+    id: 117,
+    question: "當別人犯錯時，你比較容易？",
+    options: [
+      { text: "直接指出錯誤，並告訴他正確做法", mbti: { T: 1 }, icon: "alert", color: "#2C3E50" },
+      { text: "委婉表達，避免傷害對方感受", mbti: { F: 1 }, icon: "heart", color: "#E74C3C" }
+    ]
+  },
+  {
+    id: 118,
+    question: "你的房間或工作桌通常是？",
+    options: [
+      { text: "整齊有序，一切都有固定位置", mbti: { J: 1 }, icon: "clipboard-check", color: "#118AB2" },
+      { text: "比較隨性，有些凌亂也沒關係", mbti: { P: 1 }, icon: "desk-lamp", color: "#F1C40F" }
+    ]
+  },
+  {
+    id: 119,
+    question: "你更喜歡的學習方式是？",
+    options: [
+      { text: "一步一步按照教程或說明書學習", mbti: { S: 1, J: 1 }, icon: "book-open", color: "#27AE60" },
+      { text: "先理解整體概念，再自己摸索", mbti: { N: 1, P: 1 }, icon: "lightbulb", color: "#9B59B6" }
+    ]
+  },
+  {
+    id: 120,
+    question: "面對不熟悉的任務，你傾向於？",
+    options: [
+      { text: "先做好詳細計劃再開始行動", mbti: { J: 1 }, icon: "map", color: "#118AB2" },
+      { text: "邊做邊調整，保持彈性", mbti: { P: 1 }, icon: "compass", color: "#F1C40F" }
+    ]
+  },
+  {
+    id: 121,
+    question: "你通常如何表達關心？",
+    options: [
+      { text: "用實際行動幫忙解決問題", mbti: { T: 1, S: 1 }, icon: "handshake", color: "#2C3E50" },
+      { text: "用言語安慰和鼓勵對方", mbti: { F: 1, E: 1 }, icon: "chat-heart", color: "#E74C3C" }
+    ]
+  },
+  {
+    id: 122,
+    question: "你比較享受？",
+    options: [
+      { text: "有明確目標和截止日期的挑戰", mbti: { J: 1, T: 1 }, icon: "target", color: "#118AB2" },
+      { text: "沒有太多限制、可以自由發揮的過程", mbti: { P: 1, N: 1 }, icon: "palette", color: "#9B59B6" }
+    ]
   }
 ];
 
-// MBTI類型描述
 export const MBTI_DESCRIPTIONS = {
   ISTJ: {
     name: "檢查員型",
@@ -622,7 +1068,6 @@ export const MBTI_DESCRIPTIONS = {
   }
 };
 
-// 從PDF中提取的完整MBTI題庫（簡化版）
 export const MBTI_FULL_QUESTIONS = [
   {
     id: 201,
@@ -661,7 +1106,7 @@ export const MBTI_FULL_QUESTIONS = [
     question: "聚焦於實際經驗 vs 聚焦於理想的可能性",
     options: [
       { text: "聚焦於實際經驗", mbti: { S: 1 }, icon: "chart-line", color: "#27AE60" },
-      { text: "聚焦於理想的可能性", mbti: { N: 1 }, icon: "chart-timeline", color: "#9B59B6" }
+      { text: "聚焦於理想的可能性", mbti: { N: 1 }, icon: "chart-timeline-variant", color: "#9B59B6" } // 修正
     ]
   },
   {
@@ -695,10 +1140,105 @@ export const MBTI_FULL_QUESTIONS = [
       { text: "傾向於明確和求實", mbti: { S: 1 }, icon: "format-list-bulleted", color: "#27AE60" },
       { text: "傾向於一般化和象徵性", mbti: { N: 1 }, icon: "shape", color: "#9B59B6" }
     ]
+  },
+  {
+    id: 210,
+    question: "你更喜歡與人交談的方式是？",
+    options: [
+      { text: "討論很多不同話題，輕鬆聊天", mbti: { E: 1 }, icon: "chat-multiple", color: "#FF6B6B" },
+      { text: "深入討論少數感興趣的主題", mbti: { I: 1 }, icon: "chat-processing", color: "#3498DB" }
+    ]
+  },
+  {
+    id: 211,
+    question: "當面對問題時，你通常先？",
+    options: [
+      { text: "思考實際可行的解決方法", mbti: { S: 1 }, icon: "wrench", color: "#27AE60" },
+      { text: "思考問題背後的意義與可能性", mbti: { N: 1 }, icon: "lightbulb-on", color: "#9B59B6" }
+    ]
+  },
+  {
+    id: 212,
+    question: "你做決定時最重視？",
+    options: [
+      { text: "公平、公正與客觀事實", mbti: { T: 1 }, icon: "scale-balance", color: "#2C3E50" },
+      { text: "他人感受與和諧關係", mbti: { F: 1 }, icon: "heart-outline", color: "#E74C3C" }
+    ]
+  },
+  {
+    id: 213,
+    question: "你的生活習慣比較接近？",
+    options: [
+      { text: "按計劃行事，有條不紊", mbti: { J: 1 }, icon: "calendar-check", color: "#118AB2" },
+      { text: "隨機應變，保持彈性", mbti: { P: 1 }, icon: "calendar-blank", color: "#F1C40F" }
+    ]
+  },
+  {
+    id: 214,
+    question: "參加團體活動時，你通常？",
+    options: [
+      { text: "喜歡成為焦點，積極參與", mbti: { E: 1 }, icon: "account-star", color: "#FF6B6B" },
+      { text: "比較低調，觀察或小範圍互動", mbti: { I: 1 }, icon: "account", color: "#3498DB" }
+    ]
+  },
+  {
+    id: 215,
+    question: "你更擅長？",
+    options: [
+      { text: "記住具體事實和細節", mbti: { S: 1 }, icon: "format-list-bulleted", color: "#27AE60" },
+      { text: "看見整體格局與未來趨勢", mbti: { N: 1 }, icon: "chart-timeline-variant", color: "#9B59B6" }
+    ]
+  },
+  {
+    id: 216,
+    question: "批評別人時，你傾向？",
+    options: [
+      { text: "直接說出問題所在", mbti: { T: 1 }, icon: "alert-circle", color: "#2C3E50" },
+      { text: "用溫和的方式表達，避免傷害對方", mbti: { F: 1 }, icon: "emoticon-happy", color: "#E74C3C" }
+    ]
+  },
+  {
+    id: 217,
+    question: "完成工作後，你比較喜歡？",
+    options: [
+      { text: "立刻開始下一個任務", mbti: { J: 1 }, icon: "rocket-launch", color: "#118AB2" },
+      { text: "先休息一下，再看看下一步", mbti: { P: 1 }, icon: "coffee", color: "#F1C40F" }
+    ]
+  },
+  {
+    id: 218,
+    question: "你比較容易被什麼吸引？",
+    options: [
+      { text: "實際、可靠、有用的事物", mbti: { S: 1 }, icon: "toolbox", color: "#27AE60" },
+      { text: "新奇、有創意、與眾不同的想法", mbti: { N: 1 }, icon: "star", color: "#9B59B6" }
+    ]
+  },
+  {
+    id: 219,
+    question: "在團隊中，你通常扮演的角色是？",
+    options: [
+      { text: "負責協調、激勵大家", mbti: { E: 1, F: 1 }, icon: "account-group", color: "#FF6B6B" },
+      { text: "專注把自己的部分做好", mbti: { I: 1, T: 1 }, icon: "account-cog", color: "#3498DB" }
+    ]
+  },
+  {
+    id: 220,
+    question: "面對變化時，你的態度是？",
+    options: [
+      { text: "喜歡穩定和可預測的環境", mbti: { J: 1, S: 1 }, icon: "shield-check", color: "#118AB2" },
+      { text: "享受變化帶來的新可能性", mbti: { P: 1, N: 1 }, icon: "compass", color: "#F1C40F" }
+    ]
+  },
+  {
+    id: 221,
+    question: "你更喜歡的溝通方式？",
+    options: [
+      { text: "電話或面對面直接溝通", mbti: { E: 1 }, icon: "phone", color: "#FF6B6B" },
+      { text: "文字訊息或 email 溝通", mbti: { I: 1 }, icon: "message-text", color: "#3498DB" }
+    ]
   }
 ];
 
-// 遊戲模式配置
 export const GAME_MODES = {
   SCENARIO: {
     name: "情境遊戲模式",
@@ -710,37 +1250,48 @@ export const GAME_MODES = {
     name: "傳統問卷模式",
     description: "經典MBTI問卷題目",
     questions: MBTI_TRADITIONAL_QUESTIONS,
-    questionCount: 10
+    questionCount: 12
   },
   QUICK: {
     name: "快速測試模式",
     description: "精選題目快速測試",
-    questions: MBTI_FULL_QUESTIONS.slice(0, 5),
+    questions: MBTI_FULL_QUESTIONS.slice(0, 15),
     questionCount: 5
   }
 };
 
-// 工具函數：隨機選擇題目
 export const getRandomQuestions = (mode = 'SCENARIO', count = null) => {
   const modeConfig = GAME_MODES[mode] || GAME_MODES.SCENARIO;
-  const questions = modeConfig.questions;
+  let questions = modeConfig.questions;
+
+  if (mode === 'SCENARIO') questions = MBTI_GAME_SCENES;
+  if (mode === 'TRADITIONAL') questions = MBTI_TRADITIONAL_QUESTIONS;
+  if (mode === 'QUICK') questions = MBTI_FULL_QUESTIONS;
+
   const questionCount = count || modeConfig.questionCount;
   
-  // 隨機打亂並選擇指定數量的題目
   const shuffled = [...questions].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(questionCount, shuffled.length));
 };
 
-// 工具函數：計算MBTI結果
 export const calculateMbtiResult = (scores) => {
-  const ei = scores.E >= scores.I ? 'E' : 'I';
-  const sn = scores.S >= scores.N ? 'S' : 'N';
-  const tf = scores.T >= scores.F ? 'T' : 'F';
-  const jp = scores.J >= scores.P ? 'J' : 'P';
+  const ei = (scores.E || 0) >= (scores.I || 0) ? 'E' : 'I';
+  const sn = (scores.S || 0) >= (scores.N || 0) ? 'S' : 'N';
+  const tf = (scores.T || 0) >= (scores.F || 0) ? 'T' : 'F';
+  const jp = (scores.J || 0) >= (scores.P || 0) ? 'J' : 'P';
   
+  const type = ei + sn + tf + jp;
   return {
-    type: ei + sn + tf + jp,
+    type: type,
     scores: scores,
-    description: MBTI_DESCRIPTIONS[ei + sn + tf + jp] || MBTI_DESCRIPTIONS.ISTJ
+    description: MBTI_DESCRIPTIONS[type] || MBTI_DESCRIPTIONS.ISTJ
   };
+};
+
+export const getAllQuestions = () => {
+  return [
+    ...MBTI_GAME_SCENES,
+    ...MBTI_TRADITIONAL_QUESTIONS,
+    ...MBTI_FULL_QUESTIONS,
+  ];
 };

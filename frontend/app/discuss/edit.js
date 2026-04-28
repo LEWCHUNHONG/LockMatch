@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -16,19 +17,23 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import ImageCropPicker from 'react-native-image-crop-picker';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../utils/api';
 import Modal from 'react-native-modal';
 
 export default function EditPost() {
-  const { id } = useLocalSearchParams(); // 從路由獲取 post ID
+  const params = useLocalSearchParams();
   const router = useRouter();
+
+  const id = params.id || params.postId || params.post_id;
+
   const [content, setContent] = useState('');
-  const [images, setImages] = useState([]); // { uri, originalUri, isEditing, isNew, serverUrl (for existing) }
-  const [removedImages, setRemovedImages] = useState([]); // 追蹤被刪除或替換的舊圖片 serverUrl
+  const [images, setImages] = useState([]);
+  const [removedImages, setRemovedImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [postExists, setPostExists] = useState(false);
 
   // Modal state
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -38,38 +43,74 @@ export default function EditPost() {
   const baseURL = api.defaults.baseURL;
   const MAX_IMAGES = 10;
 
-  // 載入現有貼文資料
+
   useEffect(() => {
-    const fetchPost = async () => {
+    if (!id) {
+      Alert.alert('錯誤', '找不到貼文編號');
+      router.back();
+      return;
+    }
+
+    const loadPost = async () => {
       try {
-        const res = await api.get(`/api/posts/${id}`);
-        if (res.data.success) {
-          setContent(res.data.post.content || '');
-          const mediaUrls = res.data.post.media_urls || [];
-          setImages(mediaUrls.map(url => ({
-            uri: `${baseURL}${url}`,
-            originalUri: `${baseURL}${url}`,
-            isEditing: false,
-            isNew: false,
-            serverUrl: url, // 用來標記舊媒體
-          })));
+        const token = await AsyncStorage.getItem('token');
+
+        const response = await fetch(`${baseURL}/api/posts/${id}`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Accept': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.success && data.post) {
+            const post = data.post;
+            setContent(post.content || '');
+
+            const mediaUrls = post.media_urls || [];
+            const loadedImages = mediaUrls.map(url => ({
+              uri: url.startsWith('http') ? url : `${baseURL}${url}`,
+              originalUri: url.startsWith('http') ? url : `${baseURL}${url}`,
+              isNew: false,
+              serverUrl: url,
+            }));
+
+            setImages(loadedImages);
+            setPostExists(true);
+          } else {
+            throw new Error(data.error || '貼文資料不完整');
+          }
         } else {
-          throw new Error('載入失敗');
+          const errorText = await response.text();
+          let errorMessage = '載入失敗';
+
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData.error) errorMessage = errorData.error;
+          } catch (e) {}
+
+          if (response.status === 404) errorMessage = '找不到此貼文';
+          else if (response.status === 401) errorMessage = '請先登入';
+          else if (response.status === 403) errorMessage = '沒有權限編輯此貼文';
+
+          Alert.alert('錯誤', errorMessage);
+          router.back();
         }
-      } catch (err) {
-        console.error('載入貼文失敗:', err);
-        setMessageTitle('錯誤');
-        setMessageText('無法載入貼文，請稍後再試');
-        setShowMessageModal(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (error) {
+        console.error('載入錯誤:', error);
+        Alert.alert('網路錯誤', '請檢查網路連線');
+        router.back();
       } finally {
         setLoading(false);
       }
     };
-    fetchPost();
+
+    loadPost();
   }, [id]);
 
-  // 選擇新圖片 (支援多選)
+
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -81,163 +122,201 @@ export default function EditPost() {
     }
 
     try {
-      const result = await ImageCropPicker.openPicker({
-        multiple: true,
-        maxFiles: MAX_IMAGES - images.length,
-        mediaType: 'photo',
-        compressImageQuality: 0.92,
-        includeBase64: false,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: MAX_IMAGES - images.length,
+        quality: 0.92,
+        base64: false,
       });
 
-      const newImages = result.map((img) => ({
-        uri: img.path,
-        originalUri: img.path,
-        isEditing: false,
-        isNew: true, // 標記為新上傳
-      }));
-
-      setImages((prev) => [...prev, ...newImages]);
-    } catch (err) {
-      if (err.code !== 'E_PICKER_CANCELLED') {
-        console.error('選擇圖片錯誤:', err);
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map((asset) => ({
+          uri: asset.uri,
+          originalUri: asset.uri,
+          isNew: true,
+        }));
+        setImages((prev) => [...prev, ...newImages]);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
+    } catch (err) {
+      console.error('選擇圖片錯誤:', err);
+      setMessageTitle('選擇失敗');
+      setMessageText('無法開啟相簿，請再試一次');
+      setShowMessageModal(true);
     }
   };
 
-  // 編輯/裁剪特定圖片
-  const editImage = async (index) => {
-    const img = images[index];
-    if (!img) return;
 
-    try {
-      const cropped = await ImageCropPicker.openCropper({
-        path: img.uri,
-        cropperCircleOverlay: false,
-        compressImageQuality: 0.88,
-        showCropGuidelines: true,
-        freeStyleCropEnabled: true,
-        includeBase64: false,
-      });
+const editImage = async (index) => {
+  const img = images[index];
+  if (!img) return;
+
+  try {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      setMessageTitle('需要權限');
+      setMessageText('請允許存取相簿才能編輯圖片');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: false,
+      allowsEditing: true,
+      quality: 0.92,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const croppedAsset = result.assets[0];
 
       const newImages = [...images];
-      // 如果是舊圖片被編輯，將舊 serverUrl 添加到 removedImages
-      if (!img.isNew) {
-        setRemovedImages((prev) => [...new Set([...prev, img.serverUrl])]);
-      }
-      newImages[index] = { ...newImages[index], uri: cropped.path, isEditing: true };
-      setImages(newImages);
-    } catch (err) {
-      if (err.code !== 'E_PICKER_CANCELLED') {
-        console.error('裁剪錯誤:', err);
-      }
-    }
-  };
 
-  // 恢復原始圖片
-  const useOriginal = (index) => {
-    const img = images[index];
-    if (img.originalUri) {
-      const newImages = [...images];
-      // 如果是舊圖片並已編輯，移除從 removedImages 的舊 serverUrl
-      if (!img.isNew && img.isEditing) {
-        setRemovedImages((prev) => prev.filter((url) => url !== img.serverUrl));
-      }
-      newImages[index] = { ...newImages[index], uri: img.originalUri, isEditing: false };
-      setImages(newImages);
-    }
-  };
 
-  // 刪除圖片 (標記要刪除的舊圖片，或直接移除新圖片)
+      const oldImg = newImages[index];
+      if (!oldImg.isNew && oldImg.serverUrl) {
+        setRemovedImages((prev) => [...new Set([...prev, oldImg.serverUrl])]);
+      }
+
+
+      newImages[index] = {
+        uri: croppedAsset.uri,
+        originalUri: croppedAsset.uri,
+        isNew: true,
+      };
+
+      setImages(newImages);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  } catch (err) {
+    console.error('編輯圖片錯誤:', err);
+    setMessageTitle('編輯失敗');
+    setMessageText('無法開啟裁剪工具，請再試一次');
+    setShowMessageModal(true);
+  }
+};
+
+
   const deleteImage = (index) => {
     const img = images[index];
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
-    // 如果是舊圖片，將 serverUrl 添加到 removedImages
-    if (!img.isNew) {
+
+    if (!img.isNew && img.serverUrl) {
       setRemovedImages((prev) => [...new Set([...prev, img.serverUrl])]);
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  // 提交更新
+
   const handleSubmit = async () => {
     if (!content.trim() && images.length === 0) {
-      setMessageTitle('提示');
-      setMessageText('至少要寫點文字或選張圖片哦～');
-      setShowMessageModal(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Alert.alert('提示', '至少要寫點文字或選張圖片哦～');
       return;
     }
 
     setSubmitting(true);
 
     try {
+      const token = await AsyncStorage.getItem('token');
       const formData = new FormData();
-      formData.append('content', content.trim());
 
-      // 收集要刪除的舊媒體 URL (包括被刪除和被替換的)
-      formData.append('removeMedia', JSON.stringify(removedImages));
+      formData.append('content', content.trim() || '');
 
-      // 上傳新/編輯過的圖片
+
+      if (removedImages.length > 0) {
+        formData.append('removeMedia', JSON.stringify(removedImages));
+      }
+
+
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
-        if (!img.isNew && !img.isEditing) continue; // 舊的未變動跳過
+        if (img.isNew) {
+          let mediaUri = img.uri;
 
-        let mediaUri = img.uri;
-        let filename = mediaUri.split('/').pop() || `photo_${Date.now()}_${i}.jpg`;
-        let mimeType = 'image/jpeg';
+          const manipResult = await ImageManipulator.manipulateAsync(
+            mediaUri,
+            [{ resize: { width: 1200 } }],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          mediaUri = manipResult.uri;
 
-        const manipResult = await ImageManipulator.manipulateAsync(
-          mediaUri,
-          [{ resize: { width: 1200 } }],
-          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        mediaUri = manipResult.uri;
-        filename = `post_${i}.jpg`;
-
-        formData.append('media', {
-          uri: mediaUri,
-          name: filename,
-          type: mimeType,
-        });
+          formData.append('media', {
+            uri: mediaUri,
+            name: `post_edit_${Date.now()}_${i}.jpg`,
+            type: 'image/jpeg',
+          });
+        }
       }
 
-      const res = await api.put(`/api/posts/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await fetch(`${baseURL}/api/posts/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: formData,
       });
 
-      if (res.data.success) {
-        setMessageTitle('成功');
-        setMessageText('貼文已更新！');
-        setShowMessageModal(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-        // 更新後導航回詳情頁
-        setTimeout(() => router.replace(`/discuss/${id}`), 1500);
-      } else {
-        throw new Error(res.data.error || '更新失敗');
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error('伺服器回應格式錯誤');
       }
-    } catch (err) {
-      console.error('更新貼文失敗:', err);
-      setMessageTitle('更新失敗');
-      setMessageText(err.message || '請稍後再試');
-      setShowMessageModal(true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      if (response.ok && data.success) {
+        Alert.alert('成功', data.message || '貼文已更新！', [
+          { text: '確定', onPress: () => router.replace(`/discuss/${id}`) }
+        ]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        let errorTitle = '更新失敗';
+        let errorMessage = data.message || data.error || '請稍後再試';
+
+        if (response.status === 403) {
+          errorTitle = '內容不恰當';
+        } else if (response.status === 404) {
+          errorTitle = '貼文不存在';
+        }
+
+        Alert.alert(errorTitle, errorMessage);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch (error) {
+      console.error('更新錯誤:', error);
+      Alert.alert('更新錯誤', error.message || '請檢查網路連線');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setSubmitting(false);
     }
   };
 
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color="#f4c7ab" />
       </SafeAreaView>
     );
   }
 
+  if (!postExists) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>無法載入貼文</Text>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>返回</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <LinearGradient
         colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
         style={styles.gradient}
@@ -246,9 +325,7 @@ export default function EditPost() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={28} color="#5c4033" />
           </TouchableOpacity>
-
           <Text style={styles.headerTitle}>編輯貼文</Text>
-
           <View style={styles.headerRight} />
         </View>
 
@@ -264,20 +341,29 @@ export default function EditPost() {
               textAlignVertical="top"
             />
 
+            <Text style={styles.charCount}>{content.length} 字元</Text>
+
             {images.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewScroll}>
-                {images.map((img, index) => (
-                  <View key={index} style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: img.uri }} style={styles.preview} />
-                    <TouchableOpacity style={styles.editButton} onPress={() => editImage(index)}>
-                      <MaterialCommunityIcons name="image-edit-outline" size={22} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.deleteButton} onPress={() => deleteImage(index)}>
-                      <Ionicons name="trash-outline" size={22} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
+              <View style={styles.imagesContainer}>
+                <Text style={styles.imagesTitle}>圖片 ({images.length})</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewScroll}>
+                  {images.map((img, index) => (
+                    <View key={index} style={styles.imagePreviewContainer}>
+                      <Image source={{ uri: img.uri }} style={styles.preview} />
+
+                      {/* 裁剪按鈕 */}
+                      <TouchableOpacity style={styles.editButton} onPress={() => editImage(index)}>
+                        <MaterialCommunityIcons name="image-edit-outline" size={20} color="#fff" />
+                      </TouchableOpacity>
+
+                      {/* 刪除按鈕 */}
+                      <TouchableOpacity style={styles.deleteButton} onPress={() => deleteImage(index)}>
+                        <Ionicons name="trash-outline" size={22} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
             )}
 
             {images.length < MAX_IMAGES && (
@@ -305,6 +391,7 @@ export default function EditPost() {
         </View>
       </LinearGradient>
 
+      {/* Message Modal */}
       <Modal
         isVisible={showMessageModal}
         onBackdropPress={() => setShowMessageModal(false)}
@@ -333,11 +420,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fffaf5',
   },
-
   gradient: {
     flex: 1,
   },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -362,12 +447,10 @@ const styles = StyleSheet.create({
   headerRight: {
     width: 44,
   },
-
   scrollContent: {
     padding: 20,
     paddingBottom: 180,
   },
-
   inputCard: {
     backgroundColor: '#fffaf5',
     borderRadius: 16,
@@ -380,31 +463,44 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-
   input: {
     minHeight: 140,
     fontSize: 16,
     color: '#5c4033',
     paddingTop: 4,
   },
-
-  imagePreviewContainer: {
-    position: 'relative',
+  charCount: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#a0785e',
+    textAlign: 'right',
+  },
+  imagesContainer: {
     marginTop: 16,
+  },
+  imagesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5c4033',
     marginBottom: 12,
   },
-
+  imagePreviewScroll: {
+    flexDirection: 'row',
+  },
+  imagePreviewContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   preview: {
-    width: '100%',
-    height: 340,
+    width: 200,
+    height: 200,
     borderRadius: 16,
     backgroundColor: '#f8f1eb',
   },
-
   editButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 8,
+    right: 60,
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     borderRadius: 24,
     width: 44,
@@ -419,50 +515,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-
-  imageControlContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-
-  replaceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4c7ab',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 30,
-    gap: 10,
-    shadowColor: '#c47c5e',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-
-  replaceButtonText: {
-    color: '#5c4033',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  secondaryButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+  deleteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 0, 0, 0.65)',
     borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#f4c7ab',
-    backgroundColor: 'transparent',
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-
-  secondaryButtonText: {
-    color: '#8b5e3c',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-
   imageBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -474,13 +544,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(244,199,171,0.4)',
+    marginTop: 16,
   },
   imageBtnText: {
     color: '#8b5e3c',
     fontWeight: '600',
     fontSize: 15,
   },
-
   bottomSubmitContainer: {
     position: 'absolute',
     bottom: 24,
@@ -507,38 +577,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  imagePreviewScroll: {
-    flexDirection: 'row',
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  imagePreviewContainer: {
-    position: 'relative',
-    marginRight: 12, // 图片间距
-  },
-  preview: {
-    width: 200, // 缩小预览宽度，便于横向滚动
-    height: 200,
-    borderRadius: 16,
-    backgroundColor: '#f8f1eb',
-  },
-  deleteButton: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    backgroundColor: 'rgba(255, 0, 0, 0.65)',
-    borderRadius: 24,
-    width: 44,
-    height: 44,
+  errorContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#ff4444',
+    marginBottom: 20,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#5c4033',
   },
 });
 

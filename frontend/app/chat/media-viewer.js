@@ -21,13 +21,13 @@ import { API_URL, fixImageUrl } from '../../utils/api';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-// 动态计算列数：根据屏幕宽度
+
 const calculateColumns = () => {
-  const itemWidth = 120; // 每个项目的最小宽度
-  const spacing = 12; // 间距
-  const availableWidth = screenWidth - (spacing * 2); // 可用宽度（减去左右padding）
+  const itemWidth = 120;
+  const spacing = 12; 
+  const availableWidth = screenWidth - (spacing * 2);
   const columns = Math.floor(availableWidth / (itemWidth + spacing));
-  return Math.max(2, Math.min(5, columns)); // 限制在2到5列之间
+  return Math.max(2, Math.min(5, columns));
 };
 
 export default function MediaViewer() {
@@ -49,11 +49,11 @@ export default function MediaViewer() {
     loadMedia();
     loadStats();
     
-    // 监听屏幕旋转 - 使用新的 API
+
     const subscription = Dimensions.addEventListener('change', updateLayout);
     
     return () => {
-      // 移除监听器 - 使用新的 API
+
       subscription.remove();
     };
   }, [roomId]);
@@ -94,7 +94,7 @@ export default function MediaViewer() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // 修改：使用模態框預覽圖片，而不是路由跳轉
+
   const handleImagePress = (imageUrl) => {
     if (imageUrl) {
       const fullUrl = fixImageUrl(imageUrl);
@@ -102,10 +102,10 @@ export default function MediaViewer() {
     }
   };
 
-  // 計算每個媒體項目的寬度
+
   const getItemWidth = () => {
-    const spacing = 8; // 項目之間的間距
-    const padding = 16; // 列表的左右padding
+    const spacing = 8;
+    const padding = 16;
     const availableWidth = screenWidth - (padding * 2);
     const itemWidth = (availableWidth - (spacing * (columns - 1))) / columns;
     return itemWidth;
@@ -233,7 +233,7 @@ export default function MediaViewer() {
       colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         {/* 頭部 */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -271,7 +271,7 @@ export default function MediaViewer() {
           </View>
         )}
 
-        {/* 標籤頁 - 改為兩行兩列的網格 */}
+        {/* 標籤頁 */}
         <View style={styles.tabsGridContainer}>
           <View style={styles.tabsRow}>
             <TouchableOpacity
@@ -349,7 +349,7 @@ export default function MediaViewer() {
             contentContainerStyle={styles.mediaList}
             ListEmptyComponent={renderEmptyState}
             showsVerticalScrollIndicator={false}
-            key={columns} // 當列數改變時重新渲染
+            key={columns}
           />
         )}
 
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8b5e3c',
   },
-  // 新的標籤頁網格樣式
+
   tabsGridContainer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     color: '#8b5e3c',
     marginTop: 12,
   },
-  // 圖片預覽模態框樣式
+
   imagePreviewContainer: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.95)',

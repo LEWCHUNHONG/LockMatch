@@ -24,33 +24,41 @@ const { width } = Dimensions.get('window');
 
 export default function RewardsScreen() {
   const [activeTab, setActiveTab] = useState('daily');
-  const [userPoints, setUserPoints] = useState({ 
-    points: 0, 
-    level: '新手會員', 
-    completed_tasks_count: 0 
+  const [userPoints, setUserPoints] = useState({
+    points: 0,
+    level: '新手會員',
+    completed_tasks_count: 0
   });
-  const [tasks, setTasks] = useState({ 
-    achievement: [], 
+  const [tasks, setTasks] = useState({
+    achievement: [],
     daily: []
   });
   const [shopItems, setShopItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkinStatus, setCheckinStatus] = useState({ 
-    checked_in_today: false, 
-    consecutive_week_days: 0 
+  const [checkinStatus, setCheckinStatus] = useState({
+    checked_in_today: false,
+    consecutive_week_days: 0
   });
   const [processingTask, setProcessingTask] = useState(null);
   const [showCheckinSuccessModal, setShowCheckinSuccessModal] = useState(false);
   const [checkinMessage, setCheckinMessage] = useState('');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskModalTitle, setTaskModalTitle] = useState('');
+  const [taskModalMessage, setTaskModalMessage] = useState('');
+  const [taskModalButtons, setTaskModalButtons] = useState([]);
+
+
+  const [showConfirmRedeemModal, setShowConfirmRedeemModal] = useState(false);
+  const [redeemItemToConfirm, setRedeemItemToConfirm] = useState(null);
 
   const router = useRouter();
 
   const loadAllData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // 平行加載所有資料
+
+
       const [pointsRes, tasksRes, checkinRes] = await Promise.all([
         api.get('/api/user-points').catch(() => ({ data: { success: false } })),
         api.get('/api/tasks').catch(() => ({ data: { success: false } })),
@@ -73,7 +81,7 @@ export default function RewardsScreen() {
         setCheckinStatus(checkinRes.data);
       }
 
-      // 如果當前是商店標籤，加載商店資料
+
       if (activeTab === 'shop') {
         const shopRes = await api.get('/api/shop-items').catch(() => ({ data: { success: false } }));
         if (shopRes.data.success) {
@@ -86,6 +94,52 @@ export default function RewardsScreen() {
       setLoading(false);
     }
   }, [activeTab]);
+
+  const showTaskAlert = (title, message, buttons = []) => {
+    setTaskModalTitle(title);
+    setTaskModalMessage(message);
+    setTaskModalButtons(buttons.length > 0 ? buttons : [
+      { text: '知道了', onPress: () => setShowTaskModal(false) }
+    ]);
+    setShowTaskModal(true);
+  };
+
+
+  const handleRedeem = (item) => {
+    if (userPoints.points < item.points_required) {
+      showTaskAlert('積分不足', '你的積分不夠兌換這個商品');
+      return;
+    }
+
+    setRedeemItemToConfirm(item);
+    setShowConfirmRedeemModal(true);
+  };
+
+
+  const confirmRedeem = async () => {
+    const item = redeemItemToConfirm;
+    setShowConfirmRedeemModal(false);
+    setRedeemItemToConfirm(null);
+
+    if (!item) return;
+
+    try {
+      const response = await api.post('/api/redeem-item', { itemId: item.id });
+      if (response.data.success) {
+        showTaskAlert(
+          '兌換成功！',
+          `你已成功兌換 ${response.data.itemName || item.name}\n優惠碼: ${response.data.couponCode || ''}`,
+          [
+            { text: '查看我的優惠券', onPress: () => { setShowTaskModal(false); router.push('/coupons'); } },
+            { text: '繼續瀏覽', onPress: () => setShowTaskModal(false) }
+          ]
+        );
+        loadAllData();
+      }
+    } catch (error) {
+      showTaskAlert('兌換失敗', error.response?.data?.error || '請稍後再試');
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -101,84 +155,92 @@ export default function RewardsScreen() {
 
   const handleDailyCheckin = async () => {
     if (checkinStatus.checked_in_today) {
-      Alert.alert('提示', '今日已簽到,明天再來吧!');
+      showTaskAlert('提示', '今日已經簽到過了，明天再來吧！');
       return;
     }
-    
+
     try {
       const response = await api.post('/api/daily-checkin');
       if (response.data.success) {
-        // 更新簽到狀態
         setCheckinStatus(prev => ({
           ...prev,
           checked_in_today: true,
           consecutive_week_days: response.data.streak || (prev.consecutive_week_days || 0) + 1
         }));
 
-        // 設置彈窗訊息
         const successMessage = `獲得 ${response.data.points_earned} 積分`;
         setCheckinMessage(successMessage);
         setShowCheckinSuccessModal(true);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        // 重新載入資料
         loadAllData();
       }
     } catch (error) {
-      Alert.alert('簽到失敗', error.response?.data?.error || '請稍後再試');
+      showTaskAlert('簽到失敗', error.response?.data?.error || '請稍後再試');
     }
   };
 
   const handleTaskAction = async (task) => {
     if (processingTask === task.id) return;
-    
+
     setProcessingTask(task.id);
-    
+
     try {
       if (task.user_status === 'completed') {
-        Alert.alert('提示', '此任務已完成');
+        showTaskAlert('提示', '此任務已經完成囉！');
         return;
       }
-      
+
       if (!task.user_status || task.user_status === 'not_started') {
         // 開始任務
         const response = await api.post('/api/start-task', { taskId: task.id });
         if (response.data.success) {
           if (response.data.completed) {
-            Alert.alert(
-              '恭喜!',
-              `任務完成!\n獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadAllData() }]
+            showTaskAlert(
+              '恭喜完成！',
+              `任務已完成！\n獲得 ${response.data.points_earned || 0} 積分`,
+              [{ text: '太好了！', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
             );
           } else {
-            Alert.alert('任務已開始', '請完成任務要求後再來檢查進度');
-            loadAllData();
+            showTaskAlert(
+              '任務已開始',
+              '請按照任務要求完成後，再點擊「檢查進度」按鈕',
+              [{ text: '知道了', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
+            );
           }
         }
-      } else if (task.user_status === 'in_progress') {
-        // 檢查進度
+      } 
+      else if (task.user_status === 'in_progress') {
+        // 檢查任務進度
         const response = await api.post('/api/check-task-progress', { taskId: task.id });
         if (response.data.success) {
           if (response.data.completed) {
-            Alert.alert(
-              '恭喜完成!',
-              `獲得 ${response.data.points_earned} 積分`,
-              [{ text: '太好了!', onPress: () => loadAllData() }]
+            showTaskAlert(
+              '恭喜完成！',
+              `獲得 ${response.data.points_earned || 0} 積分 🎉`,
+              [{ text: '太棒了！', onPress: () => { setShowTaskModal(false); loadAllData(); } }]
             );
           } else {
-            const progress = response.data.current_progress || 0;
-            const required = response.data.required_progress || 1;
-            Alert.alert(
+            const progress = response.data.current_progress ?? 0;
+            const required = response.data.required_progress ?? (task.points_required || 1);
+            const msg = response.data.message || '繼續加油！';
+
+            showTaskAlert(
               '任務進度',
-              `當前進度: ${progress}/${required}\n${response.data.message || '繼續加油!'}`,
-              [{ text: '知道了', onPress: () => loadAllData() }]
+              `當前進度：${progress} / ${required}\n\n${msg}`,
+              [{ text: '知道了', onPress: () => setShowTaskModal(false) }]
             );
           }
+        } else {
+          showTaskAlert('提示', response.data?.message || '檢查進度失敗，請稍後再試');
         }
       }
     } catch (error) {
       console.error('任務操作失敗:', error);
-      Alert.alert('操作失敗', error.response?.data?.error || '請稍後再試');
+      showTaskAlert(
+        '操作失敗',
+        error.response?.data?.error || error.response?.data?.message || '請檢查網路後再試'
+      );
     } finally {
       setProcessingTask(null);
     }
@@ -217,10 +279,10 @@ export default function RewardsScreen() {
       <View key={task.id || index} style={styles.taskCard}>
         <View style={styles.taskHeader}>
           <View style={[styles.taskIcon, { backgroundColor: getTaskColor(task.task_type) }]}>
-            <MaterialCommunityIcons 
-              name={getTaskIcon(task.task_type)} 
-              size={24} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name={getTaskIcon(task.task_type)}
+              size={24}
+              color="#fff"
             />
           </View>
           <View style={styles.taskInfo}>
@@ -232,8 +294,8 @@ export default function RewardsScreen() {
             </View>
           </View>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[buttonConfig.style, isProcessing && styles.taskButtonDisabled]}
           onPress={() => handleTaskAction(task)}
           disabled={buttonConfig.disabled || isProcessing}
@@ -247,15 +309,15 @@ export default function RewardsScreen() {
             </>
           )}
         </TouchableOpacity>
-        
+
         {task.user_status === 'in_progress' && task.progress !== undefined && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
+                  styles.progressFill,
                   { width: `${Math.min(100, task.progress)}%` }
-                ]} 
+                ]}
               />
             </View>
             <Text style={styles.progressText}>
@@ -268,10 +330,15 @@ export default function RewardsScreen() {
   };
 
   const renderShopItem = (item, index) => (
-    <View key={item.id || index} style={styles.shopCard}>
+    <TouchableOpacity
+      key={item.id || index}
+      style={styles.shopCard}
+      onPress={() => handleRedeem(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.shopImageContainer}>
         {item.image_url ? (
-          <Image 
+          <Image
             source={{ uri: `${api.defaults.baseURL}${item.image_url}` }}
             style={styles.shopImage}
             resizeMode="cover"
@@ -282,13 +349,13 @@ export default function RewardsScreen() {
           </View>
         )}
       </View>
-      
+
       <View style={styles.shopInfo}>
         <Text style={styles.shopName}>{item.name}</Text>
         <Text style={styles.shopDesc} numberOfLines={2}>
           {item.description}
         </Text>
-        
+
         <View style={styles.shopFooter}>
           <View style={styles.pointsContainer}>
             <MaterialCommunityIcons name="star-circle" size={18} color="#f4c7ab" />
@@ -296,11 +363,11 @@ export default function RewardsScreen() {
           </View>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   const getTaskColor = (type) => {
-    switch(type) {
+    switch (type) {
       case 'daily': return '#9b59b6';
       case 'achievement': return '#2ecc71';
       default: return '#f4c7ab';
@@ -308,7 +375,7 @@ export default function RewardsScreen() {
   };
 
   const getTaskIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'daily': return 'calendar-today';
       case 'achievement': return 'trophy';
       default: return 'checkbox-marked-circle';
@@ -316,7 +383,7 @@ export default function RewardsScreen() {
   };
 
   const getCategoryColor = (category) => {
-    switch(category) {
+    switch (category) {
       case 'coupon': return '#e74c3c';
       case 'virtual': return '#3498db';
       case 'physical': return '#2ecc71';
@@ -335,7 +402,7 @@ export default function RewardsScreen() {
     }
 
     return (
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         refreshControl={
           <RefreshControl
@@ -421,10 +488,10 @@ export default function RewardsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* 頂部欄 */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
@@ -450,7 +517,7 @@ export default function RewardsScreen() {
               <Text style={styles.levelText}>{userPoints.level}</Text>
             </View>
           </View>
-          
+
           <View style={styles.pointsStats}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{userPoints.completed_tasks_count}</Text>
@@ -462,8 +529,8 @@ export default function RewardsScreen() {
               <Text style={styles.statLabel}>連續簽到</Text>
             </View>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[
               styles.checkinButton,
               checkinStatus.checked_in_today && styles.checkinButtonDisabled
@@ -471,10 +538,10 @@ export default function RewardsScreen() {
             onPress={handleDailyCheckin}
             disabled={checkinStatus.checked_in_today}
           >
-            <MaterialCommunityIcons 
-              name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"} 
-              size={20} 
-              color="#fff" 
+            <MaterialCommunityIcons
+              name={checkinStatus.checked_in_today ? "check-circle" : "calendar-check"}
+              size={20}
+              color="#fff"
             />
             <Text style={styles.checkinButtonText}>
               {checkinStatus.checked_in_today ? '今日已簽到' : '每日簽到'}
@@ -485,42 +552,42 @@ export default function RewardsScreen() {
 
       {/* 標籤欄 */}
       <View style={styles.tabBar}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'daily' && styles.activeTab]}
           onPress={() => setActiveTab('daily')}
         >
-          <MaterialCommunityIcons 
-            name="calendar-today" 
-            size={20} 
-            color={activeTab === 'daily' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="calendar-today"
+            size={20}
+            color={activeTab === 'daily' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'daily' && styles.activeTabText]}>
             每日任務
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'achievement' && styles.activeTab]}
           onPress={() => setActiveTab('achievement')}
         >
-          <MaterialCommunityIcons 
-            name="trophy" 
-            size={20} 
-            color={activeTab === 'achievement' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="trophy"
+            size={20}
+            color={activeTab === 'achievement' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'achievement' && styles.activeTabText]}>
             成就
           </Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'shop' && styles.activeTab]}
           onPress={() => setActiveTab('shop')}
         >
-          <MaterialCommunityIcons 
-            name="store" 
-            size={20} 
-            color={activeTab === 'shop' ? '#5c4033' : '#8b5e3c'} 
+          <MaterialCommunityIcons
+            name="store"
+            size={20}
+            color={activeTab === 'shop' ? '#5c4033' : '#8b5e3c'}
           />
           <Text style={[styles.tabText, activeTab === 'shop' && styles.activeTabText]}>
             積分商店
@@ -543,19 +610,19 @@ export default function RewardsScreen() {
         backdropOpacity={0.4}
       >
         <View style={styles.modalContainer}>
-          <MaterialCommunityIcons 
-            name="check-circle" 
-            size={64} 
-            color="#2ecc71" 
+          <MaterialCommunityIcons
+            name="check-circle"
+            size={64}
+            color="#2ecc71"
             style={{ marginBottom: 16 }}
           />
-          
+
           <Text style={styles.modalTitle}>簽到成功！</Text>
-          
+
           <Text style={[styles.modalMessage, { fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
             {checkinMessage}
           </Text>
-          
+
           {checkinStatus.consecutive_week_days >= 2 && (
             <Text style={[styles.modalMessage, { marginTop: 8, color: '#e67e22' }]}>
               連續簽到 {checkinStatus.consecutive_week_days} 天 🎉
@@ -570,6 +637,124 @@ export default function RewardsScreen() {
               好的
             </Text>
           </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* 統一任務/操作 Modal */}
+      <Modal
+        isVisible={showTaskModal}
+        onBackdropPress={() => setShowTaskModal(false)}
+        onBackButtonPress={() => setShowTaskModal(false)}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.5}
+      >
+        <View style={styles.modalContainer}>
+          <MaterialCommunityIcons
+            name="information-outline"
+            size={56}
+            color="#f4c7ab"
+            style={{ marginBottom: 16 }}
+          />
+
+          <Text style={styles.modalTitle}>{taskModalTitle}</Text>
+
+          <Text style={[styles.modalMessage, { whiteSpace: 'pre-line' }]}>
+            {taskModalMessage}
+          </Text>
+
+          <View style={styles.modalButtonRow}>
+            {taskModalButtons.map((btn, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.modalButton,
+                  btn.text === '知道了' || btn.text === '繼續瀏覽'
+                    ? styles.modalCancelButton
+                    : styles.modalConfirmButton
+                ]}
+                onPress={() => {
+                  setShowTaskModal(false);
+                  if (btn.onPress) btn.onPress();
+                }}
+              >
+                <Text style={[
+                  styles.modalButtonText,
+                  (btn.text === '太好了！' || btn.text === '太棒了！' || btn.text === '查看我的優惠券')
+                    ? { color: '#fffaf5' } : {}
+                ]}>
+                  {btn.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+
+      <Modal
+        isVisible={showConfirmRedeemModal}
+        onBackdropPress={() => {
+          setShowConfirmRedeemModal(false);
+          setRedeemItemToConfirm(null);
+        }}
+        onBackButtonPress={() => {
+          setShowConfirmRedeemModal(false);
+          setRedeemItemToConfirm(null);
+        }}
+        animationIn="zoomIn"
+        animationOut="zoomOut"
+        backdropOpacity={0.4}
+      >
+        <View style={styles.modalContainer}>
+          <MaterialCommunityIcons
+            name="gift-open-outline"
+            size={64}
+            color="#f4c7ab"
+            style={{ marginBottom: 16 }}
+          />
+
+          <Text style={styles.modalTitle}>確認兌換？</Text>
+
+          {redeemItemToConfirm && (
+            <>
+              <Text style={styles.modalMessage}>
+                你確定要花費{' '}
+                <Text style={{ fontWeight: '700', color: '#f4c7ab' }}>
+                  {redeemItemToConfirm.points_required} 積分
+                </Text>{' '}
+                兌換
+              </Text>
+              <Text style={[styles.modalMessage, { marginTop: -8, fontSize: 18, fontWeight: '700', color: '#5c4033' }]}>
+                {redeemItemToConfirm.name}
+              </Text>
+              <Text style={[styles.modalMessage, { marginTop: 12, fontSize: 14, color: '#e67e22' }]}>
+                兌換後積分將立即扣除且無法退回
+              </Text>
+            </>
+          )}
+
+          <View style={styles.modalButtonRow}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalCancelButton]}
+              onPress={() => {
+                setShowConfirmRedeemModal(false);
+                setRedeemItemToConfirm(null);
+              }}
+            >
+              <Text style={styles.modalButtonText}>取消</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: '#2ecc71' }
+              ]}
+              onPress={confirmRedeem}
+            >
+              <Text style={[styles.modalButtonText, { color: '#fff' }]}>確認兌換</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -944,7 +1129,6 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 40,
   },
-  // 從 dashboard.js 複製的 modal 樣式（調整為 styles 物件的一部分）
   modalContainer: {
     backgroundColor: '#fffaf5',
     borderRadius: 28,
@@ -986,5 +1170,29 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 1,
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginTop: 10,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f4c7ab',
+  },
+  modalConfirmButton: {
+    backgroundColor: '#e74c3c',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#5c4033',
   },
 });

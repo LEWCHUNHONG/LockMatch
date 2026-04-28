@@ -32,16 +32,13 @@ export default function LoginScreen() {
   const router = useRouter();
   const scaleValue = new Animated.Value(1);
 
-  // 攔截系統返回手勢，強制回到歡迎首頁
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         router.replace('/');
-        return true; // 阻止預設返回行為（不會退出 App）
+        return true; 
       };
-
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
       return () => subscription.remove();
     }, [router])
   );
@@ -88,7 +85,6 @@ export default function LoginScreen() {
         style={styles.gradient}
       >
         <SafeAreaView style={styles.safeArea} edges={['top']}>
-          {/* 左上角返回按鈕 */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.replace('/')}
@@ -151,6 +147,13 @@ export default function LoginScreen() {
                     </View>
                   </View>
 
+                  <TouchableOpacity 
+                    style={styles.forgotPasswordContainer}
+                    onPress={() => showModal('忘記密碼？', '請聯繫管理員重設密碼：\nadmin@lockmatch.com')}
+                  >
+                    <Text style={styles.forgotPasswordText}>忘記密碼？</Text>
+                  </TouchableOpacity>
+
                   <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
                     <TouchableOpacity
                       style={[styles.loginButton, loading && styles.buttonDisabled]}
@@ -168,31 +171,23 @@ export default function LoginScreen() {
 
                   <TouchableOpacity
                     style={styles.signupRow}
-                    onPress={() => router.push('/register')}  // 改回 push
+                    onPress={() => router.push('/register')}
                   >
                     <Text style={styles.signupText}>
                       還沒有帳號？ <Text style={styles.signupHighlight}>立即註冊</Text>
                     </Text>
                   </TouchableOpacity>
 
-                  {/* 其他方式登入 */}
-                  <View style={styles.orContainer}>
+                  <View style={styles.socialHintContainer}>
                     <View style={styles.orLine} />
-                    <Text style={styles.orText}>或其他方式登入</Text>
+                    <Text style={styles.socialHintText}>
+                      即將支援 Google / Facebook 快速登入
+                    </Text>
                     <View style={styles.orLine} />
                   </View>
-
-                  <View style={styles.socialRow}>
-                    <TouchableOpacity style={styles.socialButton}>
-                      <Ionicons name="logo-google" size={20} color="#DB4437" />
-                      <Text style={styles.socialLabel}>Google</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.socialButton}>
-                      <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-                      <Text style={styles.socialLabel}>Facebook</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.comingSoonText}>
+                    更多方便的登入方式即將推出 ✨
+                  </Text>
                 </View>
               </View>
             </ScrollView>
@@ -200,25 +195,34 @@ export default function LoginScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+<Modal
+  animationType="fade"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => setModalVisible(false)}
+>
+  <TouchableOpacity
+    style={modalStyles.overlay}
+    activeOpacity={1}
+    onPress={() => setModalVisible(false)}
+  >
+    <TouchableOpacity
+      style={modalStyles.container}
+      activeOpacity={1}
+      onPress={(e) => e.stopPropagation()}
+    >
+      <Text style={modalStyles.title}>{modalTitle}</Text>
+      <Text style={modalStyles.message}>{modalMessage}</Text>
+      
+      <TouchableOpacity
+        style={modalStyles.button}
+        onPress={() => setModalVisible(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.container}>
-            <Text style={modalStyles.title}>{modalTitle}</Text>
-            <Text style={modalStyles.message}>{modalMessage}</Text>
-            <TouchableOpacity
-              style={modalStyles.button}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={modalStyles.buttonText}>確定</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <Text style={modalStyles.buttonText}>確定</Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  </TouchableOpacity>
+</Modal>
     </>
   );
 }
@@ -236,7 +240,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  // 新增：左上角返回按鈕
   backButton: {
     position: 'absolute',
     top: 56,
@@ -313,6 +316,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
+
+  forgotPasswordContainer: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+    marginTop: -12,
+  },
+  forgotPasswordText: {
+    color: '#a0785e',
+    fontSize: 14,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
   loginButton: {
     backgroundColor: '#f4c7ab',
     borderRadius: 999,
@@ -338,43 +353,28 @@ const styles = StyleSheet.create({
     color: '#c47c5e',
     fontWeight: '600',
   },
-  orContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
   orLine: {
     flex: 1,
     height: 1,
     backgroundColor: '#f4c7ab',
   },
-  orText: {
+  socialHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  socialHintText: {
     color: '#a0785e',
     fontSize: 14,
     paddingHorizontal: 16,
+    fontWeight: '500',
   },
-  socialRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fffaf5',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderWidth: 1.5,
-    borderColor: '#f4c7ab',
-    minWidth: 100,
-    justifyContent: 'center',
-    gap: 10,
-  },
-  socialLabel: {
-    color: '#5c4033',
-    fontSize: 15,
-    fontWeight: '600',
+  comingSoonText: {
+    textAlign: 'center',
+    color: '#c47c5e',
+    fontSize: 13.5,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });
 
