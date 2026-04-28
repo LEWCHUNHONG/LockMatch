@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  lockmatch-app:
+    build: .
+    container_name: lockmatch-backend
+    ports:
+      - "3003:3000"
+    # 讀取 .env 檔案
+    env_file: .env
+    # 【掛載設定】
+    volumes:
+      - /volume3/docker/lockmatch-backend/uploads:/app/uploads
+    # 權限與自動重啟
+    user: "root"
+    restart: always
+    
+    environment:
+      - TZ=Asia/Hong_Kong
