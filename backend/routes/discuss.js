@@ -374,7 +374,7 @@ const formatRelativeTime = (dateValue) => {
 
         const formattedComments = results.map(comment => ({
           ...comment,
-          created_at: formatRelativeTime(post.created_at)
+          created_at: formatRelativeTime(comment.created_at)
         }));
 
         res.json({ success: true, comments: formattedComments });
@@ -449,7 +449,6 @@ const formatRelativeTime = (dateValue) => {
 
           } catch (unlinkErr) {
 
-            // 不中斷流程
           }
         }
       });

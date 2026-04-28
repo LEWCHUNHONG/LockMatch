@@ -25,7 +25,6 @@ export default function SearchScreen() {
   const [isFullScreenLoading, setIsFullScreenLoading] = useState(true);
   const [sendingRequest, setSendingRequest] = useState(null);
 
-
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
@@ -75,7 +74,6 @@ export default function SearchScreen() {
       const res = await chatAPI.sendFriendRequest(userId);
       if (res.data.success) {
         showModal('好友請求已送出', '對方會在收到通知後決定是否接受～', 'success');
-
 
         setUsers(prev => prev.map(u =>
           u.id === userId 
@@ -160,11 +158,8 @@ export default function SearchScreen() {
     <LinearGradient colors={['#fffaf5', '#fff5ed']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={28} color="#5c4033" />
-          </TouchableOpacity>
+          {/* 已移除左側返回箭頭，這裡只保留標題並置中 */}
           <Text style={styles.title}>尋找匹配</Text>
-          <View style={{ width: 40 }} />
         </View>
 
         {users.length === 0 ? (
@@ -232,10 +227,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 10,
+    paddingBottom: 20,
     backgroundColor: 'rgba(255, 250, 245, 0.6)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 199, 171, 0.3)',

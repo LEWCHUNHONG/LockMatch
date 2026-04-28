@@ -375,6 +375,7 @@ export default function PublicProfile() {
                   post={post}
                   onLikeToggle={handleLikeToggle}
                   onPressComment={handlePressComment}
+                  currentProfileId={id}
                 />
               ))
             )}

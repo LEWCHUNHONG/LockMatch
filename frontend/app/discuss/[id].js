@@ -182,61 +182,22 @@ export default function PostDetail() {
     }
   };
 
-  // 時間格式化
+// 時間格式化
+const timeAgo = (dateString) => {
+  if (!dateString) return '未知時間';
+  
+  if (typeof dateString === 'string' && 
+      (dateString.includes('剛剛') || 
+       dateString.includes('分鐘前') || 
+       dateString.includes('小時前') || 
+       dateString.includes('年') || 
+       dateString.includes('月'))) {
+    return dateString;
+  }
 
-  const timeAgo = (dateString) => {
-    if (!dateString) return '未知時間';
-
-    let date;
-    try {
-      if (typeof dateString === 'string') {
-
-        if (dateString.includes('+08:00')) {
-          date = new Date(dateString);
-        } 
-
-        else if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
-
-          date = new Date(dateString.replace(' ', 'T') + '+08:00');
-        } 
-        else {
-          date = new Date(dateString);
-        }
-      } else {
-        date = new Date(dateString);
-      }
-
-      if (isNaN(date.getTime())) {
-        console.warn('時間解析失敗:', dateString);
-        return '時間錯誤';
-      }
-
-      const now = Date.now();
-      const diffMs = now - date.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-
-      if (diffMins < 0) return '剛剛';
-      if (diffMins <= 1) return '剛剛';
-      if (diffMins < 60) return `${diffMins}分鐘前`;
-
-      const diffHrs = Math.floor(diffMins / 60);
-      if (diffHrs < 24) return `${diffHrs}小時前`;
-
-
-      return date.toLocaleString('zh-TW', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: false,
-      });
-    } catch (e) {
-      console.error('timeAgo 錯誤:', e, '原始字串:', dateString);
-      return '時間錯誤';
-    }
-  };
-  // =====================================================================
+  console.warn('收到未格式化的時間:', dateString);
+  return '時間格式錯誤';
+};
 
   if (loading) {
     return (

@@ -12,7 +12,8 @@ export default function PostCard({
   onLikeToggle, 
   onPressComment,
   currentUserId,
-  onDelete
+  onDelete,
+  currentProfileId,
 }) {
   const router = useRouter();
   const baseURL = api.defaults.baseURL;
@@ -50,6 +51,18 @@ export default function PostCard({
       },
     })
   ).current;
+
+const handleUserPress = () => {
+
+  const currentId = String(currentProfileId || '');
+  const postUserId = String(post.user_id || '');
+
+  if (currentId && currentId === postUserId) {
+    return;
+  }
+
+  router.push(`/profile/public/${post.user_id}`);
+};
 
 const handleLikePress = () => {
 
@@ -130,19 +143,44 @@ const confirmDelete = () => {
   return (
     <>
       <View style={styles.card}>
-        <View style={styles.header}>
-          <Image
-            source={{ uri: post.avatar?.startsWith('/') ? `${baseURL}${post.avatar}` : post.avatar || 'https://ui-avatars.com/api/?name=User&size=64&background=f4c7ab&color=5c4033' }}
-            style={styles.avatar}
-          />
-          <View style={styles.userInfo}>
-            <Text style={styles.username}>{post.username || '匿名'}</Text>
-            <Text style={styles.time}>{post.created_at}</Text>
-          </View>
-          <TouchableOpacity style={styles.moreBtn} onPress={handleMorePress}>
-            <MaterialCommunityIcons name="dots-horizontal" size={20} color="#999" />
-          </TouchableOpacity>
-        </View>
+<View style={styles.header}>
+  {/* 頭像 */}
+  <TouchableOpacity 
+    onPress={handleUserPress}
+    activeOpacity={0.75}
+    style={styles.avatarWrapper}
+  >
+    <Animated.View style={{ transform: [{ scale: scaleValue }] }}>
+      <Image
+        source={{ 
+          uri: post.avatar?.startsWith('/') 
+            ? `${baseURL}${post.avatar}` 
+            : post.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.username || 'User')}&size=64&background=f4c7ab&color=5c4033` 
+        }}
+        style={styles.avatar}
+      />
+    </Animated.View>
+  </TouchableOpacity>
+
+  {/* 用戶名稱與時間 */}
+  <TouchableOpacity 
+    onPress={handleUserPress}
+    activeOpacity={0.75}
+    style={styles.userInfo}
+  >
+    <Animated.Text 
+      style={styles.username}
+      numberOfLines={1}
+    >
+      {post.username || '匿名'}
+    </Animated.Text>
+    <Text style={styles.time}>{post.created_at}</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity style={styles.moreBtn} onPress={handleMorePress}>
+    <MaterialCommunityIcons name="dots-horizontal" size={20} color="#999" />
+  </TouchableOpacity>
+</View>
 
         {post.content ? <Text style={styles.content}>{post.content}</Text> : null}
 
@@ -382,6 +420,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     borderWidth: 1,
     borderColor: '#eee',
+    overflow: 'hidden',
   },
   userInfo: { flex: 1 },
   username: {
@@ -493,6 +532,21 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
   },
+
+avatarContainer: {
+  marginRight: 12,
+},
+userInfoContainer: {
+  flex: 1,
+  paddingVertical: 4,
+},
+avatarWrapper: {
+  marginRight: 1,
+},
+userInfo: {
+  flex: 1,
+  justifyContent: 'center',
+},
 });
 
 const modalStyles = StyleSheet.create({
