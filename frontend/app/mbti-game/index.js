@@ -47,7 +47,52 @@ export default function MBTIGameMain() {
   // ========== 全局題目管理 ==========
   const [globalRemainingQuestions, setGlobalRemainingQuestions] = useState([]);
 
-  // Modal 狀態
+  // 初始化全局題目池 + 強制使用最新資料
+  useEffect(() => {
+    const refreshQuestions = () => {
+      const allQuestions = getAllQuestions();
+      setGlobalRemainingQuestions(allQuestions);
+    };
+
+    refreshQuestions();
+  }, []);
+
+  // 強制每次都從最新的題目陣列中抽取問題
+  const pickGlobalQuestion = useCallback(() => {
+    const currentQuestions = getAllQuestions();
+
+    if (currentQuestions.length === 0) {
+      console.warn("題庫為空，無法抽取問題");
+      return null;
+    }
+
+    // 如果剩餘題目過少，則重置池子
+    if (globalRemainingQuestions.length < 5) {
+      setGlobalRemainingQuestions([...currentQuestions]);
+    }
+
+    const idx = Math.floor(Math.random() * currentQuestions.length);
+    const selectedQuestion = currentQuestions[idx];
+
+    // 從剩餘題目池中移除已選的題目
+    setGlobalRemainingQuestions(prev => 
+      prev.filter(q => q.id !== selectedQuestion.id)
+    );
+
+    return selectedQuestion;
+  }, [globalRemainingQuestions]);
+
+  const returnQuestions = useCallback((questionsToReturn) => {
+    if (!questionsToReturn || questionsToReturn.length === 0) return;
+
+    setGlobalRemainingQuestions(prev => {
+      const currentIds = new Set(prev.map(q => q.id));
+      const toAdd = questionsToReturn.filter(q => !currentIds.has(q.id));
+      return [...prev, ...toAdd];
+    });
+  }, []);
+
+    // Modal 狀態
   const [alertModal, setAlertModal] = useState({
     visible: false,
     title: '',
@@ -68,31 +113,6 @@ export default function MBTIGameMain() {
 
   const hideAlert = useCallback(() => {
     setAlertModal(prev => ({ ...prev, visible: false }));
-  }, []);
-
-  // 初始化全局題目池
-  useEffect(() => {
-    setGlobalRemainingQuestions(getAllQuestions());
-  }, []);
-
-  const pickGlobalQuestion = useCallback(() => {
-    if (globalRemainingQuestions.length === 0) {
-      setGlobalRemainingQuestions(getAllQuestions());
-      return pickGlobalQuestion();
-    }
-    const idx = Math.floor(Math.random() * globalRemainingQuestions.length);
-    const question = globalRemainingQuestions[idx];
-    setGlobalRemainingQuestions(prev => prev.filter((_, i) => i !== idx));
-    return question;
-  }, [globalRemainingQuestions]);
-
-  const returnQuestions = useCallback((questions) => {
-    if (!questions || questions.length === 0) return;
-    setGlobalRemainingQuestions(prev => {
-      const currentIds = new Set(prev.map(q => q.id));
-      const toAdd = questions.filter(q => !currentIds.has(q.id));
-      return [...prev, ...toAdd];
-    });
   }, []);
 
   const { levels, completedLevels, playerStats, completeLevel } = useLevelManager(userId);

@@ -77,12 +77,18 @@ export default function MbtiTestGame() {
     loadUser();
   }, []);
 
-  useEffect(() => {
-    if (!showModeSelection) {
-      const selectedQuestions = getRandomQuestions(gameMode);
-      setQuestions(selectedQuestions);
-    }
-  }, [gameMode, showModeSelection]);
+useEffect(() => {
+  if (!showModeSelection) {
+    const modeConfig = GAME_MODES[gameMode] || GAME_MODES.SCENARIO;
+    const allQuestions = modeConfig.questions;
+    
+    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+    const questionCount = modeConfig.questionCount || 8;
+    
+    const selectedQuestions = shuffled.slice(0, questionCount);
+    setQuestions(selectedQuestions);
+  }
+}, [gameMode, showModeSelection]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = questions.length > 0 
