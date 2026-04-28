@@ -421,7 +421,7 @@ const loadUser = useCallback(async () => {
                       onPress={() => setShowMbtiChoiceModal(true)}
                     >
                       <MaterialCommunityIcons name="brain" size={19} color="#c47c5e" />
-                      <Text style={styles.mbtiTextEmpty}>完成 MBTI 測試</Text>
+                      <Text style={styles.mbtiTextEmpty}>完成 MBTI 性格測試</Text>
                     </TouchableOpacity>
                   )}
                 </View>

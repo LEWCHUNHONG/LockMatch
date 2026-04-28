@@ -712,7 +712,7 @@ const handleTaskAction = async (task) => {
                     >
                       <MaterialCommunityIcons name="brain" size={14} color="#5c4033" />
                       <Text style={[styles.statusTagText, { color: '#5c4033', fontSize: 13 }]}>
-                        開始 MBTI 測試
+                        開始 MBTI 性格測試
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -784,7 +784,7 @@ const handleTaskAction = async (task) => {
               >
                 <MaterialCommunityIcons name="brain" size={26} color="#5c4033" />
                 <Text style={{ fontSize: 11, color: '#5c4033', fontWeight: '600', textAlign: 'center' }}>
-                  {user?.mbti ? '重新開始 MBTI 遊戲測試' : '開始 MBTI 遊戲測試'}
+                  {user?.mbti ? '重新開始 MBTI 性格測試' : '開始 MBTI 性格測試'}
                 </Text>
               </TouchableOpacity>
 
