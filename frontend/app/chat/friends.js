@@ -420,7 +420,7 @@ export default function FriendsList() {
         </SafeAreaView>
       </LinearGradient>
 
-      {/* 添加好友浮動按鈕 */}
+      {/* 好友浮動按鈕 */}
       <TouchableOpacity
         style={styles.addFriendButton}
         onPress={() => router.push('/chat/add-friends')}

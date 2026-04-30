@@ -147,19 +147,16 @@ export default function SearchUsers() {
               </Text>
             </View>
           )}
-          {/* 修改點：避免布林值或 0 導致渲染錯誤 */}
           {item.is_online ? <View style={styles.onlineIndicator} /> : null}
         </View>
 
         <View style={styles.userInfo}>
           <Text style={styles.username}>{item.username || '未知用戶'}</Text>
-          {/* 修改點：確保有 mbti 才渲染標籤 */}
           {item.mbti ? (
             <View style={styles.mbtiTag}>
               <Text style={styles.mbtiText}>{item.mbti}</Text>
             </View>
           ) : null}
-          {/* 修改點：確保有 bio 才渲染 */}
           {item.bio ? <Text style={styles.bio} numberOfLines={1}>{item.bio}</Text> : null}
         </View>
 
@@ -263,7 +260,6 @@ export default function SearchUsers() {
 }
 
 const styles = StyleSheet.create({
-  // ... 你的樣式表內容不變 ...
   gradient: { flex: 1 },
   safeArea: { flex: 1 },
   header: {

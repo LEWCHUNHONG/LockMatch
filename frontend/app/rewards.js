@@ -116,30 +116,46 @@ export default function RewardsScreen() {
   };
 
 
-  const confirmRedeem = async () => {
-    const item = redeemItemToConfirm;
-    setShowConfirmRedeemModal(false);
-    setRedeemItemToConfirm(null);
+const confirmRedeem = async () => {
+  const item = redeemItemToConfirm;
+  
+  setShowConfirmRedeemModal(false);
+  setRedeemItemToConfirm(null);
 
-    if (!item) return;
+  if (!item) return;
 
-    try {
-      const response = await api.post('/api/redeem-item', { itemId: item.id });
-      if (response.data.success) {
+  try {
+    const response = await api.post('/api/redeem-item', { itemId: item.id });
+    
+    if (response.data.success) {
+
+      setTimeout(() => {
         showTaskAlert(
           '兌換成功！',
           `你已成功兌換 ${response.data.itemName || item.name}\n優惠碼: ${response.data.couponCode || ''}`,
           [
-            { text: '查看我的優惠券', onPress: () => { setShowTaskModal(false); router.push('/coupons'); } },
-            { text: '繼續瀏覽', onPress: () => setShowTaskModal(false) }
+            { 
+              text: '查看我的優惠券', 
+              onPress: () => { 
+                setShowTaskModal(false); 
+                router.push('/coupons'); 
+              } 
+            },
+            { 
+              text: '繼續瀏覽', 
+              onPress: () => setShowTaskModal(false) 
+            }
           ]
         );
         loadAllData();
-      }
-    } catch (error) {
-      showTaskAlert('兌換失敗', error.response?.data?.error || '請稍後再試');
+      }, 400);
     }
-  };
+  } catch (error) {
+    setTimeout(() => {
+      showTaskAlert('兌換失敗', error.response?.data?.error || '請稍後再試');
+    }, 300);
+  }
+};
 
   useFocusEffect(
     useCallback(() => {
