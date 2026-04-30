@@ -1,4 +1,16 @@
 // app.js
+if (typeof global.File === 'undefined') {
+    global.File = class File {};
+}
+if (typeof global.Blob === 'undefined') {
+    global.Blob = class Blob {};
+}
+if (typeof global.FormData === 'undefined') {
+    global.FormData = class FormData {};
+}
+
+console.log('✅ File / Blob / FormData polyfill 已載入（解決 expo-server-sdk 在 Docker 中的相容性問題）');
+
 const express = require('express');
 const cors = require('cors');
 const { createServer } = require('http');
