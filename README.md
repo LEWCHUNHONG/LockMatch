@@ -43,7 +43,7 @@ The project utilizes a modern full-stack architecture for cross-platform perform
 
 2.  **Install Dependencies**
     ```bash
-    # Install frontend packages
+    # Install frontend/backend packages
     npm install
     ```
 
@@ -77,14 +77,14 @@ The project utilizes a modern full-stack architecture for cross-platform perform
 5.  **Run Development Server**
 
    Frontend:
-    ```bash
+    ```
     npx expo start
     ```
 
-  Backend:
-  ```bash
-  node app.js
-  ``` 
+   Backend:
+    ```
+    node app.js
+    ```
 
 ## 📂 Project Structure
 
