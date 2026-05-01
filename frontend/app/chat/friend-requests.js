@@ -76,28 +76,34 @@ export default function FriendRequests() {
 
 const renderRequestItem = (item) => {
 
-    let avatarUri = fixImageUrl(item.avatar);
+    let fixedAvatar = item.avatar || item.from_user?.avatar;
 
+    if (fixedAvatar) {
 
-    if (avatarUri && avatarUri.includes('localhost:3000')) {
-        avatarUri = avatarUri.replace(/http:\/\/localhost:3000/g, API_URL);
-    }
+        if (fixedAvatar.startsWith('/')) {
+            fixedAvatar = `${API_URL}${fixedAvatar}`;
+        }
 
+        if (fixedAvatar.includes('localhost:3000')) {
+            fixedAvatar = fixedAvatar.replace(/http:\/\/localhost:3000/g, API_URL);
+        }
 
-    if (avatarUri && !avatarUri.startsWith('http')) {
-        avatarUri = avatarUri.startsWith('/') 
-            ? `${API_URL}${avatarUri}` 
-            : `${API_URL}/${avatarUri}`;
+        if (fixedAvatar.includes('?')) {
+            fixedAvatar = fixedAvatar.split('?')[0] + `?cb=${Date.now()}`;
+        } else {
+            fixedAvatar += `?cb=${Date.now()}`;
+        }
     }
 
     return (
         <View key={item.id} style={styles.requestItem}>
             <View style={styles.avatarContainer}>
-                {avatarUri ? (
+                {fixedAvatar ? (
                     <Image
-                        source={{ uri: avatarUri }}
+                        source={{ uri: fixedAvatar }}
                         style={styles.avatar}
                         resizeMode="cover"
+                        onError={(e) => console.log('頭像載入失敗:', fixedAvatar, e.nativeEvent)}
                     />
                 ) : (
                     <View style={styles.defaultAvatar}>

@@ -181,17 +181,11 @@ const getMyUserId = async () => {
         });
 
         // 其他事件
-        socket.on('temp-chat-invite', (data) => {
-          showAlert('新臨時聊天邀請', `${data.fromUsername} 邀請你進行臨時聊天`, [
-            { text: '稍後', style: 'cancel' },
-            { text: '查看', onPress: () => router.push('/temp-chat-invites') }
-          ]);
-        });
 
         socket.on('new-friend-request', (data) => {
           showAlert('新好友請求', `${data.fromUsername} 想加你為好友`, [
             { text: '稍後', style: 'cancel' },
-            { text: '查看', onPress: () => router.push('/temp-chat-invites') }
+            { text: '查看', onPress: () => router.push('/chat/friend-requests') }
           ]);
         });
 

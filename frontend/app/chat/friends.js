@@ -23,7 +23,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
 
 import { useFocusEffect } from 'expo-router';
-
 import { chatAPI, socketAPI } from '../../utils/api';
 
 export default function FriendsList() {
@@ -35,10 +34,9 @@ export default function FriendsList() {
   const [loading, setLoading] = useState(true);
   const [loadingPending, setLoadingPending] = useState(false);
 
-
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Alert modal states
+  // Modal states
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
@@ -67,12 +65,9 @@ export default function FriendsList() {
       socket.on('new-friend-request', () => {
         fetchPendingCount();
       });
-      return () => {
-        socket.off('new-friend-request');
-      };
+      return () => socket.off('new-friend-request');
     }
   }, []);
-
 
   const fetchPendingCount = async () => {
     try {
@@ -84,6 +79,7 @@ export default function FriendsList() {
       console.error('獲取未讀請求數量失敗:', error);
     }
   };
+
   useFocusEffect(
     useCallback(() => {
       fetchPendingCount();
@@ -95,41 +91,33 @@ export default function FriendsList() {
       setLoading(true);
       const response = await chatAPI.getFriends();
       if (response.data.success) {
-const formattedFriends = response.data.friends.map(friend => {
+        const formattedFriends = response.data.friends.map(friend => {
+          // 修復頭像 URL
+          let fixedAvatar = friend.avatar;
+          if (friend.avatar) {
+            if (friend.avatar.startsWith('http')) {
+              fixedAvatar = friend.avatar;
+            } else if (friend.avatar.startsWith('/')) {
+              fixedAvatar = `${API_URL || ''}${friend.avatar}`;
+            }
+          }
+          if (fixedAvatar) {
+            fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
+          }
 
-  console.log('好友原始數據:', friend);
-  console.log('好友頭像路徑:', friend.avatar);
+          return {
+            id: friend.id.toString(),
+            name: friend.name || friend.username,
+            username: friend.username,
+            mbti: friend.mbti || '待測',
+            isOnline: friend.is_online || false,
+            avatar: fixedAvatar,
+            status: friend.status || '最近活躍',
+            last_active: friend.last_active || '離線',
+            isFriend: true,
+          };
+        });
 
-  // 修復頭像URL
-  let fixedAvatar = friend.avatar;
-  if (friend.avatar) {
-    if (friend.avatar.startsWith('http')) {
-      fixedAvatar = friend.avatar;
-    } else if (friend.avatar.startsWith('/')) {
-      fixedAvatar = `${BASE_URL}${friend.avatar}`;
-    } else if (friend.avatar.includes('uploads/')) {
-      fixedAvatar = `${BASE_URL}/${friend.avatar}`;
-    }
-  }
-
-  if (fixedAvatar) {
-    fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
-  }
-
-  return {
-    id: friend.id.toString(),
-    name: friend.name || friend.username,
-    username: friend.username,
-    mbti: friend.mbti || '待測',
-    isOnline: friend.is_online || false,
-    avatar: fixedAvatar,
-    status: friend.status || '最近活躍',
-    last_active: friend.last_active || '離線',
-    isFriend: true,
-  };
-});
-
-        console.log('格式化後的好友數據:', formattedFriends);
         setFriends(formattedFriends);
       } else {
         openAlert('錯誤', response.data.error || '載入好友列表失敗');
@@ -147,31 +135,17 @@ const formattedFriends = response.data.friends.map(friend => {
       setLoadingPending(true);
       const response = await chatAPI.getPendingRequests();
       if (response.data.success) {
-        console.log('待處理請求 API 返回:', response.data);
-
         const formattedRequests = response.data.requests.map(request => {
-
           const userData = request.from_user || request;
-
-          // 修復頭像URL
           let fixedAvatar = userData.avatar;
 
           if (userData.avatar) {
-
             if (userData.avatar.startsWith('http')) {
               fixedAvatar = userData.avatar;
-            }
-
-            else if (userData.avatar.startsWith('/')) {
-              fixedAvatar = `${BASE_URL}${userData.avatar}`;
-            }
-
-            else if (userData.avatar.includes('uploads/')) {
-              fixedAvatar = `${BASE_URL}/${userData.avatar}`;
+            } else if (userData.avatar.startsWith('/')) {
+              fixedAvatar = `${API_URL || ''}${userData.avatar}`;
             }
           }
-
-
           if (fixedAvatar) {
             fixedAvatar = `${fixedAvatar.split('?')[0]}?cb=${Date.now()}`;
           }
@@ -188,10 +162,8 @@ const formattedFriends = response.data.friends.map(friend => {
           };
         });
 
-        console.log('格式化後的待處理請求:', formattedRequests);
         setPendingRequests(formattedRequests);
       } else {
-        console.error('API返回錯誤:', response.data.error);
         openAlert('錯誤', response.data.error || '載入好友請求失敗');
       }
     } catch (error) {
@@ -247,10 +219,6 @@ const formattedFriends = response.data.friends.map(friend => {
     }
   };
 
-  const handleFriendPress = (friend) => {
-    handleMessagePress(friend.id);
-  };
-
   const filteredFriends = friends.filter(friend => {
     const matchesSearch =
       friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -262,18 +230,17 @@ const formattedFriends = response.data.friends.map(friend => {
     return matchesSearch;
   });
 
+  const formatTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' });
+  };
+
   const renderFriendItem = ({ item }) => (
-    <TouchableOpacity style={styles.friendItem} onPress={() => handleFriendPress(item)}>
+    <TouchableOpacity style={styles.friendItem} onPress={() => handleMessagePress(item.id)}>
       <View style={styles.friendAvatar}>
         {item.avatar ? (
-          <Image
-            source={{
-              uri: item.avatar,
-              cache: 'reload'
-            }}
-            style={styles.avatarImage}
-            onError={() => console.log('頭像加載失敗:', item.avatar)}
-          />
+          <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
         ) : (
           <View style={styles.defaultAvatar}>
             <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -289,22 +256,10 @@ const formattedFriends = response.data.friends.map(friend => {
             <Text style={styles.mbtiText}>{item.mbti}</Text>
           </View>
         </View>
-
         <Text style={styles.friendUsername}>@{item.username}</Text>
-
         <View style={styles.friendFooter}>
-          <Text style={styles.friendStatus} numberOfLines={1}>
-            {item.status}
-          </Text>
-<Text 
-  style={[
-    styles.lastActive,
-    item.last_active === '在線' ? { color: '#4CAF50' } : { color: '#8b5e3c' }
-  ]}
-  numberOfLines={1}
->
-  {item.last_active || '離線'}
-</Text>
+          <Text style={styles.friendStatus} numberOfLines={1}>{item.status}</Text>
+          <Text style={styles.lastActive}>{item.last_active || '離線'}</Text>
         </View>
       </View>
 
@@ -318,14 +273,7 @@ const formattedFriends = response.data.friends.map(friend => {
     <View style={styles.pendingItem}>
       <View style={styles.pendingAvatar}>
         {item.avatar ? (
-          <Image
-            source={{
-              uri: item.avatar,
-              cache: 'reload'
-            }}
-            style={styles.avatarImage}
-            onError={() => console.log('頭像加載失敗:', item.avatar)}
-          />
+          <Image source={{ uri: item.avatar }} style={styles.avatarImage} />
         ) : (
           <View style={styles.defaultAvatar}>
             <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
@@ -340,7 +288,6 @@ const formattedFriends = response.data.friends.map(friend => {
             <Text style={styles.mbtiText}>{item.mbti}</Text>
           </View>
         </View>
-
         <Text style={styles.pendingMessage}>{item.message}</Text>
         <Text style={styles.pendingTime}>{item.time}</Text>
       </View>
@@ -358,25 +305,17 @@ const formattedFriends = response.data.friends.map(friend => {
 
   return (
     <>
-      <LinearGradient
-        colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={['#fffaf5', '#fff5ed', '#ffefe2', '#ffe8d6']} style={styles.gradient}>
         <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={28} color="#5c4033" />
             </TouchableOpacity>
-
             <Text style={styles.headerTitle}>好友列表</Text>
 
             <View style={styles.headerRight}>
-              {/* 未讀請求按鈕 */}
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => router.push('/chat/friend-requests')}
-              >
+              <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/chat/friend-requests')}>
                 <View>
                   <MaterialCommunityIcons name="bell" size={26} color="#5c4033" />
                   {pendingCount > 0 && (
@@ -388,7 +327,6 @@ const formattedFriends = response.data.friends.map(friend => {
               </TouchableOpacity>
             </View>
           </View>
-
 
           {/* Search Bar */}
           <View style={styles.searchContainer}>
@@ -414,12 +352,7 @@ const formattedFriends = response.data.friends.map(friend => {
                 style={[styles.tab, activeTab === tab.id && styles.activeTab]}
                 onPress={() => setActiveTab(tab.id)}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    activeTab === tab.id && styles.activeTabText
-                  ]}
-                >
+                <Text style={[styles.tabText, activeTab === tab.id && styles.activeTabText]}>
                   {tab.label}
                 </Text>
                 {tab.count > 0 && (
@@ -431,7 +364,7 @@ const formattedFriends = response.data.friends.map(friend => {
             ))}
           </View>
 
-          {/* Pending Requests Section */}
+          {/* Pending Requests */}
           {activeTab === 'pending' && (
             <View style={styles.pendingSection}>
               <Text style={styles.sectionTitle}>好友請求 ({pendingRequests.length})</Text>
@@ -445,7 +378,6 @@ const formattedFriends = response.data.friends.map(friend => {
                   data={pendingRequests}
                   renderItem={renderPendingItem}
                   keyExtractor={item => item.id}
-                  scrollEnabled={false}
                   contentContainerStyle={styles.pendingList}
                 />
               ) : (
@@ -485,11 +417,17 @@ const formattedFriends = response.data.friends.map(friend => {
               }
             />
           )}
-
-
-
         </SafeAreaView>
       </LinearGradient>
+
+      {/* 好友浮動按鈕 */}
+      <TouchableOpacity
+        style={styles.addFriendButton}
+        onPress={() => router.push('/chat/add-friends')}
+        activeOpacity={0.8}
+      >
+        <MaterialCommunityIcons name="account-plus" size={28} color="#fffaf5" />
+      </TouchableOpacity>
 
       {/* Unified Alert Modal */}
       <Modal
@@ -500,19 +438,23 @@ const formattedFriends = response.data.friends.map(friend => {
         backdropOpacity={0.5}
       >
         <View style={modalStyles.container}>
+          <MaterialCommunityIcons
+            name={alertType === 'success' ? 'check-circle' : 'alert-circle'}
+            size={60}
+            color={alertType === 'success' ? '#2ecc71' : '#e74c3c'}
+            style={{ marginBottom: 16 }}
+          />
           <Text style={modalStyles.title}>{alertTitle}</Text>
           <Text style={modalStyles.message}>{alertMessage}</Text>
 
-          <View style={modalStyles.buttonRow}>
-            <TouchableOpacity
-              style={[modalStyles.button, alertType === 'success' ? modalStyles.successButton : modalStyles.errorButton]}
-              onPress={() => setShowAlertModal(false)}
-            >
-              <Text style={[modalStyles.buttonText, alertType === 'success' && { color: '#fffaf5' }]}>
-                確定
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[modalStyles.button, alertType === 'success' ? modalStyles.successButton : modalStyles.errorButton]}
+            onPress={() => setShowAlertModal(false)}
+          >
+            <Text style={[modalStyles.buttonText, alertType === 'success' && { color: '#fffaf5' }]}>
+              確定
+            </Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </>
@@ -825,10 +767,10 @@ const styles = StyleSheet.create({
     color: '#8b5e3c',
     marginTop: 8,
   },
-  addFriendButton: {
+addFriendButton: {
     position: 'absolute',
     bottom: 30,
-    right: 20,
+    right: 24,
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -837,7 +779,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: '#8b5e3c',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 12,
     elevation: 10,
     borderWidth: 2,

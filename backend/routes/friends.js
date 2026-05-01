@@ -54,8 +54,8 @@ router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
 });
 
   // 搜尋用戶
-  router.get('/search-users', authMiddleware(JWT_SECRET), (req, res) => {
- const { query } = req.query;
+router.get('/search-users', authMiddleware(JWT_SECRET), (req, res) => {
+  const { query } = req.query;
   
   if (!query || query.trim() === '') {
     return res.json({ success: true, users: [] });
@@ -72,20 +72,34 @@ router.get('/friends', authMiddleware(JWT_SECRET), (req, res) => {
       u.last_active,
       (TIMESTAMPDIFF(MINUTE, u.last_active, NOW()) < 5) as is_online,
       (SELECT COUNT(*) FROM friendships WHERE (user1_id = u.id AND user2_id = ?) OR (user1_id = ? AND user2_id = u.id)) as is_friend,
-      (SELECT COUNT(*) FROM friend_requests WHERE from_user_id = u.id AND to_user_id = ? AND status = 'pending') as is_request_pending,
+      
+      -- --- 修正開始 ---
+      (SELECT COUNT(*) FROM friend_requests 
+       WHERE ((from_user_id = u.id AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = u.id)) 
+       AND status = 'pending') as is_request_pending,
+      -- --- 修正結束 ---
+      
       ROUND(RAND() * 10, 1) as distance
     FROM users u
     WHERE u.id != ? 
       AND (u.username LIKE ? OR u.email LIKE ?)
     LIMIT 20`,
-    [req.user.id, req.user.id, req.user.id, req.user.id, `%${query}%`, `%${query}%`],
+
+    [
+      req.user.id,
+      req.user.id,
+      req.user.id,
+      req.user.id,
+      req.user.id,
+      `%${query}%`, 
+      `%${query}%`
+    ],
     (err, results) => {
       if (err) {
         console.error('搜索用戶失敗:', err);
         return res.status(500).json({ error: '搜尋失敗' });
       }
       
-      // 處理頭像URL
       const formattedResults = results.map(user => ({
         ...user,
         avatar: buildAvatarUrl(user.avatar)
