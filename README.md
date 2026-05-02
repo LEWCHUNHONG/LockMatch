@@ -72,6 +72,8 @@ The project utilizes a modern full-stack architecture for cross-platform perform
     AZURE_OPENAI_DEPLOYMENT=
     AZURE_OPENAI_API_KEY=
     AZURE_OPENAI_API_VERSION=
+
+    DEEPSEEK_API_KEY=
     ```
     
 5.  **Run Development Server**
