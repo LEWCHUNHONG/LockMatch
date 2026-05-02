@@ -5,17 +5,17 @@ require('dotenv').config();
 
 const authMiddleware = require('../middleware/auth');
 const connection = require('../db/connection');
-// 引入你寫嘅 Azure OpenAI 客戶端（假設喺 config/azureOpenAI.js）
-const { initAzureOpenAI } = require('../config/azureOpenAI');
+// 引入 DeepSeek 客戶端
+const { initDeepSeekAI } = require('../config/deepseekAI');
 
-// 初始化一次（會印出 config 資料）
-const azureAI = initAzureOpenAI();
+// 初始化一次
+const deepseekAI = initDeepSeekAI();
 
 // 測試路由
 router.get('/test', (req, res) => {
   res.json({
     success: true,
-    message: 'AI Chat API is working',
+    message: 'AI Chat API is working (DeepSeek v4-flash)',
     timestamp: new Date().toISOString()
   });
 });
@@ -77,11 +77,16 @@ router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res)
       });
 
       // 構建 system prompt
-      const systemContent = `你係一個友善嘅AI聊天助手，專門幫助用戶同新朋友打開話題。你了解用戶嘅背景：用戶名 ${userInfo.username}，MBTI 類型 ${userInfo.mbti}，自我介紹：${userInfo.bio}。你嘅任務係：
+const systemContent = `你係一個友善嘅AI聊天助手，專門幫助用戶同新朋友打開話題。你了解用戶嘅背景：用戶名 ${userInfo.username}，MBTI 類型 ${userInfo.mbti}，自我介紹：${userInfo.bio}。
+
+重要規則：
+- **全部使用繁體中文**回應（香港用語為主）
+- 適時加入廣東話表達，令對話更親切自然
 - 如果用戶問關於佢自己嘅問題（例如佢叫咩名、MBTI係咩），直接回答。
 - 如果用戶想開始對話，根據佢嘅背景提供具體嘅話題建議。
-- 如果用戶同你普通傾偈，輕鬆回應。
-請用廣東話，親切有禮。`;
+- 普通傾偈時要輕鬆、有趣、有禮貌。
+
+請嚴格遵守以上規則，用繁體中文同廣東話回應。`;
 
       const messages = [
         { role: 'system', content: systemContent },
@@ -89,12 +94,15 @@ router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res)
       ];
 
       try {
-        // 用你寫嘅 azureAI.invoke 代替 openai SDK
-        console.log('📤 呼叫 Azure OpenAI，messages:', messages);
-        const result = await azureAI.invoke(messages);
+
+        console.log('📤 呼叫 DeepSeek，messages:', messages);
+        const result = await deepseekAI.invoke(messages, {
+            thinking: { type: "disabled" },
+            temperature: 0.7
+        });
         const aiResponse = result.content;
 
-        console.log(`🤖 AI回應 (長度 ${aiResponse.length}):`, aiResponse);
+        console.log(`🤖 DeepSeek 回應 (長度 ${aiResponse.length}):`, aiResponse);
 
         // 儲存 AI 回應
         connection.query(insertMsg, [userId, 'assistant', aiResponse], (err) => {
@@ -105,12 +113,12 @@ router.post('/message', authMiddleware(process.env.JWT_SECRET), async (req, res)
           success: true,
           response: aiResponse
         });
-      } catch (openaiError) {
-        console.error('❌ Azure OpenAI 錯誤詳細:', openaiError.response?.data || openaiError.message);
+      } catch (error) {
+        console.error('❌ DeepSeek 錯誤詳細:', error.response?.data || error.message);
         res.status(500).json({
           success: false,
           error: 'AI 回應失敗，請稍後再試',
-          detail: openaiError.response?.data || openaiError.message
+          detail: error.response?.data || error.message
         });
       }
     });
